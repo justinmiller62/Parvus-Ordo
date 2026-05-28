@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { afterAll, describe, expect, it } from "vitest";
-import { closeDb } from "./client";
-import { lookupAppUser } from "./repo";
+import { closeDb, lookupAppUser } from "@parvaordo/core";
 
 const HOLY_SPIRIT = "11111111-1111-1111-1111-111111111111";
 

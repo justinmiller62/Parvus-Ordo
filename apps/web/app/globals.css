@@ -31,6 +31,17 @@
   --po-font-body: "Inter", system-ui, sans-serif;
 }
 
+@keyframes po-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 body {
   background-color: var(--po-parchment);
   color: var(--po-navy);

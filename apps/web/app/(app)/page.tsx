@@ -1,25 +1,26 @@
 import Link from "next/link";
-import { getLessons, getMinistries, getParishById } from "@parvaordo/core";
+import { redirect } from "next/navigation";
+import { BookOpen } from "lucide-react";
+import { getMinistries, getParishById } from "@parvaordo/core";
 import { ROLE_LABELS } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
-
-const SCOPE_BADGE: Record<string, string> = {
-  global: "bg-gold/20 text-gold-dark",
-  diocese: "bg-navy/10 text-navy",
-  parish: "bg-rose/15 text-rose",
-};
 
 export default async function HomePage() {
   const viewer = await getViewer();
   if (!viewer) return null; // layout guards; this narrows types
 
   const { authed, identity } = viewer;
-  const parishId = identity?.parishId ?? null;
+  const role = identity?.role ?? null;
 
-  const [parish, ministries, lessons] = await Promise.all([
+  // Catechists & learners are OCIA-only — they have no parish dashboard.
+  if (role === "catechist" || role === "catechumen_candidate") redirect("/ocia");
+
+  const parishId = identity?.parishId ?? null;
+  const ociaEligible = role === "admin" || role === "super_admin";
+
+  const [parish, ministries] = await Promise.all([
     parishId ? getParishById(parishId) : Promise.resolve(null),
     parishId ? getMinistries(parishId) : Promise.resolve([]),
-    parishId ? getLessons(parishId) : Promise.resolve([]),
   ]);
 
   const displayName = identity?.displayName || authed.name || authed.email;
@@ -39,7 +40,7 @@ export default async function HomePage() {
           <dl className="mt-6 grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-white p-5 text-sm sm:grid-cols-3">
             <div>
               <dt className="font-semibold text-gray-400">Role</dt>
-              <dd className="mt-0.5 text-navy">{identity?.role ? ROLE_LABELS[identity.role] : "—"}</dd>
+              <dd className="mt-0.5 text-navy">{role ? ROLE_LABELS[role] : "—"}</dd>
             </div>
             <div>
               <dt className="font-semibold text-gray-400">Parish</dt>
@@ -67,28 +68,26 @@ export default async function HomePage() {
             </ul>
           </section>
 
-          <section className="mt-6">
-            <h2 className="mb-2 text-sm font-semibold text-gray-400">
-              Lessons available to you ({lessons.length})
-            </h2>
-            <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
-              {lessons.map((l) => (
-                <li key={l.id}>
-                  <Link
-                    href={`/ocia/lessons/${l.id}`}
-                    className="flex items-center justify-between px-4 py-3 text-sm transition hover:bg-parchment"
-                  >
-                    <span className="text-navy">{l.title}</span>
-                    <span
-                      className={`ml-3 rounded-full px-2 py-0.5 text-xs font-medium ${SCOPE_BADGE[l.scope] ?? ""}`}
-                    >
-                      {l.scope}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
+          {ociaEligible ? (
+            <section className="mt-6">
+              <h2 className="mb-2 text-sm font-semibold text-gray-400">Modules</h2>
+              <Link
+                href="/ocia"
+                data-testid="module-ocia"
+                className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-gold">
+                  <BookOpen className="h-5 w-5" />
+                </span>
+                <span>
+                  <span className="block font-medium text-navy">OCIA</span>
+                  <span className="block text-sm text-gray-500">
+                    Order of Christian Initiation of Adults
+                  </span>
+                </span>
+              </Link>
+            </section>
+          ) : null}
         </>
       )}
     </div>

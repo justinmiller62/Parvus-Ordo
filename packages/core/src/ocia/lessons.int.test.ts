@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { afterAll, describe, expect, it } from "vitest";
-import { closeDb } from "./client";
-import { getLessonDetail, getLessons } from "./repo";
+import { closeDb, getLessonDetail, getLessons } from "@parvaordo/core";
 
 const HOLY_SPIRIT = "11111111-1111-1111-1111-111111111111"; // diocese AJ
 const ST_MONICA = "22222222-2222-2222-2222-222222222222"; // diocese AJ

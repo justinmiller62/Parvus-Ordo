@@ -51,6 +51,37 @@ export function getDb(parishId: string | null): TenantDb {
   };
 }
 
+export type TenantQuery = <R = Record<string, unknown>>(
+  sql: string,
+  params?: unknown[],
+) => Promise<R[]>;
+
+/**
+ * Run multiple statements in one tenant-scoped transaction (RLS active). Use when
+ * a mutation needs several statements atomically — e.g. reordering positions.
+ */
+export async function withTenant<T>(
+  parishId: string | null,
+  fn: (q: TenantQuery) => Promise<T>,
+): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    if (parishId) {
+      await client.query("SELECT set_config('app.parish_id', $1, true)", [parishId]);
+    }
+    const q: TenantQuery = async (sql, params = []) => (await client.query(sql, params)).rows;
+    const result = await fn(q);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 /** Close the shared pool (tests / graceful shutdown). */
 export async function closeDb(): Promise<void> {
   if (pool) {

@@ -1,9 +1,7 @@
 import "dotenv/config";
 import { afterAll, describe, expect, it } from "vitest";
-import { closeDb, getDb } from "./client";
-import { getMinistries } from "./repo";
+import { closeDb, getDb, getMinistries } from "@parvaordo/core";
 
-// Requires a migrated + seeded DB (pnpm db:reset). Uses the app-role DATABASE_URL.
 const HOLY_SPIRIT = "11111111-1111-1111-1111-111111111111";
 const ST_MONICA = "22222222-2222-2222-2222-222222222222";
 
@@ -26,10 +24,8 @@ describe("RLS tenant isolation (integration)", () => {
   it("never leaks one parish's ministries to another", async () => {
     const holySpirit = await getMinistries(HOLY_SPIRIT);
     const stMonica = await getMinistries(ST_MONICA);
-
     expect(holySpirit.length).toBeGreaterThan(0);
     expect(stMonica.length).toBeGreaterThan(0);
-
     const stMonicaIds = new Set(stMonica.map((m) => m.id));
     expect(holySpirit.some((m) => stMonicaIds.has(m.id))).toBe(false);
   });
