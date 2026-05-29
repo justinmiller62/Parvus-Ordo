@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getLessons } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
+import { createLessonAction } from "./actions";
 
 const SCOPE_BADGE: Record<string, string> = {
   global: "bg-gold/20 text-gold-dark",
@@ -21,14 +22,14 @@ export default async function LessonsPage() {
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-heading text-2xl text-navy">Lessons</h1>
         {canBuild ? (
-          <button
-            type="button"
-            disabled
-            title="Lesson builder — coming next"
-            className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-white opacity-50"
-          >
-            New lesson
-          </button>
+          <form action={createLessonAction}>
+            <button
+              type="submit"
+              className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-white hover:bg-gold-dark"
+            >
+              New lesson
+            </button>
+          </form>
         ) : null}
       </div>
 
@@ -39,7 +40,7 @@ export default async function LessonsPage() {
           {lessons.map((l) => (
             <li key={l.id}>
               <Link
-                href={`/ocia/lessons/${l.id}`}
+                href={canBuild && l.scope === "parish" ? `/ocia/lessons/${l.id}/edit` : `/ocia/lessons/${l.id}`}
                 className="flex items-center justify-between px-4 py-3 text-sm transition hover:bg-parchment"
               >
                 <span className="text-navy">{l.title}</span>

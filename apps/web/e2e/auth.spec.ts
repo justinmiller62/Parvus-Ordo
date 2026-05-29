@@ -53,6 +53,25 @@ test("dev bypass: lesson is a one-item-at-a-time wizard with progress + gating",
   await expect(page.getByText("Lesson complete")).toBeVisible();
 });
 
+test("dev bypass: catechist creates a lesson and adds items in the builder", async ({ page }) => {
+  await page.goto("/dev/login?email=admin@parvaordo.test");
+  await page.goto("/ocia/lessons");
+  await page.getByRole("button", { name: "New lesson" }).click();
+  await page.waitForURL(/\/ocia\/lessons\/[0-9a-f-]+\/edit$/);
+
+  await page.getByRole("button", { name: "Reading" }).click();
+  await page.getByRole("button", { name: "Open-Ended" }).click();
+  await expect(page.getByTestId("section-count")).toHaveText("2 sections");
+
+  // Edit opens a modal (not inline); close it again.
+  await page.getByRole("button", { name: "Edit" }).first().click();
+  await expect(page.getByRole("heading", { name: /^Edit / })).toBeVisible();
+  await page.getByRole("button", { name: "Close editor" }).click();
+
+  await page.getByTestId("publish-toggle").click();
+  await expect(page.getByTestId("publish-toggle")).toHaveText("Published");
+});
+
 test("dev bypass: cannot skip ahead past the first incomplete item", async ({ page }) => {
   await page.request.get("/dev/reset?email=teacher@parvaordo.test");
   await page.goto("/dev/login?email=teacher@parvaordo.test");
