@@ -63,6 +63,12 @@ export interface LessonForEdit {
   versions: VersionSummary[];
 }
 
+// pg returns timestamptz as a JS Date; normalise to an ISO string so sorting/
+// formatting are predictable.
+function toIso(v: unknown): string {
+  return v instanceof Date ? v.toISOString() : v == null ? "" : String(v);
+}
+
 type ItemRow = { id: string; position: number; kind: LessonItemKind; content: Record<string, unknown> };
 
 async function itemsFor(
@@ -173,7 +179,7 @@ export async function getManageLessons(
     scope: r.scope,
     lessonOrder: r.lesson_order,
     status: r.is_published ? "published" : r.has_draft ? "draft" : "offline",
-    updatedAt: r.updated_at,
+    updatedAt: toIso(r.updated_at),
     isFork: r.is_fork,
   }));
 
@@ -217,8 +223,8 @@ export async function getLessonForEdit(
   const versions: VersionSummary[] = vrows.map((v) => ({
     id: v.id,
     versionNumber: v.version_number,
-    publishedAt: v.published_at,
-    updatedAt: v.updated_at,
+    publishedAt: v.published_at ? toIso(v.published_at) : null,
+    updatedAt: toIso(v.updated_at),
     isLive: v.id === l.live_version_id,
     isDraft: v.published_at === null,
   }));

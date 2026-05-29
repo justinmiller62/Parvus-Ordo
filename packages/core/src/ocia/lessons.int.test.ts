@@ -152,4 +152,12 @@ describe("manage sort + filter", () => {
     const titles = (await getManageLessons(HOLY_SPIRIT, { sort: "title" })).map((l) => l.title);
     expect(titles).toEqual([...titles].sort((a, b) => a.localeCompare(b)));
   });
+
+  it("sorts by recent (timestamps are ISO strings, not Date objects)", async () => {
+    const rows = await getManageLessons(HOLY_SPIRIT, { sort: "updated" });
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) expect(typeof r.updatedAt).toBe("string");
+    const stamps = rows.map((r) => r.updatedAt);
+    expect(stamps).toEqual([...stamps].sort((a, b) => b.localeCompare(a)));
+  });
 });

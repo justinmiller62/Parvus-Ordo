@@ -72,8 +72,9 @@ function versionLabel(v: VersionSummary): string {
   const stamp = when
     ? new Date(when).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
     : "";
-  const base = v.isDraft ? `Draft · edited ${stamp}` : `Published · ${stamp}`;
-  return v.isLive ? `${base} — Live` : base;
+  // Only the live version is "Live"; older published versions are kept as history.
+  if (v.isDraft) return `Draft · edited ${stamp}`;
+  return v.isLive ? `Live · ${stamp}` : `Previous · ${stamp}`;
 }
 
 function ItemRow({
@@ -334,7 +335,7 @@ export function LessonBuilder({ lesson }: { lesson: LessonForEdit }) {
         </div>
       ) : (
         <div className="mt-4 border-t border-gray-200 pt-4 text-xs font-medium text-gray-400">
-          Viewing a {isLive ? "published (live)" : "published"} version · {items.length} sections · read-only
+          Viewing the {isLive ? "live" : "previous"} version · {items.length} sections · read-only
         </div>
       )}
 
