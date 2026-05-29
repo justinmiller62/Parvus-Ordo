@@ -135,8 +135,15 @@ export default async function LessonsPage({
                   {l.isFork ? <span className="ml-2 text-xs text-gray-400">fork</span> : null}
                 </Link>
                 {l.scope !== "global" ? (
-                  <span className="shrink-0 text-xs text-gray-400">
-                    edited {new Date(l.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                  <span className="hidden shrink-0 text-xs text-gray-400 sm:inline">
+                    edited{" "}
+                    {new Date(l.updatedAt).toLocaleString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
                   </span>
                 ) : null}
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${SCOPE_BADGE[l.scope]}`}>{l.scope}</span>

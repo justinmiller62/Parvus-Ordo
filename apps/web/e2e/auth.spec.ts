@@ -53,7 +53,8 @@ test("dev bypass: lesson is a one-item-at-a-time wizard with progress + gating",
   await expect(page.getByText("Lesson complete")).toBeVisible();
 });
 
-test("dev bypass: catechist builds, publishes, then re-edits (new draft) a lesson", async ({ page }) => {
+test("dev bypass: catechist builds, publishes, re-edits, then cleans up a lesson", async ({ page }) => {
+  page.on("dialog", (d) => d.accept()); // accept confirm() on discard/delete
   await page.goto("/dev/login?email=admin@parvaordo.test");
   await page.goto("/ocia/lessons");
   await page.getByRole("button", { name: "New lesson" }).click();
@@ -76,14 +77,27 @@ test("dev bypass: catechist builds, publishes, then re-edits (new draft) a lesso
   await page.getByTestId("edit-btn").click();
   await page.waitForURL(/\?v=/);
   await expect(page.getByTestId("publish-btn")).toBeVisible();
+
+  // Discard the draft → back to the live version.
+  await page.getByTestId("discard-draft-btn").click();
+  await expect(page.getByTestId("unpublish-btn")).toBeVisible();
+
+  // Clean up: delete the whole lesson.
+  await page.getByTestId("delete-lesson-btn").click();
+  await page.waitForURL(/\/ocia\/lessons$/);
 });
 
-test("dev bypass: catechist forks a diocese lesson into the parish", async ({ page }) => {
+test("dev bypass: catechist forks a diocese lesson, then cleans it up", async ({ page }) => {
+  page.on("dialog", (d) => d.accept());
   await page.goto("/dev/login?email=admin@parvaordo.test");
   await page.goto("/ocia/lessons?scope=diocese");
   await page.getByRole("button", { name: "Fork" }).first().click();
   await page.waitForURL(/\/ocia\/lessons\/[0-9a-f-]+\/edit/);
   await expect(page.getByRole("heading", { name: /Saints & History of Altoona-Johnstown/ })).toBeVisible();
+
+  // Clean up the fork.
+  await page.getByTestId("delete-lesson-btn").click();
+  await page.waitForURL(/\/ocia\/lessons$/);
 });
 
 test("dev bypass: manage list filters by type", async ({ page }) => {

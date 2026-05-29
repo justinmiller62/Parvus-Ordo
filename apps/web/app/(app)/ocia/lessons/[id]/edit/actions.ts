@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   addLessonItem,
+  deleteLesson,
   deleteLessonItem,
+  deleteVersion,
   ensureDraft,
   getDb,
   publishVersion,
@@ -121,4 +123,18 @@ export async function unpublishAction(lessonId: string): Promise<void> {
   const { parishId } = await requireBuilder();
   await unpublishLesson({ parishId, lessonId });
   rp(lessonId);
+}
+
+/** Discard a draft / delete a historical version (not the live one). */
+export async function deleteVersionAction(lessonId: string, versionId: string): Promise<void> {
+  const { parishId } = await requireBuilder();
+  await deleteVersion({ parishId, lessonId, versionId });
+  redirect(`/ocia/lessons/${lessonId}/edit`);
+}
+
+/** Delete the whole lesson (parish-owned only). */
+export async function deleteLessonAction(lessonId: string): Promise<void> {
+  const { parishId } = await requireBuilder();
+  await deleteLesson(parishId, lessonId);
+  redirect("/ocia/lessons");
 }

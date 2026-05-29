@@ -405,6 +405,36 @@ export async function unpublishLesson(params: { parishId: string; lessonId: stri
   await getDb(params.parishId).query("UPDATE lessons SET live_version_id = NULL WHERE id = $1", [params.lessonId]);
 }
 
+/** Delete a whole lesson (versions, items, answers, progress cascade). RLS
+ *  restricts this to parish-owned lessons. */
+export async function deleteLesson(parishId: string, lessonId: string): Promise<void> {
+  await getDb(parishId).query("DELETE FROM lessons WHERE id = $1", [lessonId]);
+}
+
+/** Delete a single version (discard a draft, or remove a historical version).
+ *  Refuses to delete the live version or the lesson's only version. */
+export async function deleteVersion(params: {
+  parishId: string;
+  lessonId: string;
+  versionId: string;
+}): Promise<void> {
+  await withTenant(params.parishId, async (q) => {
+    const live = await q<{ live_version_id: string | null }>("SELECT live_version_id FROM lessons WHERE id = $1", [
+      params.lessonId,
+    ]);
+    if (live[0]?.live_version_id === params.versionId) {
+      throw new Error("cannot delete the live version — unpublish or make another version live first");
+    }
+    const counted = await q<{ c: number }>("SELECT COUNT(*)::int AS c FROM lesson_versions WHERE lesson_id = $1", [
+      params.lessonId,
+    ]);
+    if ((counted[0]?.c ?? 0) <= 1) {
+      throw new Error("cannot delete the only version — delete the lesson instead");
+    }
+    await q("DELETE FROM lesson_versions WHERE id = $1", [params.versionId]);
+  });
+}
+
 /** Fork a global/diocese lesson into a new parish-owned, published copy. */
 export async function forkLesson(params: {
   parishId: string;

@@ -37,6 +37,8 @@ import { QuestionEditor } from "./question-editor";
 import {
   addItemAction,
   deleteItemAction,
+  deleteLessonAction,
+  deleteVersionAction,
   ensureDraftAction,
   publishAction,
   reorderAction,
@@ -208,6 +210,10 @@ export function LessonBuilder({ lesson }: { lesson: LessonForEdit }) {
 
   const switchVersion = (vid: string) => router.push(`/ocia/lessons/${lessonId}/edit?v=${vid}`);
   const run = (fn: () => Promise<void>) => startTransition(async () => { await fn(); router.refresh(); });
+  const confirmRun = (message: string, fn: () => Promise<void>) => {
+    if (typeof window !== "undefined" && !window.confirm(message)) return;
+    run(fn);
+  };
 
   const editingItem = items.find((i) => i.id === editingId) ?? null;
 
@@ -284,11 +290,40 @@ export function LessonBuilder({ lesson }: { lesson: LessonForEdit }) {
             <button
               onClick={() => run(() => unpublishAction(lessonId))}
               disabled={pending}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-rose hover:bg-rose/5 disabled:opacity-50"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
             >
               Unpublish all
             </button>
           ) : null}
+
+          {isDraft ? (
+            <button
+              onClick={() => confirmRun("Discard this draft? Unpublished edits will be lost.", () => deleteVersionAction(lessonId, versionId))}
+              disabled={pending}
+              data-testid="discard-draft-btn"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            >
+              Discard draft
+            </button>
+          ) : !isLive ? (
+            <button
+              onClick={() => confirmRun("Delete this version from history?", () => deleteVersionAction(lessonId, versionId))}
+              disabled={pending}
+              data-testid="delete-version-btn"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            >
+              Delete version
+            </button>
+          ) : null}
+
+          <button
+            onClick={() => confirmRun("Delete this lesson and all its versions? This cannot be undone.", () => deleteLessonAction(lessonId))}
+            disabled={pending}
+            data-testid="delete-lesson-btn"
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-rose hover:bg-rose/5 disabled:opacity-50"
+          >
+            Delete lesson
+          </button>
         </div>
       </div>
 

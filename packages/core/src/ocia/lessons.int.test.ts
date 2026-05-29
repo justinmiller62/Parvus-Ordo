@@ -4,6 +4,8 @@ import {
   addLessonItem,
   closeDb,
   createLesson,
+  deleteLesson,
+  deleteVersion,
   ensureDraft,
   forkLesson,
   getDb,
@@ -133,6 +135,39 @@ describe("fork", () => {
   it("a parish cannot edit a global lesson (editable=false)", async () => {
     const e = await getLessonForEdit(HOLY_SPIRIT, GLOBAL_LESSON);
     expect(e?.editable).toBe(false);
+  });
+});
+
+describe("delete", () => {
+  it("deletes a whole lesson (cascade)", async () => {
+    const id = await createLesson({ parishId: HOLY_SPIRIT, createdBy: await userId("admin@parvaordo.test"), title: "To Delete" });
+    await publishVersion({
+      parishId: HOLY_SPIRIT,
+      lessonId: id,
+      versionId: (await getLessonForEdit(HOLY_SPIRIT, id))!.selected.versionId,
+    });
+    expect(await getLessonForEdit(HOLY_SPIRIT, id)).not.toBeNull();
+    await deleteLesson(HOLY_SPIRIT, id);
+    expect(await getLessonForEdit(HOLY_SPIRIT, id)).toBeNull();
+  });
+
+  it("discards a draft, but refuses to delete the only version or the live version", async () => {
+    const id = await createLesson({ parishId: HOLY_SPIRIT, createdBy: await userId("admin@parvaordo.test"), title: "Del Version" });
+    const v1 = (await getLessonForEdit(HOLY_SPIRIT, id))!.selected.versionId;
+
+    // only version -> refuse
+    await expect(deleteVersion({ parishId: HOLY_SPIRIT, lessonId: id, versionId: v1 })).rejects.toThrow();
+
+    await publishVersion({ parishId: HOLY_SPIRIT, lessonId: id, versionId: v1 });
+    // live version -> refuse
+    await expect(deleteVersion({ parishId: HOLY_SPIRIT, lessonId: id, versionId: v1 })).rejects.toThrow();
+
+    // make a draft, then discard it
+    const draft = await ensureDraft(HOLY_SPIRIT, id);
+    await deleteVersion({ parishId: HOLY_SPIRIT, lessonId: id, versionId: draft });
+    expect((await getLessonForEdit(HOLY_SPIRIT, id))!.versions.some((v) => v.id === draft)).toBe(false);
+
+    await deleteLesson(HOLY_SPIRIT, id); // cleanup
   });
 });
 
