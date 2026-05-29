@@ -53,7 +53,7 @@ test("dev bypass: lesson is a one-item-at-a-time wizard with progress + gating",
   await expect(page.getByText("Lesson complete")).toBeVisible();
 });
 
-test("dev bypass: catechist creates a lesson and adds items in the builder", async ({ page }) => {
+test("dev bypass: catechist builds, publishes, then re-edits (new draft) a lesson", async ({ page }) => {
   await page.goto("/dev/login?email=admin@parvaordo.test");
   await page.goto("/ocia/lessons");
   await page.getByRole("button", { name: "New lesson" }).click();
@@ -68,8 +68,29 @@ test("dev bypass: catechist creates a lesson and adds items in the builder", asy
   await expect(page.getByRole("heading", { name: /^Edit / })).toBeVisible();
   await page.getByRole("button", { name: "Close editor" }).click();
 
-  await page.getByTestId("publish-toggle").click();
-  await expect(page.getByTestId("publish-toggle")).toHaveText("Published");
+  // Publish the draft → it becomes live (Unpublish + Edit appear).
+  await page.getByTestId("publish-btn").click();
+  await expect(page.getByTestId("unpublish-btn")).toBeVisible();
+
+  // Re-edit → spins up a new draft (editable again).
+  await page.getByTestId("edit-btn").click();
+  await page.waitForURL(/\?v=/);
+  await expect(page.getByTestId("publish-btn")).toBeVisible();
+});
+
+test("dev bypass: catechist forks a diocese lesson into the parish", async ({ page }) => {
+  await page.goto("/dev/login?email=admin@parvaordo.test");
+  await page.goto("/ocia/lessons?scope=diocese");
+  await page.getByRole("button", { name: "Fork" }).first().click();
+  await page.waitForURL(/\/ocia\/lessons\/[0-9a-f-]+\/edit/);
+  await expect(page.getByRole("heading", { name: /Saints & History of Altoona-Johnstown/ })).toBeVisible();
+});
+
+test("dev bypass: manage list filters by type", async ({ page }) => {
+  await page.goto("/dev/login?email=admin@parvaordo.test");
+  await page.goto("/ocia/lessons?scope=parish");
+  await expect(page.getByRole("link", { name: "Welcome to OCIA at Holy Spirit" })).toBeVisible();
+  await expect(page.getByText("Who Do You Say That I Am?")).toHaveCount(0);
 });
 
 test("dev bypass: cannot skip ahead past the first incomplete item", async ({ page }) => {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
-import { getAnswersForLesson, getCompletedItems, getLessonDetail } from "@parvaordo/core";
+import { getAnswersForVersion, getCompletedItemsForVersion, getLessonDetail } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { advanceAction } from "./actions";
 
@@ -18,30 +18,35 @@ export default async function LessonPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ step?: string }>;
+  searchParams: Promise<{ step?: string; v?: string }>;
 }) {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
   const identity = viewer.identity;
   if (!identity?.parishId) redirect("/");
 
+  const role = identity.role;
+  const isBuilder = role === "catechist" || role === "admin" || role === "super_admin";
+
   const { id } = await params;
-  const lesson = await getLessonDetail(identity.parishId, id);
+  const sp = await searchParams;
+  // Students always see the live version; builders may preview a specific version (?v=).
+  const lesson = await getLessonDetail(identity.parishId, id, isBuilder ? sp.v : undefined);
   if (!lesson) notFound();
 
   const items = lesson.items;
   const total = items.length;
 
   const [completed, answers] = await Promise.all([
-    getCompletedItems(identity.parishId, identity.userId, id),
-    getAnswersForLesson(identity.parishId, identity.userId, id),
+    getCompletedItemsForVersion(identity.parishId, identity.userId, lesson.versionId),
+    getAnswersForVersion(identity.parishId, identity.userId, lesson.versionId),
   ]);
 
   // Resume = first incomplete item; can revisit completed steps but not skip past it.
   let resume = 0;
   while (resume < total && completed.has(items[resume]!.id)) resume++;
 
-  const requested = Number((await searchParams).step);
+  const requested = Number(sp.step);
   const wanted = Number.isFinite(requested) ? requested : resume;
   const current = Math.max(0, Math.min(wanted, resume));
 

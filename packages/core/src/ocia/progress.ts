@@ -15,18 +15,18 @@ export async function markItemComplete(params: {
   );
 }
 
-/** The set of lesson_item ids a student has completed within a lesson. */
-export async function getCompletedItems(
+/** The set of lesson_item ids a student has completed within a lesson version. */
+export async function getCompletedItemsForVersion(
   parishId: string,
   studentId: string,
-  lessonId: string,
+  versionId: string,
 ): Promise<Set<string>> {
   const { rows } = await getDb(parishId).query<{ item_id: string }>(
     `SELECT p.item_id
        FROM lesson_item_progress p
        JOIN lesson_items li ON li.id = p.item_id
-      WHERE li.lesson_id = $1 AND p.student_id = $2 AND p.completed = true`,
-    [lessonId, studentId],
+      WHERE li.version_id = $1 AND p.student_id = $2 AND p.completed = true`,
+    [versionId, studentId],
   );
   return new Set(rows.map((r) => r.item_id));
 }

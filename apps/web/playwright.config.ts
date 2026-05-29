@@ -4,6 +4,7 @@ import { defineConfig, devices } from "@playwright/test";
 // isolation specs (non-negotiable, per §14) are added when the DB/RLS land.
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",
   // Serialized: stateful wizard tests share one DB + seeded user across viewport
   // projects; running one-at-a-time avoids cross-test races. (Per-test DB
   // isolation via Neon branching is the long-term replacement.)

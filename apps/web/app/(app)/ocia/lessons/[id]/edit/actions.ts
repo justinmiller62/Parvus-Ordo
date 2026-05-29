@@ -5,16 +5,17 @@ import { redirect } from "next/navigation";
 import {
   addLessonItem,
   deleteLessonItem,
+  ensureDraft,
+  getDb,
+  publishVersion,
   reorderLessonItems,
-  setLessonPublished,
-  updateLesson,
+  unpublishLesson,
   updateLessonItem,
+  updateVersionMeta,
   type LessonItemKind,
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 
-// Authoring is restricted to catechist/admin/super_admin (RLS only scopes by
-// parish, so the role gate lives here in the app layer).
 async function requireBuilder(): Promise<{ parishId: string }> {
   const v = await getViewer();
   const role = v?.identity?.role;
@@ -23,6 +24,18 @@ async function requireBuilder(): Promise<{ parishId: string }> {
     redirect("/ocia");
   }
   return { parishId };
+}
+
+// Edits may only touch a parish-owned DRAFT (unpublished) version.
+async function assertDraft(parishId: string, versionId: string): Promise<void> {
+  const { rows } = await getDb(parishId).query<{ published_at: string | null; scope: string; parish_id: string | null }>(
+    "SELECT published_at, scope, parish_id FROM lesson_versions WHERE id = $1",
+    [versionId],
+  );
+  const v = rows[0];
+  if (!v || v.scope !== "parish" || v.parish_id !== parishId || v.published_at !== null) {
+    redirect("/ocia/lessons");
+  }
 }
 
 function defaultContent(kind: LessonItemKind, format?: string): Record<string, unknown> {
@@ -35,52 +48,77 @@ function defaultContent(kind: LessonItemKind, format?: string): Record<string, u
   return {};
 }
 
+const rp = (lessonId: string) => revalidatePath(`/ocia/lessons/${lessonId}/edit`);
+
+/** Start editing: ensure a draft exists (copying the live version), then open it. */
+export async function ensureDraftAction(lessonId: string): Promise<void> {
+  const { parishId } = await requireBuilder();
+  const draftId = await ensureDraft(parishId, lessonId);
+  redirect(`/ocia/lessons/${lessonId}/edit?v=${draftId}`);
+}
+
 export async function addItemAction(
   lessonId: string,
+  versionId: string,
   kind: LessonItemKind,
   format?: string,
 ): Promise<{ id: string; content: Record<string, unknown> }> {
   const { parishId } = await requireBuilder();
+  await assertDraft(parishId, versionId);
   const content = defaultContent(kind, format);
-  const id = await addLessonItem({ parishId, lessonId, kind, content });
-  revalidatePath(`/ocia/lessons/${lessonId}/edit`);
+  const id = await addLessonItem({ parishId, versionId, kind, content });
+  rp(lessonId);
   return { id, content };
 }
 
 export async function updateItemAction(
   lessonId: string,
+  versionId: string,
   itemId: string,
   content: Record<string, unknown>,
 ): Promise<void> {
   const { parishId } = await requireBuilder();
+  await assertDraft(parishId, versionId);
   await updateLessonItem({ parishId, itemId, content });
-  revalidatePath(`/ocia/lessons/${lessonId}/edit`);
+  rp(lessonId);
 }
 
-export async function deleteItemAction(lessonId: string, itemId: string): Promise<void> {
+export async function deleteItemAction(lessonId: string, versionId: string, itemId: string): Promise<void> {
   const { parishId } = await requireBuilder();
+  await assertDraft(parishId, versionId);
   await deleteLessonItem({ parishId, itemId });
-  revalidatePath(`/ocia/lessons/${lessonId}/edit`);
+  rp(lessonId);
 }
 
-export async function reorderAction(lessonId: string, orderedIds: string[]): Promise<void> {
+export async function reorderAction(lessonId: string, versionId: string, orderedIds: string[]): Promise<void> {
   const { parishId } = await requireBuilder();
-  await reorderLessonItems({ parishId, lessonId, orderedIds });
-  revalidatePath(`/ocia/lessons/${lessonId}/edit`);
+  await assertDraft(parishId, versionId);
+  await reorderLessonItems({ parishId, versionId, orderedIds });
+  rp(lessonId);
 }
 
-export async function publishAction(lessonId: string, published: boolean): Promise<void> {
-  const { parishId } = await requireBuilder();
-  await setLessonPublished({ parishId, lessonId, published });
-  revalidatePath(`/ocia/lessons/${lessonId}/edit`);
-}
-
-export async function updateLessonAction(
+export async function updateMetaAction(
   lessonId: string,
+  versionId: string,
   title: string,
   description: string,
 ): Promise<void> {
   const { parishId } = await requireBuilder();
-  await updateLesson({ parishId, lessonId, title: title.trim() || "Untitled lesson", description: description || null });
-  revalidatePath(`/ocia/lessons/${lessonId}/edit`);
+  await assertDraft(parishId, versionId);
+  await updateVersionMeta({ parishId, versionId, title, description: description || null });
+  rp(lessonId);
+}
+
+/** Publish a draft, or make an already-published version live again (rollback). */
+export async function publishAction(lessonId: string, versionId: string): Promise<void> {
+  const { parishId } = await requireBuilder();
+  await publishVersion({ parishId, lessonId, versionId });
+  rp(lessonId);
+}
+
+/** Take the lesson offline (no live version). */
+export async function unpublishAction(lessonId: string): Promise<void> {
+  const { parishId } = await requireBuilder();
+  await unpublishLesson({ parishId, lessonId });
+  rp(lessonId);
 }

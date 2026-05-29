@@ -3,7 +3,13 @@ import { getLessonForEdit } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { LessonBuilder } from "@/src/components/ocia/lesson-builder";
 
-export default async function EditLessonPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditLessonPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ v?: string }>;
+}) {
   const viewer = await getViewer();
   const role = viewer?.identity?.role;
   const parishId = viewer?.identity?.parishId ?? null;
@@ -12,10 +18,11 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
   }
 
   const { id } = await params;
-  const lesson = await getLessonForEdit(parishId, id);
+  const { v } = await searchParams;
+  const lesson = await getLessonForEdit(parishId, id, v);
   if (!lesson) notFound();
-  // Global/diocese content isn't parish-editable; send to the read-only view.
-  if (!lesson.editable) redirect(`/ocia/lessons/${id}`);
+  if (!lesson.editable) redirect(`/ocia/lessons/${id}`); // global/diocese content isn't parish-editable
 
-  return <LessonBuilder lesson={lesson} />;
+  // Re-mount when the selected version changes so local edit state re-initialises.
+  return <LessonBuilder key={lesson.selected.versionId} lesson={lesson} />;
 }

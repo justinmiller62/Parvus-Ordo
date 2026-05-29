@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getLessons } from "@parvaordo/core";
+import { getPublishedLessons } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 
 const SCOPE_BADGE: Record<string, string> = {
@@ -11,7 +11,7 @@ const SCOPE_BADGE: Record<string, string> = {
 export default async function OciaHomePage() {
   const viewer = await getViewer();
   const parishId = viewer?.identity?.parishId ?? null;
-  const lessons = parishId ? await getLessons(parishId) : [];
+  const lessons = parishId ? await getPublishedLessons(parishId) : [];
 
   return (
     <div className="mx-auto max-w-3xl">

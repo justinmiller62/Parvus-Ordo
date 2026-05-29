@@ -81,48 +81,83 @@ await client.query(
   [HOLY_SPIRIT],
 );
 
-// ─── Content: three-tier (global / diocese / parish) ───────────────────────
+// ─── Content: three-tier (global / diocese / parish), each a published v1 ───
 
-// Global library lesson — usable by every parish.
-await client.query(
-  `INSERT INTO lessons (id, scope, title, description, lesson_order, published_at)
-   VALUES ($1, 'global', 'Who Do You Say That I Am?', 'An introduction to the person of Jesus Christ.', 1, now())`,
-  [GLOBAL_LESSON],
-);
-await client.query(
-  `INSERT INTO lesson_items (scope, lesson_id, position, kind, content) VALUES
-     ('global', $1, 0, 'reading',  '{"html":"<p>One day Jesus asked his disciples, &quot;Who do you say that I am?&quot;</p>"}'),
-     ('global', $1, 1, 'question', '{"prompt":"Who do you say that Jesus is?","format":"open_ended"}'),
-     ('global', $1, 2, 'question', '{"prompt":"Which is a profession of faith?","format":"multiple_choice","choices":[{"label":"A teacher only","correct":false},{"label":"The Son of the living God","correct":true},{"label":"A prophet only","correct":false}]}')`,
-  [GLOBAL_LESSON],
-);
+async function seedLesson({ id, scope, dioceseId = null, parishId = null, title, description = null, lessonOrder = 0, createdByEmail = null, items = [] }) {
+  await client.query(
+    `INSERT INTO lessons (id, scope, diocese_id, parish_id, lesson_order, created_by)
+     VALUES ($1, $2, $3, $4, $5, (SELECT id FROM users WHERE email = $6))`,
+    [id, scope, dioceseId, parishId, lessonOrder, createdByEmail],
+  );
+  const { rows } = await client.query(
+    `INSERT INTO lesson_versions (lesson_id, scope, diocese_id, parish_id, version_number, title, description, published_at)
+     VALUES ($1, $2, $3, $4, 1, $5, $6, now()) RETURNING id`,
+    [id, scope, dioceseId, parishId, title, description],
+  );
+  const versionId = rows[0].id;
+  for (const it of items) {
+    await client.query(
+      `INSERT INTO lesson_items (scope, diocese_id, parish_id, version_id, position, kind, content)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [scope, dioceseId, parishId, versionId, it.position, it.kind, JSON.stringify(it.content)],
+    );
+  }
+  await client.query("UPDATE lessons SET live_version_id = $1 WHERE id = $2", [versionId, id]);
+}
 
-// Diocese (Altoona-Johnstown) lesson — only AJ parishes see it.
-await client.query(
-  `INSERT INTO lessons (id, scope, diocese_id, title, description, lesson_order, published_at)
-   VALUES ($1, 'diocese', $2, 'Saints & History of Altoona-Johnstown', 'Diocesan formation content.', 1, now())`,
-  [DIOCESE_LESSON_AJ, DIOCESE],
-);
+await seedLesson({
+  id: GLOBAL_LESSON,
+  scope: "global",
+  title: "Who Do You Say That I Am?",
+  description: "An introduction to the person of Jesus Christ.",
+  lessonOrder: 1,
+  items: [
+    { position: 0, kind: "reading", content: { html: '<p>One day Jesus asked his disciples, "Who do you say that I am?"</p>' } },
+    { position: 1, kind: "question", content: { prompt: "Who do you say that Jesus is?", format: "open_ended" } },
+    {
+      position: 2,
+      kind: "question",
+      content: {
+        prompt: "Which is a profession of faith?",
+        format: "multiple_choice",
+        choices: [
+          { label: "A teacher only", correct: false },
+          { label: "The Son of the living God", correct: true },
+          { label: "A prophet only", correct: false },
+        ],
+      },
+    },
+  ],
+});
 
-// Parish (Holy Spirit) lesson — only Holy Spirit sees it.
-await client.query(
-  `INSERT INTO lessons (id, scope, parish_id, title, description, lesson_order, created_by, published_at)
-   VALUES ($1, 'parish', $2, 'Welcome to OCIA at Holy Spirit', 'Parish-specific orientation.', 0,
-           (SELECT id FROM users WHERE email = 'justinmmiller62@gmail.com'), now())`,
-  [HS_LESSON, HOLY_SPIRIT],
-);
-await client.query(
-  `INSERT INTO lesson_items (scope, parish_id, lesson_id, position, kind, content)
-   VALUES ('parish', $2, $1, 0, 'reading', '{"html":"<p>Welcome to the Order of Christian Initiation of Adults at Holy Spirit Parish.</p>"}')`,
-  [HS_LESSON, HOLY_SPIRIT],
-);
+await seedLesson({
+  id: DIOCESE_LESSON_AJ,
+  scope: "diocese",
+  dioceseId: DIOCESE,
+  title: "Saints & History of Altoona-Johnstown",
+  description: "Diocesan formation content.",
+  lessonOrder: 1,
+  items: [{ position: 0, kind: "reading", content: { html: "<p>The diocese of Altoona-Johnstown was established in 1901.</p>" } }],
+});
 
-// Parish (St. Monica) lesson — only St. Monica sees it.
-await client.query(
-  `INSERT INTO lessons (id, scope, parish_id, title, lesson_order, published_at)
-   VALUES ($1, 'parish', $2, 'St. Monica Parish Orientation', 0, now())`,
-  [SM_LESSON, ST_MONICA],
-);
+await seedLesson({
+  id: HS_LESSON,
+  scope: "parish",
+  parishId: HOLY_SPIRIT,
+  title: "Welcome to OCIA at Holy Spirit",
+  description: "Parish-specific orientation.",
+  createdByEmail: "justinmmiller62@gmail.com",
+  items: [
+    { position: 0, kind: "reading", content: { html: "<p>Welcome to the Order of Christian Initiation of Adults at Holy Spirit Parish.</p>" } },
+  ],
+});
+
+await seedLesson({
+  id: SM_LESSON,
+  scope: "parish",
+  parishId: ST_MONICA,
+  title: "St. Monica Parish Orientation",
+});
 
 // A cohort at Holy Spirit.
 await client.query(`INSERT INTO cohorts (parish_id, name) VALUES ($1, 'OCIA 2026')`, [HOLY_SPIRIT]);
