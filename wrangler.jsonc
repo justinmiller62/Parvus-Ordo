@@ -23,11 +23,9 @@
   "vars": {
     "WORKOS_REDIRECT_URI": "https://dev.parvusordo.com/callback"
   },
-  // Bind the Worker to the dev hostnames. These need proxied DNS records to exist
-  // (apex `dev` + wildcard `*.dev`); add them in the Cloudflare dashboard (the API
-  // token has Workers Routes but not DNS edit). Wildcard powers per-parish subdomains.
-  "routes": [
-    { "pattern": "dev.parvusordo.com/*", "zone_name": "parvusordo.com" },
-    { "pattern": "*.dev.parvusordo.com/*", "zone_name": "parvusordo.com" }
-  ]
+  // Bind the Worker to dev.parvusordo.com (needs a proxied DNS record to exist; add
+  // it in the Cloudflare dashboard — the API token has Workers Routes but not DNS
+  // edit). The per-parish wildcard `*.dev.parvusordo.com` is added later: it needs
+  // Advanced Certificate Manager (Universal SSL doesn't cover 2-level wildcards).
+  "routes": [{ "pattern": "dev.parvusordo.com/*", "zone_name": "parvusordo.com" }]
 }
