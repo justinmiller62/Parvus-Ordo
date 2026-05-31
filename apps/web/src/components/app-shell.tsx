@@ -16,13 +16,22 @@ import {
   Megaphone,
   Menu,
   MessageSquare,
+  Check,
+  Eye,
   Settings,
   Shield,
+  UserPlus,
   Users,
   type LucideIcon,
 } from "lucide-react";
-import type { Role } from "@parvaordo/shared";
-import { signOutAction } from "@/app/(app)/actions";
+import { IMPERSONATABLE_ROLES, ROLE_LABELS, type Role } from "@parvaordo/shared";
+import { exitImpersonationAction, impersonateAction, setActiveParishAction, signOutAction } from "@/app/(app)/actions";
+
+export interface ShellMembership {
+  parishId: string;
+  parishName: string;
+  role: Role;
+}
 
 interface NavItem {
   label: string;
@@ -44,7 +53,8 @@ function topNav(role: Role | null): NavItem[] {
 }
 
 const CATECHIST_MODULES: NavItem[] = [
-  { label: "Videos", Icon: Film },
+  { href: "/ocia/media", label: "Media", Icon: Film, live: true },
+  { href: "/ocia/applicants", label: "Applicants", Icon: UserPlus, live: true },
   { label: "Calendar", Icon: Calendar },
   { label: "Cohorts", Icon: Users },
   { label: "Dictionary", Icon: BookOpenCheck },
@@ -81,14 +91,23 @@ export function AppShell({
   brandName,
   displayName,
   role,
+  canImpersonate = false,
+  viewingAs = null,
+  memberships = [],
+  activeParishId = null,
   children,
 }: {
   brandName: string;
   displayName: string;
   role: Role | null;
+  canImpersonate?: boolean;
+  viewingAs?: Role | null;
+  memberships?: ShellMembership[];
+  activeParishId?: string | null;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const activeParishName = memberships?.find((m) => m.parishId === activeParishId)?.parishName;
   const pathname = usePathname();
   const inOcia = pathname === "/ocia" || pathname.startsWith("/ocia/");
   const items = inOcia ? ociaNav(role) : topNav(role);
@@ -158,6 +177,26 @@ export function AppShell({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {viewingAs ? (
+          <div
+            className="flex items-center justify-between gap-2 bg-rose px-4 py-1.5 text-sm text-white"
+            data-testid="impersonation-banner"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Eye className="h-4 w-4" />
+              Viewing as {ROLE_LABELS[viewingAs]}
+            </span>
+            <form action={exitImpersonationAction}>
+              <button
+                type="submit"
+                data-testid="exit-impersonation"
+                className="rounded bg-white/20 px-2 py-0.5 text-xs font-medium hover:bg-white/30"
+              >
+                Exit
+              </button>
+            </form>
+          </div>
+        ) : null}
         <div className="flex items-center gap-2 border-b border-gray-200 bg-parchment px-4 py-2.5">
           <button
             onClick={() => setOpen(true)}
@@ -170,6 +209,54 @@ export function AppShell({
             {brandName}
           </span>
           <div className="flex-1" />
+          {memberships.length > 1 ? (
+            <details className="relative" data-testid="parish-switcher">
+              <summary className="cursor-pointer list-none rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                {activeParishName ?? "Parish"} ▾
+              </summary>
+              <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
+                {memberships.map((m) => (
+                  <form key={m.parishId} action={setActiveParishAction.bind(null, m.parishId)}>
+                    <button
+                      type="submit"
+                      disabled={m.parishId === activeParishId}
+                      data-testid={`switch-${m.parishId}`}
+                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-gray-700 hover:bg-parchment disabled:bg-cream/30 disabled:text-navy"
+                    >
+                      <span>
+                        {m.parishName}
+                        <span className="block text-xs text-gray-400">{ROLE_LABELS[m.role]}</span>
+                      </span>
+                      {m.parishId === activeParishId ? <Check className="h-4 w-4 text-gold" /> : null}
+                    </button>
+                  </form>
+                ))}
+              </div>
+            </details>
+          ) : null}
+          {canImpersonate && !viewingAs ? (
+            <details className="relative" data-testid="view-as">
+              <summary
+                data-testid="view-as-toggle"
+                className="cursor-pointer list-none rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              >
+                View as ▾
+              </summary>
+              <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
+                {IMPERSONATABLE_ROLES.map((r) => (
+                  <form key={r} action={impersonateAction.bind(null, r)}>
+                    <button
+                      type="submit"
+                      data-testid={`view-as-${r}`}
+                      className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-parchment"
+                    >
+                      {ROLE_LABELS[r]}
+                    </button>
+                  </form>
+                ))}
+              </div>
+            </details>
+          ) : null}
           <span className="text-sm font-medium text-gray-600">{displayName}</span>
         </div>
         {/* keyed by pathname so each navigation re-runs the transition */}

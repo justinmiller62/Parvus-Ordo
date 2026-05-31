@@ -1,36 +1,85 @@
 import type { Role } from "@parvaordo/shared";
 import { getDb } from "../db/client";
 
+export interface ParishMembership {
+  parishId: string;
+  parishName: string;
+  parishHostname: string | null;
+  role: Role;
+}
+
 export interface AppIdentity {
   userId: string;
   displayName: string;
   isSuperAdmin: boolean;
-  /** Null when the authenticated user has no membership yet (e.g. fresh signup). */
+  /** PRIMARY membership's role/parish (back-compat). The ACTIVE one is resolved per
+   * request in getViewer from the hostname / chooser; null when no membership yet. */
   role: Role | null;
   parishId: string | null;
+  /** Every parish this user belongs to (one role each). */
+  memberships: ParishMembership[];
+}
+
+interface LookupRow {
+  user_id: string;
+  display_name: string;
+  is_super_admin: boolean;
+  role: Role | null;
+  parish_id: string | null;
+  parish_name: string | null;
+  parish_hostname: string | null;
 }
 
 /**
- * Map an authenticated email to the app's role/parish via the login_lookup
- * SECURITY DEFINER function (cross-tenant, pre-tenant-context). Returns null
- * when no matching user exists.
+ * Map an authenticated email to the app's identity + ALL memberships via the
+ * login_lookup SECURITY DEFINER function (cross-tenant, pre-tenant-context).
+ * Returns null when no matching user exists.
  */
 export async function lookupAppUser(email: string): Promise<AppIdentity | null> {
-  const { rows } = await getDb(null).query<{
-    user_id: string;
-    display_name: string;
-    is_super_admin: boolean;
-    role: Role | null;
-    parish_id: string | null;
-  }>("SELECT user_id, display_name, is_super_admin, role, parish_id FROM login_lookup($1)", [email]);
+  const { rows } = await getDb(null).query<LookupRow>(
+    "SELECT user_id, display_name, is_super_admin, role, parish_id, parish_name, parish_hostname FROM login_lookup($1)",
+    [email],
+  );
+  const first = rows[0];
+  if (!first) return null;
 
-  const row = rows[0];
-  if (!row) return null;
+  // One membership per parish (login_lookup orders parish-wide before ministry-scoped).
+  const seen = new Set<string>();
+  const memberships: ParishMembership[] = [];
+  for (const r of rows) {
+    if (r.parish_id && r.role && !seen.has(r.parish_id)) {
+      seen.add(r.parish_id);
+      memberships.push({ parishId: r.parish_id, parishName: r.parish_name ?? "", parishHostname: r.parish_hostname, role: r.role });
+    }
+  }
+  const primary = memberships[0] ?? null;
   return {
-    userId: row.user_id,
-    displayName: row.display_name,
-    isSuperAdmin: row.is_super_admin,
-    role: row.role,
-    parishId: row.parish_id,
+    userId: first.user_id,
+    displayName: first.display_name,
+    isSuperAdmin: first.is_super_admin,
+    role: primary?.role ?? null,
+    parishId: primary?.parishId ?? null,
+    memberships,
   };
+}
+
+/**
+ * Resolve which membership is "active" for a request: an explicit parish (a chooser
+ * pick / cookie) wins, then the parish resolved from the request hostname (see
+ * resolveParishIdForHost — slug or custom domain), then the sole membership. Returns
+ * null when the choice is ambiguous (2+ memberships and no hint) — the caller then
+ * shows the "Choose a parish" screen. Pure + testable; both hints are parish ids.
+ */
+export function pickActiveMembership(
+  memberships: ParishMembership[],
+  opts: { parishId?: string | null; hostParishId?: string | null } = {},
+): ParishMembership | null {
+  if (memberships.length === 0) return null;
+  for (const hint of [opts.parishId, opts.hostParishId]) {
+    if (hint) {
+      const match = memberships.find((x) => x.parishId === hint);
+      if (match) return match;
+    }
+  }
+  return memberships.length === 1 ? memberships[0]! : null;
 }

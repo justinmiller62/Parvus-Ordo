@@ -50,7 +50,10 @@ export function QuestionEditor({
               onChange({
                 prompt,
                 format: "multiple_choice",
-                choices: choices.length ? choices : [{ label: "", correct: true }],
+                choices:
+                  choices.length >= 2
+                    ? choices
+                    : [{ label: "", correct: true }, { label: "", correct: false }],
               })
             }
           />
@@ -77,9 +80,17 @@ export function QuestionEditor({
               />
               <button
                 type="button"
-                onClick={() => patch({ choices: choices.filter((_, j) => j !== i) })}
-                className="text-gray-400 hover:text-rose"
+                onClick={() => {
+                  if (choices.length <= 2) return; // multiple choice needs ≥2 options
+                  const next = choices.filter((_, j) => j !== i);
+                  // Keep exactly one correct answer if we removed the correct one.
+                  if (!next.some((x) => x.correct) && next[0]) next[0] = { ...next[0], correct: true };
+                  patch({ choices: next });
+                }}
+                disabled={choices.length <= 2}
+                className="text-gray-400 hover:text-rose disabled:cursor-not-allowed disabled:opacity-30"
                 aria-label="Remove choice"
+                title={choices.length <= 2 ? "A multiple-choice question needs at least 2 options" : "Remove choice"}
               >
                 <X className="h-4 w-4" />
               </button>

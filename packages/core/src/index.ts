@@ -10,8 +10,16 @@ export * from "./branding";
 // platform (parish-OS core, cross-module)
 export * from "./platform/parishes";
 export * from "./platform/identity";
+export * from "./platform/hostname";
 
 // OCIA module
 export * from "./ocia/lessons";
 export * from "./ocia/answers";
 export * from "./ocia/progress";
+export * from "./ocia/feedback";
+
+// media / asset manager
+export * from "./media";
+
+// onboarding (invite + public OCIA application)
+export * from "./onboarding";

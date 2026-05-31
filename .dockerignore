@@ -1,0 +1,11 @@
+**/node_modules
+**/.next
+**/.turbo
+.git
+.github
+**/.env*
+**/test-results
+**/playwright-report
+**/*.log
+**/.DS_Store
+infra/workers/clip-cutter/node_modules

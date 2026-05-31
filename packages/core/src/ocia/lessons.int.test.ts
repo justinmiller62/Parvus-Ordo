@@ -72,6 +72,7 @@ describe("versioning lifecycle", () => {
     const edit = await getLessonForEdit(HOLY_SPIRIT, id);
     await publishVersion({ parishId: HOLY_SPIRIT, lessonId: id, versionId: edit!.selected.versionId });
     expect((await getPublishedLessons(HOLY_SPIRIT)).map((l) => l.id)).toContain(id);
+    await deleteLesson(HOLY_SPIRIT, id); // self-clean (no reseed between runs)
   });
 
   it("editing a published lesson makes a draft; students keep seeing the live version; publish/rollback/unpublish", async () => {
@@ -99,6 +100,7 @@ describe("versioning lifecycle", () => {
     // unpublish -> offline
     await unpublishLesson({ parishId: HOLY_SPIRIT, lessonId: id });
     expect(await getLessonDetail(HOLY_SPIRIT, id)).toBeNull();
+    await deleteLesson(HOLY_SPIRIT, id); // self-clean
   });
 
   it("enforces a single draft per lesson (partial unique index)", async () => {
@@ -110,6 +112,7 @@ describe("versioning lifecycle", () => {
         [id, HOLY_SPIRIT],
       ),
     ).rejects.toThrow();
+    await deleteLesson(HOLY_SPIRIT, id); // self-clean
   });
 });
 
@@ -130,6 +133,7 @@ describe("fork", () => {
     expect((await getLessonDetail(HOLY_SPIRIT, GLOBAL_LESSON))?.scope).toBe("global");
     // another parish cannot see the fork
     expect(await getLessonDetail(ST_MONICA, forkId)).toBeNull();
+    await deleteLesson(HOLY_SPIRIT, forkId); // self-clean (was leaking a parish "Who Do You Say…" fork)
   });
 
   it("a parish cannot edit a global lesson (editable=false)", async () => {

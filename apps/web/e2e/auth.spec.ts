@@ -107,6 +107,26 @@ test("dev bypass: manage list filters by type", async ({ page }) => {
   await expect(page.getByText("Who Do You Say That I Am?")).toHaveCount(0);
 });
 
+test("super-admin can impersonate a role and exit", async ({ page }) => {
+  await page.goto("/dev/login?email=super@parvaordo.test");
+  await expect(page).toHaveURL("http://localhost:3000/");
+  // The super-admin sees the "View as" picker; no impersonation banner yet.
+  await expect(page.getByTestId("view-as")).toBeVisible();
+  await expect(page.getByTestId("impersonation-banner")).toHaveCount(0);
+
+  // Impersonate a learner → routed into OCIA (OCIA-only role), banner appears.
+  await page.getByTestId("view-as-toggle").click();
+  await page.getByTestId("view-as-catechumen_candidate").click();
+  await expect(page).toHaveURL("http://localhost:3000/ocia");
+  await expect(page.getByTestId("impersonation-banner")).toContainText("Catechumen");
+
+  // Exit → back to the parish dashboard, banner gone, picker available again.
+  await page.getByTestId("exit-impersonation").click();
+  await expect(page).toHaveURL("http://localhost:3000/");
+  await expect(page.getByTestId("impersonation-banner")).toHaveCount(0);
+  await expect(page.getByTestId("view-as")).toBeVisible();
+});
+
 test("dev bypass: cannot skip ahead past the first incomplete item", async ({ page }) => {
   await page.request.get("/dev/reset?email=teacher@parvaordo.test");
   await page.goto("/dev/login?email=teacher@parvaordo.test");

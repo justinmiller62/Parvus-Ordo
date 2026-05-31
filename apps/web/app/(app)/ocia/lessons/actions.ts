@@ -1,7 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createLesson, forkLesson } from "@parvaordo/core";
+import { createLesson, deleteLesson, forkLesson, removeClipsForLesson, unpublishLesson } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 
 async function requireBuilder(): Promise<{ parishId: string; userId: string }> {
@@ -24,4 +25,19 @@ export async function forkLessonAction(sourceLessonId: string): Promise<void> {
   const { parishId, userId } = await requireBuilder();
   const id = await forkLesson({ parishId, createdBy: userId, sourceLessonId });
   redirect(`/ocia/lessons/${id}/edit`);
+}
+
+/** Delete a parish lesson straight from the manage list (clips cleaned up first). */
+export async function deleteLessonFromListAction(lessonId: string): Promise<void> {
+  const { parishId } = await requireBuilder();
+  await removeClipsForLesson(parishId, lessonId);
+  await deleteLesson(parishId, lessonId);
+  revalidatePath("/ocia/lessons");
+}
+
+/** Take a parish lesson offline from the manage list. */
+export async function unpublishLessonFromListAction(lessonId: string): Promise<void> {
+  const { parishId } = await requireBuilder();
+  await unpublishLesson({ parishId, lessonId });
+  revalidatePath("/ocia/lessons");
 }

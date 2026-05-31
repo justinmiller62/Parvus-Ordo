@@ -2,7 +2,7 @@
   "name": "parva-ordo",
   "private": true,
   "version": "0.0.0",
-  "description": "Parva Ordo — the little order. A parish operating system.",
+  "description": "Parvus Ordo — the little order. A parish operating system.",
   "packageManager": "pnpm@11.3.0",
   "scripts": {
     "dev": "turbo run dev",
@@ -13,6 +13,9 @@
     "test:watch": "vitest",
     "test:int": "vitest run --config vitest.int.config.ts",
     "test:e2e": "pnpm --filter @parvaordo/web test:e2e",
+    "test:e2e:record": "pnpm --filter @parvaordo/web test:e2e:record",
+    "test:e2e:ui": "pnpm --filter @parvaordo/web test:e2e:ui",
+    "test:catalog": "node scripts/test-catalog.mjs",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "node infra/db/migrate.mjs",

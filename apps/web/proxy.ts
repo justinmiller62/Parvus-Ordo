@@ -7,6 +7,9 @@ import { authkitProxy } from "@workos-inc/authkit-nextjs";
  */
 export default authkitProxy();
 
+// /api stays covered (withAuth() requires the AuthKit proxy). The proxy's default
+// 10MB body buffer truncated large media uploads — raised via
+// experimental.proxyClientMaxBodySize in next.config.ts instead.
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|logo.jpg|callback).*)"],
 };

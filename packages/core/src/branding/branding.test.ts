@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_BRAND, resolveBrand } from "./index";
 
 describe("resolveBrand", () => {
-  it("returns the default Parva Ordo brand (stub cascade)", () => {
+  it("returns the default Parvus Ordo brand (stub cascade)", () => {
     expect(resolveBrand("ocia.holyspiritparish.org")).toBe(DEFAULT_BRAND);
   });
 
@@ -12,8 +12,8 @@ describe("resolveBrand", () => {
 });
 
 describe("DEFAULT_BRAND", () => {
-  it("carries the Parva Ordo identity", () => {
-    expect(DEFAULT_BRAND.name).toBe("Parva Ordo");
+  it("carries the Parvus Ordo identity", () => {
+    expect(DEFAULT_BRAND.name).toBe("Parvus Ordo");
     expect(DEFAULT_BRAND.tagline).toMatch(/rightly ordered/i);
   });
 

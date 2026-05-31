@@ -20,6 +20,7 @@ const GLOBAL_LESSON = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const DIOCESE_LESSON_AJ = "cccccccc-cccc-cccc-cccc-cccccccccccc";
 const HS_LESSON = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 const SM_LESSON = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+const HS_VIDEO = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
 
 const client = new Client({ connectionString: URL });
 await client.connect();
@@ -35,10 +36,12 @@ await client.query(
 );
 
 await client.query(
+  // primary_hostname = <slug>.localhost so the local subdomain matches the slug
+  // (resolution is now by slug against PARISH_BASE_DOMAIN; see migration 0010).
   `INSERT INTO parishes (id, diocese_id, name, slug, primary_hostname) VALUES
-     ($1, $4, 'Holy Spirit Parish',  'holy-spirit', 'holyspirit.localhost'),
-     ($2, $4, 'St. Monica Parish',   'st-monica',   'stmonica.localhost'),
-     ($3, $5, 'St. Peter Cathedral', 'st-peter',    'stpeter.localhost')`,
+     ($1, $4, 'Holy Spirit Parish',  'holy-spirit', 'holy-spirit.localhost'),
+     ($2, $4, 'St. Monica Parish',   'st-monica',   'st-monica.localhost'),
+     ($3, $5, 'St. Peter Cathedral', 'st-peter',    'st-peter.localhost')`,
   [HOLY_SPIRIT, ST_MONICA, ST_PETER, DIOCESE, ERIE],
 );
 
@@ -58,9 +61,11 @@ await client.query(
 await client.query(
   `INSERT INTO users (email, display_name, is_super_admin) VALUES
      ('justinmmiller62@gmail.com', 'Justin Miller', true),
+     ('super@parvaordo.test',      'Super Admin',   true),
      ('admin@parvaordo.test',      'Parish Admin',  false),
      ('teacher@parvaordo.test',    'Catechist',     false),
-     ('student@parvaordo.test',    'Catechumen',    false)`,
+     ('student@parvaordo.test',    'Catechumen',    false),
+     ('multi@parvaordo.test',      'Multi Parish',  false)`,
 );
 
 // Memberships at Holy Spirit. The catechist is scoped to the OCIA ministry to
@@ -73,12 +78,21 @@ await client.query(
                ELSE NULL END,
           (CASE u.email
              WHEN 'justinmmiller62@gmail.com' THEN 'admin'
+             WHEN 'super@parvaordo.test'      THEN 'admin'
              WHEN 'admin@parvaordo.test'      THEN 'admin'
              WHEN 'teacher@parvaordo.test'    THEN 'catechist'
+             WHEN 'multi@parvaordo.test'      THEN 'catechist'
              ELSE 'catechumen_candidate' END)::membership_role
    FROM users u
-   WHERE u.email IN ('justinmmiller62@gmail.com','admin@parvaordo.test','teacher@parvaordo.test','student@parvaordo.test')`,
+   WHERE u.email IN ('justinmmiller62@gmail.com','super@parvaordo.test','admin@parvaordo.test','teacher@parvaordo.test','student@parvaordo.test','multi@parvaordo.test')`,
   [HOLY_SPIRIT],
+);
+
+// multi@ also belongs to St. Monica (as admin) — exercises multi-parish chooser/switcher.
+await client.query(
+  `INSERT INTO memberships (user_id, parish_id, role)
+   SELECT u.id, $1, 'admin'::membership_role FROM users u WHERE u.email = 'multi@parvaordo.test'`,
+  [ST_MONICA],
 );
 
 // ─── Content: three-tier (global / diocese / parish), each a published v1 ───
@@ -140,6 +154,30 @@ await seedLesson({
   items: [{ position: 0, kind: "reading", content: { html: "<p>The diocese of Altoona-Johnstown was established in 1901.</p>" } }],
 });
 
+// A ready video asset (stub provider) with a completed transcript, so the player +
+// trimmer + synced transcript can be exercised without a live upload.
+const HS_VIDEO_WORDS = [
+  { word: "Welcome", start: 0, end: 0.6 },
+  { word: "to", start: 0.6, end: 0.9 },
+  { word: "the", start: 0.9, end: 1.1 },
+  { word: "Order", start: 1.1, end: 1.6 },
+  { word: "of", start: 1.6, end: 1.8 },
+  { word: "Christian", start: 1.8, end: 2.4 },
+  { word: "Initiation", start: 2.4, end: 3.1 },
+  { word: "of", start: 3.1, end: 3.3 },
+  { word: "Adults.", start: 3.3, end: 4.0 },
+];
+await client.query(
+  `INSERT INTO assets
+     (id, scope, parish_id, created_by, kind, title, provider, provider_asset_id, playback_url,
+      status, duration_ms, transcription_status, transcript_text, transcript_json)
+   VALUES ($1, 'parish', $2, (SELECT id FROM users WHERE email = 'justinmmiller62@gmail.com'),
+      'video', 'OCIA Welcome Clip', 'stub', 'seed-hs-welcome',
+      'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8',
+      'ready', 600000, 'completed', $3, $4::jsonb)`,
+  [HS_VIDEO, HOLY_SPIRIT, HS_VIDEO_WORDS.map((w) => w.word).join(" "), JSON.stringify(HS_VIDEO_WORDS)],
+);
+
 await seedLesson({
   id: HS_LESSON,
   scope: "parish",
@@ -149,6 +187,7 @@ await seedLesson({
   createdByEmail: "justinmmiller62@gmail.com",
   items: [
     { position: 0, kind: "reading", content: { html: "<p>Welcome to the Order of Christian Initiation of Adults at Holy Spirit Parish.</p>" } },
+    { position: 1, kind: "video", content: { asset_id: HS_VIDEO, start_ms: 0, end_ms: 8000 } },
   ],
 });
 

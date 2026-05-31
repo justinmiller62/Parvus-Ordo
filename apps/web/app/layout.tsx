@@ -4,7 +4,7 @@ import { getBrand } from "@/src/lib/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Parva Ordo",
+  title: "Parvus Ordo",
   description: "Many small things, rightly ordered.",
 };
 

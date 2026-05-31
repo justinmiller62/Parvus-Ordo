@@ -1,12 +1,12 @@
 import type { BrandTokens } from "@parvaordo/shared";
 
 /**
- * The default Parva Ordo brand. Palette derived from the brand logo:
+ * The default Parvus Ordo brand. Palette derived from the brand logo:
  * burgundy wordmark, gold ring, charcoal-navy chapel, cream/parchment ground,
  * deep-rose roses. Headings in Cinzel, body in Inter.
  */
 export const DEFAULT_BRAND: BrandTokens = {
-  name: "Parva Ordo",
+  name: "Parvus Ordo",
   logoSrc: "/logo.jpg",
   tagline: "Many small things, rightly ordered.",
   colors: {
@@ -26,7 +26,7 @@ export const DEFAULT_BRAND: BrandTokens = {
 /**
  * Resolve brand tokens for a request hostname.
  *
- * Cascade (most specific wins): default Parva Ordo -> diocese -> parish.
+ * Cascade (most specific wins): default Parvus Ordo -> diocese -> parish.
  * STUB: always returns the default brand. When the parishes/dioceses tables
  * exist, this looks up the hostname (Workers KV) -> parish/diocese -> merges
  * their stored brand overrides onto DEFAULT_BRAND. This is the single chokepoint

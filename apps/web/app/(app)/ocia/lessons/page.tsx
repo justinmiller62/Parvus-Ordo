@@ -6,6 +6,7 @@ import {
   type LessonStatus,
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
+import { ManageRowActions } from "@/src/components/ocia/manage-row-actions";
 import { createLessonAction, forkLessonAction } from "./actions";
 
 const SCOPE_BADGE: Record<string, string> = {
@@ -87,7 +88,7 @@ export default async function LessonsPage({
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="w-full">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-heading text-2xl text-navy">Lessons</h1>
         <form action={createLessonAction}>
@@ -135,7 +136,7 @@ export default async function LessonsPage({
                   {l.isFork ? <span className="ml-2 text-xs text-gray-400">fork</span> : null}
                 </Link>
                 {l.scope !== "global" ? (
-                  <span className="hidden shrink-0 text-xs text-gray-400 sm:inline">
+                  <span className="hidden shrink-0 text-xs text-gray-400 lg:inline">
                     edited{" "}
                     {new Date(l.updatedAt).toLocaleString(undefined, {
                       month: "short",
@@ -148,6 +149,7 @@ export default async function LessonsPage({
                 ) : null}
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${SCOPE_BADGE[l.scope]}`}>{l.scope}</span>
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[l.status]}`}>{l.status}</span>
+                <ManageRowActions lessonId={l.id} editable={editable} status={l.status} />
                 {!editable ? (
                   <form action={forkLessonAction.bind(null, l.id)}>
                     <button

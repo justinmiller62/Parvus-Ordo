@@ -17,7 +17,7 @@
   --font-body: var(--po-font-body);
 }
 
-/* Parva Ordo default brand. The root layout overrides these --po-* values per
+/* Parvus Ordo default brand. The root layout overrides these --po-* values per
    request from resolveBrand(host); everything downstream reads the variables. */
 :root {
   --po-burgundy: #6e1423;

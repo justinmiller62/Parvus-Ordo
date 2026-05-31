@@ -10,7 +10,11 @@ import {
   ensureDraft,
   getDb,
   publishVersion,
+  removeClip,
+  removeClipForItem,
+  removeClipsForLesson,
   reorderLessonItems,
+  requestClip,
   unpublishLesson,
   updateLessonItem,
   updateVersionMeta,
@@ -18,14 +22,15 @@ import {
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 
-async function requireBuilder(): Promise<{ parishId: string }> {
+async function requireBuilder(): Promise<{ parishId: string; userId: string }> {
   const v = await getViewer();
   const role = v?.identity?.role;
   const parishId = v?.identity?.parishId;
-  if (!parishId || !(role === "catechist" || role === "admin" || role === "super_admin")) {
+  const userId = v?.identity?.userId;
+  if (!parishId || !userId || !(role === "catechist" || role === "admin" || role === "super_admin")) {
     redirect("/ocia");
   }
-  return { parishId };
+  return { parishId, userId };
 }
 
 // Edits may only touch a parish-owned DRAFT (unpublished) version.
@@ -44,9 +49,10 @@ function defaultContent(kind: LessonItemKind, format?: string): Record<string, u
   if (kind === "reading") return { html: "" };
   if (kind === "question") {
     return format === "multiple_choice"
-      ? { prompt: "", format: "multiple_choice", choices: [{ label: "", correct: true }] }
+      ? { prompt: "", format: "multiple_choice", choices: [{ label: "", correct: true }, { label: "", correct: false }] }
       : { prompt: "", format: "open_ended" };
   }
+  if (kind === "video") return { asset_id: null, start_ms: 0, end_ms: null };
   return {};
 }
 
@@ -88,6 +94,7 @@ export async function updateItemAction(
 export async function deleteItemAction(lessonId: string, versionId: string, itemId: string): Promise<void> {
   const { parishId } = await requireBuilder();
   await assertDraft(parishId, versionId);
+  await removeClipForItem(parishId, itemId); // clean up the item's cut clip, if any
   await deleteLessonItem({ parishId, itemId });
   rp(lessonId);
 }
@@ -125,6 +132,39 @@ export async function unpublishAction(lessonId: string): Promise<void> {
   rp(lessonId);
 }
 
+/**
+ * Cut a physical clip for a video item's [start,end] window and point the item at
+ * it. Re-cutting (changed window) replaces + deletes the prior clip. The clip
+ * processes asynchronously (status flips to 'ready' via the ClipProcessor).
+ */
+export async function materializeClipAction(
+  lessonId: string,
+  versionId: string,
+  itemId: string,
+  sourceAssetId: string,
+  startMs: number,
+  endMs: number | null,
+): Promise<{ clipAssetId: string }> {
+  const { parishId, userId } = await requireBuilder();
+  await assertDraft(parishId, versionId);
+  const { rows } = await getDb(parishId).query<{ content: Record<string, unknown> }>(
+    "SELECT content FROM lesson_items WHERE id = $1",
+    [itemId],
+  );
+  const content = rows[0]?.content ?? {};
+  const prevClip = content.clip_asset_id as string | undefined;
+
+  const clipAssetId = await requestClip({ parishId, createdBy: userId, sourceAssetId, startMs, endMs });
+  await updateLessonItem({
+    parishId,
+    itemId,
+    content: { ...content, asset_id: sourceAssetId, start_ms: startMs, end_ms: endMs, clip_asset_id: clipAssetId },
+  });
+  if (prevClip && prevClip !== clipAssetId) await removeClip(parishId, prevClip);
+  rp(lessonId);
+  return { clipAssetId };
+}
+
 /** Discard a draft / delete a historical version (not the live one). */
 export async function deleteVersionAction(lessonId: string, versionId: string): Promise<void> {
   const { parishId } = await requireBuilder();
@@ -135,6 +175,7 @@ export async function deleteVersionAction(lessonId: string, versionId: string): 
 /** Delete the whole lesson (parish-owned only). */
 export async function deleteLessonAction(lessonId: string): Promise<void> {
   const { parishId } = await requireBuilder();
+  await removeClipsForLesson(parishId, lessonId); // clean up all cut clips first
   await deleteLesson(parishId, lessonId);
   redirect("/ocia/lessons");
 }
