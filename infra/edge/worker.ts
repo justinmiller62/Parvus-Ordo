@@ -25,7 +25,7 @@ interface Env {
  */
 export class WebContainer extends Container<Env> {
   defaultPort = 3000; // matches PORT in the Dockerfile
-  sleepAfter = "20m"; // dev: scale to zero when idle; keep a warm floor for prod
+  sleepAfter = "5m"; // dev: scale to zero quickly to minimize idle cost; raise for prod
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);

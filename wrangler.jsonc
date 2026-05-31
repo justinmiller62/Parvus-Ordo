@@ -11,7 +11,8 @@
       "class_name": "WebContainer",
       "image": "./Dockerfile",
       "instance_type": "standard",
-      "max_instances": 3
+      // Dev cost guard: never run more than one container instance. Raise for prod.
+      "max_instances": 1
     }
   ],
   "durable_objects": {
