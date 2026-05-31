@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "parvaordo-web",
+  "main": "infra/edge/worker.ts",
+  "compatibility_date": "2026-05-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // wrangler builds this Dockerfile (repo-root context) and pushes it to the
+  // Cloudflare container registry on `wrangler deploy`. Docker must be available.
+  "containers": [
+    {
+      "class_name": "WebContainer",
+      "image": "./Dockerfile",
+      "instance_type": "standard",
+      "max_instances": 3
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "WEB_CONTAINER", "class_name": "WebContainer" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WebContainer"] }],
+  // Non-secret, per-environment config. Secrets (DATABASE_URL, WORKOS_*, BUNNY_*,
+  // GROQ_API_KEY, CLIP_CALLBACK_SECRET) are uploaded by CI via `wrangler secret bulk`.
+  "vars": {
+    "WORKOS_REDIRECT_URI": "https://dev.parvusordo.com/callback"
+  },
+  // Bind the Worker to the dev hostnames. These need proxied DNS records to exist
+  // (apex `dev` + wildcard `*.dev`); add them in the Cloudflare dashboard (the API
+  // token has Workers Routes but not DNS edit). Wildcard powers per-parish subdomains.
+  "routes": [
+    { "pattern": "dev.parvusordo.com/*", "zone_name": "parvusordo.com" },
+    { "pattern": "*.dev.parvusordo.com/*", "zone_name": "parvusordo.com" }
+  ]
+}

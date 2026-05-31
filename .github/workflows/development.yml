@@ -1,0 +1,71 @@
+name: Deploy (development)
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-development
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: development # pulls secrets from the GitHub "development" environment
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Fast gates (DB-backed int/e2e run locally for now; add to CI with a
+      # Postgres service container + migrate/seed as a follow-up).
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Run DB migrations (Neon dev)
+        run: node infra/db/migrate.mjs
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+
+      # Builds the root Dockerfile (Docker is preinstalled on ubuntu runners),
+      # pushes the image to the Cloudflare registry, and deploys the Worker +
+      # container. Creates the Worker on the first run.
+      - name: Deploy Worker + Container
+        run: pnpm exec wrangler deploy
+
+      # Upload runtime secrets to the Worker (the Container forwards them to Next).
+      # Runs after deploy so the Worker exists; the container picks them up on start.
+      - name: Upload runtime secrets
+        run: |
+          python3 - <<'PY' > /tmp/secrets.json
+          import json, os
+          keys = [
+            "DATABASE_URL", "WORKOS_CLIENT_ID", "WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD",
+            "PARISH_BASE_DOMAIN", "BUNNY_STREAM_LIBRARY_ID", "BUNNY_STREAM_LIBRARY_KEY",
+            "BUNNY_STREAM_CDN_HOSTNAME", "GROQ_API_KEY", "CLIP_CALLBACK_SECRET",
+          ]
+          print(json.dumps({k: os.environ[k] for k in keys if os.environ.get(k)}))
+          PY
+          pnpm exec wrangler secret bulk /tmp/secrets.json
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          WORKOS_CLIENT_ID: ${{ secrets.WORKOS_CLIENT_ID }}
+          WORKOS_API_KEY: ${{ secrets.WORKOS_API_KEY }}
+          WORKOS_COOKIE_PASSWORD: ${{ secrets.WORKOS_COOKIE_PASSWORD }}
+          PARISH_BASE_DOMAIN: ${{ secrets.PARISH_BASE_DOMAIN }}
+          BUNNY_STREAM_LIBRARY_ID: ${{ secrets.BUNNY_STREAM_LIBRARY_ID }}
+          BUNNY_STREAM_LIBRARY_KEY: ${{ secrets.BUNNY_STREAM_LIBRARY_KEY }}
+          BUNNY_STREAM_CDN_HOSTNAME: ${{ secrets.BUNNY_STREAM_CDN_HOSTNAME }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CLIP_CALLBACK_SECRET: ${{ secrets.CLIP_CALLBACK_SECRET }}
