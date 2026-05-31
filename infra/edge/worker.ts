@@ -56,6 +56,18 @@ export default {
     // next) serves most public/CMS traffic without touching the container; scale
     // across instances with getRandom(env.WEB_CONTAINER, N) when concurrency grows.
     const container = getContainer(env.WEB_CONTAINER);
-    return container.fetch(request);
+    const res = await container.fetch(request);
+
+    // The container is reached at its internal address, so Next inside sees
+    // Host 0.0.0.0:3000 and can emit redirects (e.g. post-login) to that internal
+    // origin. Rewrite any such Location back to the public origin the Worker sees.
+    const location = res.headers.get("location");
+    if (location && location.includes("0.0.0.0:3000")) {
+      const publicOrigin = new URL(request.url).origin;
+      const fixed = new Response(res.body, res);
+      fixed.headers.set("location", location.replace(/https?:\/\/0\.0\.0\.0:3000/g, publicOrigin));
+      return fixed;
+    }
+    return res;
   },
 };
