@@ -18,6 +18,7 @@ import {
   listYouthTeens,
   listYouthTopics,
   mintMcpToken,
+  reorderProjectSlides,
   saveCorpusPassage,
   setProjectStatus,
   updateScriptDraft,
@@ -158,16 +159,28 @@ describe("youth-teaches (integration)", () => {
     await getDb(HS).query("DELETE FROM youth_topics WHERE id = $1", [topic.id]);
   });
 
-  it("lists + deletes project slides", async () => {
-    await getDb(HS).query(
-      "INSERT INTO youth_slides (parish_id, project_id, slide_order, r2_key) VALUES ($1, $2, 1, $3) ON CONFLICT DO NOTHING",
-      [HS, projectId, `studio-slides/${projectId}/slide1.png`],
-    );
+  it("lists, reorders, and deletes project slides", async () => {
+    for (const n of [1, 2, 3]) {
+      await getDb(HS).query(
+        "INSERT INTO youth_slides (parish_id, project_id, slide_order, r2_key) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+        [HS, projectId, n, `studio-slides/${projectId}/s${n}.png`],
+      );
+    }
     let slides = await listProjectSlides(HS, projectId);
-    expect(slides.find((s) => s.order === 1)?.r2Key).toContain("slide1.png");
-    await deleteProjectSlide(HS, projectId, 1);
+    expect(slides.map((s) => s.order)).toEqual([1, 2, 3]);
+
+    // Reverse the order; reorder renumbers to 1..N in the given sequence.
+    const reversed = [...slides].reverse().map((s) => s.id);
+    await reorderProjectSlides(HS, projectId, reversed);
     slides = await listProjectSlides(HS, projectId);
-    expect(slides.find((s) => s.order === 1)).toBeUndefined();
+    expect(slides.map((s) => s.id)).toEqual(reversed);
+    expect(slides.map((s) => s.order)).toEqual([1, 2, 3]);
+
+    await deleteProjectSlide(HS, projectId, slides[0]!.id);
+    slides = await listProjectSlides(HS, projectId);
+    expect(slides.length).toBe(2);
+    // clean up the rest
+    for (const s of slides) await deleteProjectSlide(HS, projectId, s.id);
   });
 
   it("createRecording flips the project to submitted + getLatestRecording returns it", async () => {

@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { deleteProjectSlide, getProject, mintMcpToken, setProjectStatus, updateScriptDraft } from "@parvaordo/core";
+import { deleteProjectSlide, getProject, mintMcpToken, reorderProjectSlides, setProjectStatus, updateScriptDraft } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 
 async function ctx(): Promise<{ parishId: string; userId: string }> {
@@ -38,9 +38,16 @@ export async function markReadyAction(projectId: string): Promise<void> {
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
 
-/** Remove a slide at `slide_order`. */
-export async function deleteSlideAction(projectId: string, order: number): Promise<void> {
+/** Remove a slide by id. */
+export async function deleteSlideAction(projectId: string, slideId: string): Promise<void> {
   const { parishId } = await ctx();
-  await deleteProjectSlide(parishId, projectId, order);
+  await deleteProjectSlide(parishId, projectId, slideId);
+  revalidatePath(`/parvus-studio/projects/${projectId}`);
+}
+
+/** Persist a new slide ordering (drag-and-drop). */
+export async function reorderSlidesAction(projectId: string, orderedIds: string[]): Promise<void> {
+  const { parishId } = await ctx();
+  await reorderProjectSlides(parishId, projectId, orderedIds);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }

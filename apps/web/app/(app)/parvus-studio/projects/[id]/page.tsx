@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import { getLatestRecording, getProject, getProjectDetails, listProjectSlides, presignSlideUrl } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { YouthProjectClient } from "./youth-project-client";
-import { SlideUploadForm } from "./slide-upload-form";
-import { deleteSlideAction } from "./actions";
+import { SlideManager } from "./slide-manager";
 
 export default async function YouthProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -55,31 +54,12 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
         recordingUrl={recording?.playbackUrl ?? null}
       />
 
-      <section data-testid="yt-slides">
+      <section>
         <h2 className="mb-1 text-sm font-medium text-navy">Slides</h2>
-        <p className="mb-2 text-xs text-gray-400">1920×1080 (16:9). Parvus Studio downloads these to record against.</p>
-
-        {slidePreviews.length > 0 ? (
-          <ul className="mb-3 grid grid-cols-3 gap-3">
-            {slidePreviews.map((s) => (
-              <li key={s.id} className="space-y-1">
-                <div className="aspect-video overflow-hidden rounded-md border border-navy/15 bg-navy/5">
-                  {s.url ? <img src={s.url} alt={`Slide ${s.order}`} className="h-full w-full object-cover" /> : null}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Slide {s.order}</span>
-                  <form action={deleteSlideAction.bind(null, id, s.order)}>
-                    <button type="submit" className="text-xs text-rose hover:underline">Remove</button>
-                  </form>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mb-3 text-sm text-gray-500">No slides yet.</p>
-        )}
-
-        <SlideUploadForm projectId={id} />
+        <p className="mb-2 text-xs text-gray-400">
+          1920×1080 (16:9). Upload to add; drag to reorder; click to view full screen. Parvus Studio records against these.
+        </p>
+        <SlideManager projectId={id} initialSlides={slidePreviews} />
       </section>
     </div>
   );
