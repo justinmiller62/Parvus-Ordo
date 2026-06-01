@@ -7,6 +7,9 @@
 export * from "./db/client";
 export * from "./branding";
 
+// auth (app-issued API token + password login for the iOS surface)
+export * from "./auth";
+
 // platform (parish-OS core, cross-module)
 export * from "./platform/parishes";
 export * from "./platform/identity";
