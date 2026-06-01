@@ -31,7 +31,7 @@ export async function putSlide(key: string, body: ArrayBuffer | Uint8Array, cont
   const { client, base } = r2();
   const res = await client.fetch(`${base}/${key}`, {
     method: "PUT",
-    body,
+    body: body as ArrayBuffer, // bridges core (ES2022) + web (DOM) lib configs; valid fetch body in both
     headers: { "content-type": contentType },
   });
   if (!res.ok) throw new Error(`R2 putSlide failed (${res.status})`);

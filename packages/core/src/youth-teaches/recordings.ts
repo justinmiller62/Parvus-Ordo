@@ -45,7 +45,10 @@ export async function uploadRecordingToBunny(
   const put = await fetch(`https://video.bunnycdn.com/library/${lib}/videos/${guid}`, {
     method: "PUT",
     headers: { AccessKey: key },
-    body: bytes as BodyInit,
+    // Cast bridges two tsconfigs: core (lib ES2022, no DOM `BodyInit`) and apps/web
+    // (DOM lib). `ArrayBuffer` is a valid fetch body in both; fetch accepts the
+    // Uint8Array at runtime regardless.
+    body: bytes as ArrayBuffer,
   });
   if (!put.ok) throw new Error(`Bunny upload bytes failed (${put.status})`);
 

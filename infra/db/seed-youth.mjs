@@ -51,5 +51,14 @@ await c.query(
   [PROJECT, HOLY_SPIRIT, sarahId, TOPIC],
 );
 
+// Static long-lived MCP token for Claude Desktop (dev only — production mints a
+// fresh 120-min token per "Start AI session"). Sarah's tokens were torn down above.
+const DEV_MCP_TOKEN = "mcp_dev_youth_sarah_demo";
+await c.query(
+  "INSERT INTO youth_mcp_tokens (parish_id, teen_user_id, token, expires_at) VALUES ($1, $2, $3, '2099-01-01T00:00:00Z')",
+  [HOLY_SPIRIT, sarahId, DEV_MCP_TOKEN],
+);
+
 await c.end();
 console.log(`youth seed complete: Sarah (youth_teen) + Real Presence topic + project ${PROJECT}`);
+console.log(`dev MCP token (Claude Desktop): ${DEV_MCP_TOKEN}`);

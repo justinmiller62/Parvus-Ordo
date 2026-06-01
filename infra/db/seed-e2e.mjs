@@ -25,6 +25,9 @@ const E2E_PARISH = "0e2e0000-0000-0000-0000-0000000000a1";
 const E2E_VIDEO = "0e2e0000-0000-0000-0000-0000000000b1";
 const E2E_VIDEO_LESSON = "0e2e0000-0000-0000-0000-0000000000c1";
 const E2E_QUIZ_LESSON = "0e2e0000-0000-0000-0000-0000000000c2";
+const E2E_YOUTH_TOPIC = "0e2e0000-0000-0000-0000-0000000000d1";
+const E2E_YOUTH_PROJECT = "0e2e0000-0000-0000-0000-0000000000d2";
+const E2E_MCP_TOKEN = "mcp_e2e_youth_token"; // long-lived; the youth-teaches spec drives MCP with it
 
 const client = new Client({ connectionString: URL });
 await client.connect();
@@ -47,6 +50,11 @@ await client.query("DELETE FROM lesson_versions WHERE parish_id = $1", [E2E_PARI
 await client.query("DELETE FROM lessons         WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM assets          WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM cohorts         WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM youth_recordings   WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM youth_mcp_audit_log WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM youth_mcp_tokens    WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM youth_projects      WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM youth_topics        WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM memberships     WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM ministries      WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM users    WHERE email LIKE 'e2e-%@parvaordo.test'");
@@ -75,7 +83,8 @@ await client.query(
   `INSERT INTO users (email, display_name, is_super_admin) VALUES
      ('e2e-admin@parvaordo.test',     'E2E Admin',     false),
      ('e2e-catechist@parvaordo.test', 'E2E Catechist', false),
-     ('e2e-student@parvaordo.test',   'E2E Student',   false)`,
+     ('e2e-student@parvaordo.test',   'E2E Student',   false),
+     ('e2e-teen@parvaordo.test',      'E2E Teen',      false)`,
 );
 await client.query(
   `INSERT INTO memberships (user_id, parish_id, ministry_id, role)
@@ -86,10 +95,34 @@ await client.query(
           (CASE u.email
              WHEN 'e2e-admin@parvaordo.test'     THEN 'admin'
              WHEN 'e2e-catechist@parvaordo.test' THEN 'catechist'
+             WHEN 'e2e-teen@parvaordo.test'      THEN 'youth_teen'
              ELSE 'catechumen_candidate' END)::membership_role
    FROM users u
    WHERE u.email LIKE 'e2e-%@parvaordo.test'`,
   [E2E_PARISH],
+);
+
+// ── Youth Teaches fixtures (topic + project + a long-lived MCP token) ────────
+// The youth-teaches spec loads this project as the teen, drives the MCP endpoint
+// with E2E_MCP_TOKEN (Claude's role), and marks it ready.
+await client.query(
+  `INSERT INTO youth_topics (id, parish_id, category, title, common_misconception, correct_teaching, age_band)
+   VALUES ($1, $2, 'Sacraments', 'What Catholics actually believe about the Real Presence',
+     'It''s just a symbol of Jesus'' body and blood.',
+     'The Eucharist is the Body, Blood, Soul, and Divinity of Christ (CCC 1374) — Real Presence, not symbolic.',
+     'high_school')`,
+  [E2E_YOUTH_TOPIC, E2E_PARISH],
+);
+await client.query(
+  `INSERT INTO youth_projects (id, parish_id, teen_user_id, topic_id, title, status)
+   VALUES ($1, $2, (SELECT id FROM users WHERE email = 'e2e-teen@parvaordo.test'), $3,
+     'What Catholics actually believe about the Real Presence', 'drafting')`,
+  [E2E_YOUTH_PROJECT, E2E_PARISH, E2E_YOUTH_TOPIC],
+);
+await client.query(
+  `INSERT INTO youth_mcp_tokens (parish_id, teen_user_id, token, expires_at)
+   VALUES ($1, (SELECT id FROM users WHERE email = 'e2e-teen@parvaordo.test'), $2, '2099-01-01T00:00:00Z')`,
+  [E2E_PARISH, E2E_MCP_TOKEN],
 );
 
 // ── A ready video asset with a completed transcript (stub provider) ──────────
@@ -178,4 +211,4 @@ await seedLesson({
 });
 
 await client.end();
-console.log("e2e fixtures ready: E2E Test Parish (3 users, 1 video asset, 2 lessons)");
+console.log("e2e fixtures ready: E2E Test Parish (4 users, 1 video asset, 2 lessons, 1 youth project)");

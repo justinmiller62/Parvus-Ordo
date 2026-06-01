@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { scriptStats } from "./projects";
 import { YOUTH_MCP_TOOLS } from "./mcp";
+import { uploadRecordingToBunny } from "./recordings";
+import { presignSlideUrl, putSlide } from "./r2";
 
 describe("scriptStats", () => {
   it("counts words and estimates ~150 wpm", () => {
@@ -41,5 +43,23 @@ describe("YOUTH_MCP_TOOLS", () => {
       const tool = YOUTH_MCP_TOOLS.find((t) => t.name === name)!;
       expect((tool.inputSchema as { required?: string[] }).required).toContain("project_id");
     }
+  });
+});
+
+describe("external-provider guards (fail fast when unconfigured)", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("uploadRecordingToBunny throws when Bunny env is missing", async () => {
+    vi.stubEnv("BUNNY_STREAM_LIBRARY_ID", "");
+    vi.stubEnv("BUNNY_STREAM_LIBRARY_KEY", "");
+    await expect(uploadRecordingToBunny(new Uint8Array(), "t")).rejects.toThrow(/Bunny is not configured/);
+  });
+
+  it("presignSlideUrl / putSlide throw when R2 env is missing", async () => {
+    for (const k of ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_SLIDES_BUCKET"]) {
+      vi.stubEnv(k, "");
+    }
+    await expect(presignSlideUrl("k")).rejects.toThrow(/R2 is not configured/);
+    await expect(putSlide("k", new Uint8Array(), "image/png")).rejects.toThrow(/R2 is not configured/);
   });
 });

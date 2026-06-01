@@ -6,10 +6,12 @@ import {
   createRecording,
   getDb,
   getLatestRecording,
+  getProject,
   getProjectDetails,
   listMyProjects,
   mintMcpToken,
   saveCorpusPassage,
+  setProjectStatus,
   updateScriptDraft,
   validateMcpToken,
 } from "@parvaordo/core";
@@ -95,6 +97,31 @@ describe("youth-teaches (integration)", () => {
     const tools = rows.map((r) => r.tool_name);
     expect(tools).toContain("list_my_projects");
     expect(tools).toContain("get_project_details");
+  });
+
+  it("getProject returns the saved draft, status, and passages", async () => {
+    await updateScriptDraft(HS, projectId, "Hello Real Presence draft.");
+    const p = await getProject(HS, projectId);
+    expect(p).not.toBeNull();
+    expect(p!.id).toBe(projectId);
+    expect(p!.scriptDraft.full_text).toBe("Hello Real Presence draft.");
+    expect(Array.isArray(p!.savedPassages)).toBe(true);
+  });
+
+  it("setProjectStatus flips the status", async () => {
+    await setProjectStatus(HS, projectId, "ready_to_record");
+    expect((await getProject(HS, projectId))!.status).toBe("ready_to_record");
+  });
+
+  it("callYouthTool rejects an unknown tool", async () => {
+    const session = { parishId: HS, teenUserId: teenId };
+    await expect(callYouthTool(session, "nope", {})).rejects.toThrow(/unknown tool/);
+  });
+
+  it("getProjectDetails / getProject return null for a project that doesn't exist", async () => {
+    const missing = "00000000-0000-0000-0000-0000000000ff";
+    expect(await getProjectDetails(HS, missing)).toBeNull();
+    expect(await getProject(HS, missing)).toBeNull();
   });
 
   it("createRecording flips the project to submitted + getLatestRecording returns it", async () => {
