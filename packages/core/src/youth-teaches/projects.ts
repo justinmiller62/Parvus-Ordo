@@ -1,6 +1,6 @@
 import { getDb } from "../db/client";
 
-export type YouthProjectStatus = "drafting" | "ready_to_record" | "submitted";
+export type YouthProjectStatus = "drafting" | "ready_to_record" | "submitted" | "approved" | "rejected";
 
 export interface ScriptSegment {
   id: string;

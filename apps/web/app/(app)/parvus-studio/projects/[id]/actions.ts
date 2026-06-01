@@ -38,6 +38,16 @@ export async function markReadyAction(projectId: string): Promise<void> {
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
 
+/** Catechist/admin review of a submitted recording: approve or reject. */
+export async function reviewProjectAction(projectId: string, decision: "approved" | "rejected"): Promise<void> {
+  const v = await getViewer();
+  const role = v?.identity?.role;
+  const isStaff = role === "catechist" || role === "admin" || role === "super_admin";
+  if (!v?.identity?.parishId || !isStaff) redirect("/");
+  await setProjectStatus(v.identity.parishId, projectId, decision);
+  revalidatePath(`/parvus-studio/projects/${projectId}`);
+}
+
 /** Remove a slide by id. */
 export async function deleteSlideAction(projectId: string, slideId: string): Promise<void> {
   const { parishId } = await ctx();

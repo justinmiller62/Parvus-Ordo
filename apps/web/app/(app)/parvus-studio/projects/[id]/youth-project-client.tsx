@@ -6,7 +6,9 @@ import { getScriptAction, markReadyAction, saveScriptAction, startAiSessionActio
 const STATUS_LABEL: Record<string, string> = {
   drafting: "Drafting",
   ready_to_record: "Ready to record",
-  submitted: "Recording submitted",
+  submitted: "Submitted — awaiting review",
+  approved: "Approved",
+  rejected: "Rejected",
 };
 
 function wordCount(t: string) {
@@ -126,7 +128,7 @@ export function YouthProjectClient({
         />
       </div>
 
-      {status === "submitted" && recordingUrl ? (
+      {recordingUrl ? (
         <div data-testid="yt-recording">
           <p className="mb-1 text-sm font-medium text-navy">Recording</p>
           <iframe

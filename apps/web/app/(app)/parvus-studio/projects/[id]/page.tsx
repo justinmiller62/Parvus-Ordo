@@ -3,12 +3,15 @@ import { getLatestRecording, getProject, getProjectDetails, listProjectSlides, p
 import { getViewer } from "@/src/lib/viewer";
 import { YouthProjectClient } from "./youth-project-client";
 import { SlideManager } from "./slide-manager";
+import { reviewProjectAction } from "./actions";
 
 export default async function YouthProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await getViewer();
   if (!viewer?.identity?.parishId) redirect("/login");
   const parishId = viewer.identity.parishId;
+  const role = viewer.identity.role;
+  const isStaff = role === "catechist" || role === "admin" || role === "super_admin";
 
   const [project, details, recording, slides] = await Promise.all([
     getProject(parishId, id),
@@ -53,6 +56,41 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
         initialStatus={project.status}
         recordingUrl={recording?.playbackUrl ?? null}
       />
+
+      {isStaff && recording ? (
+        <section className="rounded-lg border border-gray-200 bg-white p-4" data-testid="yt-review">
+          <h2 className="mb-2 text-sm font-semibold text-navy">Review</h2>
+          {project.status === "submitted" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-sm text-gray-500">A recording was submitted.</span>
+              <form action={reviewProjectAction.bind(null, id, "approved")}>
+                <button type="submit" data-testid="yt-approve" className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
+                  Approve
+                </button>
+              </form>
+              <form action={reviewProjectAction.bind(null, id, "rejected")}>
+                <button type="submit" data-testid="yt-reject" className="rounded-md border border-rose px-3 py-1.5 text-sm font-medium text-rose hover:bg-rose/10">
+                  Reject
+                </button>
+              </form>
+            </div>
+          ) : project.status === "approved" ? (
+            <div className="flex flex-wrap items-center gap-3" data-testid="yt-review-approved">
+              <span className="text-sm font-medium text-green-700">✓ Approved</span>
+              <form action={reviewProjectAction.bind(null, id, "rejected")}>
+                <button type="submit" className="text-xs text-rose hover:underline">Reject instead</button>
+              </form>
+            </div>
+          ) : project.status === "rejected" ? (
+            <div className="flex flex-wrap items-center gap-3" data-testid="yt-review-rejected">
+              <span className="text-sm font-medium text-rose">✗ Rejected</span>
+              <form action={reviewProjectAction.bind(null, id, "approved")}>
+                <button type="submit" className="text-xs text-green-700 hover:underline">Approve instead</button>
+              </form>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section>
         <h2 className="mb-2 text-sm font-medium text-navy">Slides</h2>

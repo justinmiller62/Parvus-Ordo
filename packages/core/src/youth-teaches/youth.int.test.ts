@@ -117,9 +117,13 @@ describe("youth-teaches (integration)", () => {
     expect(Array.isArray(p!.savedPassages)).toBe(true);
   });
 
-  it("setProjectStatus flips the status", async () => {
+  it("setProjectStatus flips the status, including review states", async () => {
     await setProjectStatus(HS, projectId, "ready_to_record");
     expect((await getProject(HS, projectId))!.status).toBe("ready_to_record");
+    await setProjectStatus(HS, projectId, "approved");
+    expect((await getProject(HS, projectId))!.status).toBe("approved");
+    await setProjectStatus(HS, projectId, "rejected");
+    expect((await getProject(HS, projectId))!.status).toBe("rejected");
   });
 
   it("callYouthTool rejects an unknown tool", async () => {
