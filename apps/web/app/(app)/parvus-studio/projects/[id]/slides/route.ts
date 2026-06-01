@@ -27,8 +27,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
     await addProjectSlide(viewer.identity.parishId, id, order, bytes, file.type || "image/png");
-  } catch {
-    return Response.json({ error: "Upload failed — please try again." }, { status: 500 });
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error("slide upload failed:", detail);
+    // Surface the real cause (dev diagnostic) so R2 errors aren't opaque.
+    return Response.json({ error: `Upload failed: ${detail}` }, { status: 500 });
   }
   return Response.json({ ok: true, slide_order: order });
 }
