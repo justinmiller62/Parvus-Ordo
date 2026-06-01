@@ -4,8 +4,20 @@ import { putSlide } from "./r2";
 // Parvus Studio slide images. Bytes live in R2 (private); youth_slides records
 // order + key so the iOS package can presign them. 1920×1080 is the target spec
 // (enforced by convention / the MCP tool description, not validated here).
-
-const slideKey = (projectId: string, order: number) => `studio-slides/${projectId}/slide${order}.png`;
+//
+// R2 key mirrors the tenancy hierarchy so a bucket browse / lifecycle rule / export
+// can be scoped per diocese or parish: {dioceseId}/{parishId}/studio/{projectId}/…
+// The full key is persisted in youth_slides.r2_key, so this layout can evolve
+// without migrating existing objects (presigning always reads the stored key).
+async function slideKey(parishId: string, projectId: string, order: number): Promise<string> {
+  const { rows } = await getDb(parishId).query<{ diocese_id: string }>(
+    "SELECT diocese_id FROM parishes WHERE id = $1",
+    [parishId],
+  );
+  const dioceseId = rows[0]?.diocese_id;
+  if (!dioceseId) throw new Error("parish not found");
+  return `${dioceseId}/${parishId}/studio/${projectId}/slide${order}.png`;
+}
 
 export interface ProjectSlide {
   id: string;
@@ -29,7 +41,7 @@ export async function addProjectSlide(
   bytes: ArrayBuffer | Uint8Array,
   contentType = "image/png",
 ): Promise<{ r2Key: string }> {
-  const key = slideKey(projectId, order);
+  const key = await slideKey(parishId, projectId, order);
   await putSlide(key, bytes, contentType);
   await getDb(parishId).query(
     `INSERT INTO youth_slides (parish_id, project_id, slide_order, r2_key)
