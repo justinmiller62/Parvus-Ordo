@@ -4,7 +4,7 @@
  * Per-parish roles (Architecture §8), OCIA vocabulary. `catechumen_candidate`
  * is one combined learner role. Roles are scoped to a parish, not global.
  */
-export type Role = "super_admin" | "admin" | "catechist" | "catechumen_candidate" | "parish_member";
+export type Role = "super_admin" | "admin" | "catechist" | "catechumen_candidate" | "parish_member" | "youth_teen";
 
 /** Roles a super-admin may mimic via "view as" (never super-admin itself). */
 export const IMPERSONATABLE_ROLES: Role[] = ["admin", "catechist", "catechumen_candidate", "parish_member"];
@@ -16,6 +16,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   catechist: "Catechist",
   catechumen_candidate: "Catechumen/Candidate",
   parish_member: "Parish Member",
+  youth_teen: "Youth (Teen)",
 };
 
 /**
