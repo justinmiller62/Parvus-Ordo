@@ -52,20 +52,6 @@ export async function addProjectSlide(
   return { r2Key: key };
 }
 
-/** Fetch a public image URL and store it as a slide (the MCP upload_slide path). */
-export async function addProjectSlideFromUrl(
-  parishId: string,
-  projectId: string,
-  order: number,
-  url: string,
-): Promise<{ r2Key: string }> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`fetch slide image failed (${res.status})`);
-  const contentType = res.headers.get("content-type") ?? "image/png";
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  return addProjectSlide(parishId, projectId, order, bytes, contentType);
-}
-
 export async function deleteProjectSlide(parishId: string, projectId: string, order: number): Promise<void> {
   await getDb(parishId).query("DELETE FROM youth_slides WHERE project_id = $1 AND slide_order = $2", [projectId, order]);
 }

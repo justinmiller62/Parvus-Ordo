@@ -1,6 +1,6 @@
 import { getDb } from "../db/client";
 import { getProjectDetails, listMyProjects, saveCorpusPassage, updateScriptDraft } from "./projects";
-import { addProjectSlideFromUrl } from "./slides";
+import { addProjectSlide } from "./slides";
 
 // The Youth Teaches MCP server exposes ONLY the project tools. corpus_search /
 // corpus_read come from the separate (existing) corpus MCP server — Claude Desktop
@@ -79,15 +79,16 @@ export const YOUTH_MCP_TOOLS = [
   {
     name: "upload_slide",
     description:
-      "Add a teaching slide to the project from a public image URL. Slides MUST be 1920×1080 (16:9, landscape) — that is the recording aspect ratio. slide_order is 1-based; uploading to an order that already exists replaces it.",
+      "Upload a teaching slide image to the project. Provide the image itself as base64-encoded bytes in image_base64. Slides MUST be 1920×1080 (16:9, landscape) PNGs — that is the recording aspect ratio. slide_order is 1-based; uploading to an order that already exists replaces it.",
     inputSchema: {
       type: "object",
       properties: {
         project_id: { type: "string" },
         slide_order: { type: "number", description: "1-based slide position" },
-        image_url: { type: "string", description: "public URL of a 1920×1080 PNG/JPG" },
+        image_base64: { type: "string", description: "base64-encoded bytes of a 1920×1080 PNG" },
+        content_type: { type: "string", description: "image MIME type; defaults to image/png" },
       },
-      required: ["project_id", "slide_order", "image_url"],
+      required: ["project_id", "slide_order", "image_base64"],
       additionalProperties: false,
     },
   },
@@ -122,7 +123,10 @@ export async function callYouthTool(session: McpSession, name: string, args: Rec
       const projectId = String(args.project_id);
       const order = Number(args.slide_order);
       await logMcpTool(parishId, projectId, name, { project_id: projectId, slide_order: order });
-      const { r2Key } = await addProjectSlideFromUrl(parishId, projectId, order, String(args.image_url));
+      const bytes = new Uint8Array(Buffer.from(String(args.image_base64 ?? ""), "base64"));
+      if (bytes.byteLength === 0) throw new Error("image_base64 is required (base64-encoded image bytes)");
+      const contentType = args.content_type ? String(args.content_type) : "image/png";
+      const { r2Key } = await addProjectSlide(parishId, projectId, order, bytes, contentType);
       return { ok: true, slide_order: order, r2_key: r2Key };
     }
     default:
