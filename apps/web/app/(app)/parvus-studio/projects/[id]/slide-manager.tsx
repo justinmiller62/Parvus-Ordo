@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   DndContext,
   PointerSensor,
@@ -23,7 +22,10 @@ export interface Slide {
   url: string | null;
 }
 
-type UploadStatus = { kind: "idle" } | { kind: "uploading"; pct: number } | { kind: "error"; msg: string };
+type UploadStatus =
+  | { kind: "idle" }
+  | { kind: "uploading"; pct: number; index: number; total: number }
+  | { kind: "error"; msg: string };
 
 function SortableSlide({
   slide,
@@ -75,7 +77,6 @@ function SortableSlide({
 }
 
 export function SlideManager({ projectId, initialSlides }: { projectId: string; initialSlides: Slide[] }) {
-  const router = useRouter();
   const [slides, setSlides] = useState<Slide[]>(initialSlides);
   const [status, setStatus] = useState<UploadStatus>({ kind: "idle" });
   const [lightbox, setLightbox] = useState<Slide | null>(null);
@@ -98,41 +99,49 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
     startTransition(() => deleteSlideAction(projectId, slideId));
   }
 
-  function upload(file: File) {
-    if (!file.type.startsWith("image/")) return setStatus({ kind: "error", msg: "Slide must be an image (PNG or JPG)." });
-    if (file.size > MAX_MB * 1024 * 1024) {
-      return setStatus({ kind: "error", msg: `Slide is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max ${MAX_MB} MB.` });
+  // Upload one file; resolves to the created slide, or null on error.
+  function uploadOne(file: File, index: number, total: number): Promise<Slide | null> {
+    return new Promise((resolve) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `/parvus-studio/projects/${projectId}/slides`);
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) setStatus({ kind: "uploading", pct: Math.round((ev.loaded / ev.total) * 100), index, total });
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve((JSON.parse(xhr.responseText) as { slide: Slide }).slide);
+          } catch {
+            resolve(null);
+          }
+        } else {
+          resolve(null);
+        }
+      };
+      xhr.onerror = () => resolve(null);
+      xhr.send(fd);
+    });
+  }
+
+  async function uploadFiles(picked: File[]) {
+    const valid = picked.filter((f) => f.type.startsWith("image/") && f.size <= MAX_MB * 1024 * 1024);
+    const skipped = picked.length - valid.length;
+    let failed = 0;
+    for (let i = 0; i < valid.length; i++) {
+      setStatus({ kind: "uploading", pct: 0, index: i + 1, total: valid.length });
+      const slide = await uploadOne(valid[i]!, i + 1, valid.length);
+      if (slide) setSlides((cur) => [...cur, slide]);
+      else failed++;
     }
-    const fd = new FormData();
-    fd.append("file", file);
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `/parvus-studio/projects/${projectId}/slides`);
-    xhr.upload.onprogress = (ev) => {
-      if (ev.lengthComputable) setStatus({ kind: "uploading", pct: Math.round((ev.loaded / ev.total) * 100) });
-    };
-    xhr.onload = () => {
-      if (fileRef.current) fileRef.current.value = "";
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const { slide } = JSON.parse(xhr.responseText) as { slide: Slide };
-          setSlides((cur) => [...cur, slide]);
-        } catch {
-          router.refresh();
-        }
-        setStatus({ kind: "idle" });
-      } else {
-        let msg = "Upload failed.";
-        try {
-          msg = (JSON.parse(xhr.responseText) as { error?: string }).error ?? msg;
-        } catch {
-          /* keep default */
-        }
-        setStatus({ kind: "error", msg });
-      }
-    };
-    xhr.onerror = () => setStatus({ kind: "error", msg: "Network error — please try again." });
-    setStatus({ kind: "uploading", pct: 0 });
-    xhr.send(fd);
+    if (fileRef.current) fileRef.current.value = "";
+    const problems = skipped + failed;
+    setStatus(
+      problems > 0
+        ? { kind: "error", msg: `${problems} file(s) skipped or failed (images only, under ${MAX_MB} MB).` }
+        : { kind: "idle" },
+    );
   }
 
   const uploading = status.kind === "uploading";
@@ -158,15 +167,19 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
           ref={fileRef}
           type="file"
           accept="image/png,image/jpeg"
+          multiple
           disabled={uploading}
           onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) upload(f);
+            if (e.target.files?.length) void uploadFiles(Array.from(e.target.files));
           }}
           className="text-sm text-navy"
           data-testid="slide-upload-input"
         />
-        {uploading ? <span className="text-sm text-gray-500">Uploading… {status.pct}%</span> : null}
+        {uploading ? (
+          <span className="text-sm text-gray-500">
+            Uploading {status.index} of {status.total}… {status.pct}%
+          </span>
+        ) : null}
       </div>
       {uploading ? (
         <div className="h-1.5 w-full overflow-hidden rounded bg-navy/10">
