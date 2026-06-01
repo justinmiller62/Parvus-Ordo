@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BookOpen, Clapperboard } from "lucide-react";
-import { getMinistries, getParishById } from "@parvaordo/core";
-import { ROLE_LABELS } from "@parvaordo/shared";
+import { INVITABLE_ROLES, canInviteRole, getMinistries, getParishById } from "@parvaordo/core";
+import { ROLE_LABELS, type Role } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
+import { InviteForm } from "./invite-form";
 
 export default async function HomePage() {
   const viewer = await getViewer();
@@ -20,6 +21,7 @@ export default async function HomePage() {
   const parishId = identity?.parishId ?? null;
   const ociaEligible = role === "admin" || role === "super_admin";
   const youthEligible = role === "admin" || role === "super_admin";
+  const invitableRoles = INVITABLE_ROLES.filter((r) => canInviteRole(role, r)) as Role[];
 
   const [parish, ministries] = await Promise.all([
     parishId ? getParishById(parishId) : Promise.resolve(null),
@@ -108,6 +110,13 @@ export default async function HomePage() {
                   </span>
                 </Link>
               ) : null}
+            </section>
+          ) : null}
+
+          {invitableRoles.length > 0 ? (
+            <section className="mt-6">
+              <h2 className="mb-2 text-sm font-semibold text-gray-400">People</h2>
+              <InviteForm roles={invitableRoles} />
             </section>
           ) : null}
         </>

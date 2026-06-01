@@ -57,6 +57,14 @@ test("youth_teen lands on Youth Teaches home and can open a project", async ({ p
   await expect(page.getByTestId("yt-status")).toBeVisible();
 });
 
+test("admin sees the dashboard invite form, with Youth (Teen) as an invitable role", async ({ page }) => {
+  await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
+  await page.goto("/");
+  await expect(page.getByTestId("invite-form")).toBeVisible();
+  // The invite-by-email role list includes youth_teen (the point of this work).
+  await expect(page.locator('[data-testid="invite-role"] option[value="youth_teen"]')).toHaveCount(1);
+});
+
 test("admin sees the management view and can assign a new project to a teen", async ({ page }) => {
   await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
   await page.goto("/youth-teaches");

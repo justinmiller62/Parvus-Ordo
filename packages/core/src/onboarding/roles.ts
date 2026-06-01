@@ -2,7 +2,7 @@ import type { Role } from "@parvaordo/shared";
 
 /** Roles that can be granted via an invitation. `super_admin` is the app-wide
  * `users.is_super_admin` flag, set out-of-band — never minted through an invite. */
-export const INVITABLE_ROLES: Role[] = ["admin", "catechist", "catechumen_candidate", "parish_member"];
+export const INVITABLE_ROLES: Role[] = ["admin", "catechist", "catechumen_candidate", "youth_teen", "parish_member"];
 
 /**
  * May a caller with `callerRole` invite someone as `targetRole` in their parish?

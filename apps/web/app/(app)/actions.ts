@@ -2,7 +2,8 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { lookupAppUser } from "@parvaordo/core";
+import { revalidatePath } from "next/cache";
+import { INVITABLE_ROLES, InviteError, inviteMember, lookupAppUser } from "@parvaordo/core";
 import { IMPERSONATABLE_ROLES, type Role } from "@parvaordo/shared";
 import { getAuthedUser, signOutAndRedirect } from "@/src/lib/auth";
 import { ACTIVE_PARISH_COOKIE, VIEW_AS_COOKIE, getViewer } from "@/src/lib/viewer";
@@ -36,4 +37,40 @@ export async function impersonateAction(role: string): Promise<void> {
 export async function exitImpersonationAction(): Promise<void> {
   (await cookies()).delete(VIEW_AS_COOKIE);
   redirect("/");
+}
+
+export interface InviteState {
+  ok: boolean;
+  error?: string;
+  message?: string;
+}
+
+/** Top-level parish invite-by-email (admin/super_admin). Grants any invitable
+ * role — admin, catechist, catechumen/candidate, youth teen, or parish member. */
+export async function inviteMemberAction(_prev: InviteState, form: FormData): Promise<InviteState> {
+  const v = await getViewer();
+  const role = v?.identity?.role ?? null;
+  const parishId = v?.identity?.parishId;
+  const userId = v?.identity?.userId;
+  if (!parishId || !userId || !(role === "admin" || role === "super_admin")) {
+    return { ok: false, error: "Not authorized." };
+  }
+  const email = ((form.get("email") as string) ?? "").trim();
+  const fullName = ((form.get("fullName") as string) ?? "").trim() || undefined;
+  const targetRole = form.get("role") as Role;
+  if (!INVITABLE_ROLES.includes(targetRole)) return { ok: false, error: "Pick a valid role." };
+
+  try {
+    const result = await inviteMember({ email, fullName, role: targetRole }, { userId, role, parishId });
+    revalidatePath("/");
+    return {
+      ok: true,
+      message: result.invitationSent
+        ? `Invitation sent to ${email}.`
+        : `${email} added. (Set WORKOS_API_KEY to email the invite; they'll resolve on first login regardless.)`,
+    };
+  } catch (e) {
+    if (e instanceof InviteError) return { ok: false, error: e.message };
+    return { ok: false, error: "Could not send the invitation. Please try again." };
+  }
 }

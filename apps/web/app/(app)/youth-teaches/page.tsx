@@ -88,7 +88,8 @@ export default async function YouthTeachesHome() {
         <h2 className="mb-3 text-sm font-semibold text-navy">Assign a project</h2>
         {teens.length === 0 ? (
           <p className="text-sm text-gray-500">
-            No teens in this parish yet. Add a youth member (role “Youth (Teen)”) in onboarding before assigning a project.
+            No teens in this parish yet. Invite one from the{" "}
+            <Link href="/" className="text-burgundy underline">Dashboard</Link> (Invite a member → “Youth (Teen)”) before assigning a project.
           </p>
         ) : (
           <form action={createProjectAction} className="space-y-3" data-testid="yt-create-project">
