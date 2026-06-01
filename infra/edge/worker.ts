@@ -16,6 +16,10 @@ interface Env {
   BUNNY_STREAM_CDN_HOSTNAME: string;
   GROQ_API_KEY: string;
   CLIP_CALLBACK_SECRET?: string;
+  R2_ACCOUNT_ID?: string;
+  R2_ACCESS_KEY_ID?: string;
+  R2_SECRET_ACCESS_KEY?: string;
+  R2_SLIDES_BUCKET?: string;
 }
 
 /**
@@ -46,6 +50,10 @@ export class WebContainer extends Container<Env> {
       BUNNY_STREAM_CDN_HOSTNAME: env.BUNNY_STREAM_CDN_HOSTNAME,
       GROQ_API_KEY: env.GROQ_API_KEY,
       ...(env.CLIP_CALLBACK_SECRET ? { CLIP_CALLBACK_SECRET: env.CLIP_CALLBACK_SECRET } : {}),
+      ...(env.R2_ACCOUNT_ID ? { R2_ACCOUNT_ID: env.R2_ACCOUNT_ID } : {}),
+      ...(env.R2_ACCESS_KEY_ID ? { R2_ACCESS_KEY_ID: env.R2_ACCESS_KEY_ID } : {}),
+      ...(env.R2_SECRET_ACCESS_KEY ? { R2_SECRET_ACCESS_KEY: env.R2_SECRET_ACCESS_KEY } : {}),
+      ...(env.R2_SLIDES_BUCKET ? { R2_SLIDES_BUCKET: env.R2_SLIDES_BUCKET } : {}),
     };
   }
 }
