@@ -4,11 +4,16 @@ import {
   callYouthTool,
   closeDb,
   createRecording,
+  createYouthProject,
+  createYouthTopic,
   getDb,
   getLatestRecording,
   getProject,
   getProjectDetails,
   listMyProjects,
+  listParishYouthProjects,
+  listYouthTeens,
+  listYouthTopics,
   mintMcpToken,
   saveCorpusPassage,
   setProjectStatus,
@@ -122,6 +127,31 @@ describe("youth-teaches (integration)", () => {
     const missing = "00000000-0000-0000-0000-0000000000ff";
     expect(await getProjectDetails(HS, missing)).toBeNull();
     expect(await getProject(HS, missing)).toBeNull();
+  });
+
+  it("staff: lists assignable teens and the topic library", async () => {
+    const teens = await listYouthTeens(HS);
+    expect(teens.find((t) => t.userId === teenId)?.displayName).toBe("Youth Int");
+    const topics = await listYouthTopics(HS);
+    expect(topics.find((t) => t.id === topicId)).toBeTruthy();
+  });
+
+  it("staff: creates a topic + assigns a project, then sees it in the parish list", async () => {
+    const topic = await createYouthTopic(HS, {
+      category: "Sacraments",
+      title: "Baptism (int)",
+      commonMisconception: "just a symbol",
+      correctTeaching: "regeneration",
+      ageBand: "high_school",
+    });
+    const proj = await createYouthProject(HS, { teenUserId: teenId, title: "Baptism project (int)", topicId: topic.id });
+    const all = await listParishYouthProjects(HS);
+    const row = all.find((p) => p.id === proj.id);
+    expect(row?.teenName).toBe("Youth Int");
+    expect(row?.topicTitle).toBe("Baptism (int)");
+    // Clean up the rows this test created (afterAll only knows the fixed fixtures).
+    await getDb(HS).query("DELETE FROM youth_projects WHERE id = $1", [proj.id]);
+    await getDb(HS).query("DELETE FROM youth_topics WHERE id = $1", [topic.id]);
   });
 
   it("createRecording flips the project to submitted + getLatestRecording returns it", async () => {

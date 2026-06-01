@@ -57,6 +57,20 @@ test("youth_teen lands on Youth Teaches home and can open a project", async ({ p
   await expect(page.getByTestId("yt-status")).toBeVisible();
 });
 
+test("admin sees the management view and can assign a new project to a teen", async ({ page }) => {
+  await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
+  await page.goto("/youth-teaches");
+  await expect(page.getByRole("heading", { name: "Manage projects" })).toBeVisible();
+  // The seeded project shows in the parish-wide list.
+  await expect(page.getByTestId("yt-manage-list")).toContainText("Real Presence");
+
+  // Assign a new project to the teen.
+  await page.getByTestId("yt-teen-select").selectOption({ label: "E2E Teen" });
+  await page.getByTestId("yt-title-input").fill("E2E assigned project");
+  await page.getByTestId("yt-create-submit").click();
+  await expect(page.getByTestId("yt-manage-list")).toContainText("E2E assigned project");
+});
+
 test("teen drafts a script with AI (via MCP) then marks it ready to record", async ({ page, request }) => {
   // Re-runnable across viewports: reset the project to a pristine drafting state.
   await request.get(`/dev/youth-reset?project=${E2E_YOUTH_PROJECT}&parish=${E2E_PARISH}`);

@@ -7,7 +7,7 @@
 export type Role = "super_admin" | "admin" | "catechist" | "catechumen_candidate" | "parish_member" | "youth_teen";
 
 /** Roles a super-admin may mimic via "view as" (never super-admin itself). */
-export const IMPERSONATABLE_ROLES: Role[] = ["admin", "catechist", "catechumen_candidate", "parish_member"];
+export const IMPERSONATABLE_ROLES: Role[] = ["admin", "catechist", "catechumen_candidate", "youth_teen", "parish_member"];
 
 /** Human display labels for roles. */
 export const ROLE_LABELS: Record<Role, string> = {
