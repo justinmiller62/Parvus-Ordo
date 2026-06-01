@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getLatestRecording, getProject, getProjectDetails, listProjectSlides, presignSlideUrl } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { YouthProjectClient } from "./youth-project-client";
-import { deleteSlideAction, uploadSlideAction } from "./actions";
+import { SlideUploadForm } from "./slide-upload-form";
+import { deleteSlideAction } from "./actions";
 
 export default async function YouthProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -78,15 +79,7 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
           <p className="mb-3 text-sm text-gray-500">No slides yet.</p>
         )}
 
-        <form action={uploadSlideAction.bind(null, id)} className="flex flex-wrap items-center gap-2" data-testid="yt-slide-upload">
-          <select name="slide_order" defaultValue="1" className="rounded-md border border-navy/15 bg-white px-2 py-1.5 text-sm text-navy">
-            {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>Slide {n}</option>)}
-          </select>
-          <input type="file" name="file" accept="image/png,image/jpeg" required className="text-sm text-navy" />
-          <button type="submit" className="rounded-md bg-burgundy px-3 py-1.5 text-sm font-medium text-cream hover:bg-rose">
-            Upload slide
-          </button>
-        </form>
+        <SlideUploadForm projectId={id} />
       </section>
     </div>
   );
