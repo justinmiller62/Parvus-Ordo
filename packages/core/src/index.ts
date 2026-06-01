@@ -30,5 +30,8 @@ export * from "./onboarding";
 // people (parish member management console)
 export * from "./people/members";
 
+// dictionary (Catholic glossary — global entries + parish overrides/submissions)
+export * from "./dictionary";
+
 // parvus studio (studio creators make short catechetical videos with AI help)
 export * from "./youth-teaches";

@@ -70,7 +70,7 @@ const CATECHIST_MODULES: NavItem[] = [
   { href: "/ocia/applicants", label: "Applicants", Icon: UserPlus, live: true },
   { label: "Calendar", Icon: Calendar },
   { label: "Cohorts", Icon: Users },
-  { label: "Dictionary", Icon: BookOpenCheck },
+  { href: "/dictionary", label: "Dictionary", Icon: BookOpenCheck, live: true },
   { label: "Prayers", Icon: Heart },
   { label: "Announcements", Icon: Megaphone },
   { label: "Discussion", Icon: MessageSquare },
@@ -79,7 +79,7 @@ const CATECHIST_MODULES: NavItem[] = [
 
 const LEARNER_MODULES: NavItem[] = [
   { label: "Calendar", Icon: Calendar },
-  { label: "Dictionary", Icon: BookOpenCheck },
+  { href: "/dictionary", label: "Dictionary", Icon: BookOpenCheck, live: true },
   { label: "Prayers", Icon: Heart },
   { label: "Announcements", Icon: Megaphone },
   { label: "Discussion", Icon: MessageSquare },

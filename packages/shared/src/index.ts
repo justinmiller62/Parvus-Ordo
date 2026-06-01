@@ -19,6 +19,38 @@ export const ROLE_LABELS: Record<Role, string> = {
   studio: "Studio",
 };
 
+// Sacred-text display capitalization (used server + client). Ordered [pattern,
+// replacement]; multi-word phrases BEFORE singles so "Holy Spirit" is fixed first.
+const SACRED_TEXT: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\bholy spirit\b/gi, "Holy Spirit"],
+  [/\bblessed virgin mary\b/gi, "Blessed Virgin Mary"],
+  [/\bblessed sacrament\b/gi, "Blessed Sacrament"],
+  [/\bnew testament\b/gi, "New Testament"],
+  [/\bold testament\b/gi, "Old Testament"],
+  [/\bgod\b/gi, "God"],
+  [/\bjesus\b/gi, "Jesus"],
+  [/\bchrist\b/gi, "Christ"],
+  [/\blord\b/gi, "Lord"],
+  [/\bmessiah\b/gi, "Messiah"],
+  [/\btrinity\b/gi, "Trinity"],
+  [/\bfather\b/gi, "Father"],
+  [/\bson\b/gi, "Son"],
+  [/\bspirit\b/gi, "Spirit"],
+  [/\bmary\b/gi, "Mary"],
+  [/\beucharist\b/gi, "Eucharist"],
+  [/\bmass\b/gi, "Mass"],
+  [/\bscripture\b/gi, "Scripture"],
+  [/\bgospel\b/gi, "Gospel"],
+  [/\bchurch\b/gi, "Church"],
+];
+
+/** Force-capitalize divine names / sacred terms for display. Framework-agnostic. */
+export function normalizeSacredText(text: string): string {
+  let out = text;
+  for (const [re, repl] of SACRED_TEXT) out = out.replace(re, repl);
+  return out;
+}
+
 /**
  * Brand tokens resolved per request. The cascade is
  * default Parvus Ordo -> diocese -> parish (most specific wins).

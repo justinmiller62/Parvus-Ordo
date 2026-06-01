@@ -55,6 +55,8 @@ await client.query("DELETE FROM youth_mcp_audit_log WHERE parish_id = $1", [E2E_
 await client.query("DELETE FROM youth_mcp_tokens    WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM youth_projects      WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM youth_topics        WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM dictionary_submissions WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM dictionary_overrides   WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM memberships     WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM ministries      WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM users    WHERE email LIKE 'e2e-%@parvaordo.test'");
@@ -210,5 +212,12 @@ await seedLesson({
   ],
 });
 
+// Global dictionary entry (no parish_id — universal). Owner conn bypasses RLS.
+await client.query(
+  `INSERT INTO dictionary_entries (headword, definition, category, status)
+   VALUES ('eucharist', 'The Real Presence — the Body, Blood, Soul, and Divinity of Christ.', 'sacramental', 'approved')
+   ON CONFLICT (headword) DO UPDATE SET definition = EXCLUDED.definition`,
+);
+
 await client.end();
-console.log("e2e fixtures ready: E2E Test Parish (4 users, 1 video asset, 2 lessons, 1 youth project)");
+console.log("e2e fixtures ready: E2E Test Parish (4 users, 1 video asset, 2 lessons, 1 youth project, 1 dictionary entry)");
