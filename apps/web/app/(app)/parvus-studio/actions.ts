@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createYouthProject, createYouthTopic } from "@parvaordo/core";
+import { createYouthProject, createYouthTopic, deleteYouthProject } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 
 // Staff-only (catechist/admin/super_admin) parvus-studio management actions.
@@ -22,6 +22,15 @@ export async function createProjectAction(formData: FormData): Promise<void> {
   const topicId = String(formData.get("topicId") ?? "") || null;
   if (!teenUserId || !title) return;
   await createYouthProject(parishId, { teenUserId, title, topicId });
+  revalidatePath("/parvus-studio");
+}
+
+/** Delete a project (recordings + audit cascade). */
+export async function deleteProjectAction(formData: FormData): Promise<void> {
+  const { parishId } = await staffCtx();
+  const projectId = String(formData.get("projectId") ?? "");
+  if (!projectId) return;
+  await deleteYouthProject(parishId, projectId);
   revalidatePath("/parvus-studio");
 }
 

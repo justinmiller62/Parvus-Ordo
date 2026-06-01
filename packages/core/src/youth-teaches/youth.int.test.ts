@@ -6,6 +6,7 @@ import {
   createRecording,
   createYouthProject,
   createYouthTopic,
+  deleteYouthProject,
   getDb,
   getLatestRecording,
   getProject,
@@ -149,8 +150,9 @@ describe("youth-teaches (integration)", () => {
     const row = all.find((p) => p.id === proj.id);
     expect(row?.teenName).toBe("Youth Int");
     expect(row?.topicTitle).toBe("Baptism (int)");
-    // Clean up the rows this test created (afterAll only knows the fixed fixtures).
-    await getDb(HS).query("DELETE FROM youth_projects WHERE id = $1", [proj.id]);
+    // deleteYouthProject also serves as cleanup (afterAll only knows the fixed fixtures).
+    await deleteYouthProject(HS, proj.id);
+    expect((await listParishYouthProjects(HS)).find((p) => p.id === proj.id)).toBeUndefined();
     await getDb(HS).query("DELETE FROM youth_topics WHERE id = $1", [topic.id]);
   });
 

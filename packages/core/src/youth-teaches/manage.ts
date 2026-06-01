@@ -64,6 +64,11 @@ export async function createYouthTopic(parishId: string, input: NewYouthTopic): 
   return { id: rows[0]!.id };
 }
 
+/** Delete a project (recordings + audit rows cascade). */
+export async function deleteYouthProject(parishId: string, projectId: string): Promise<void> {
+  await getDb(parishId).query("DELETE FROM youth_projects WHERE id = $1", [projectId]);
+}
+
 /** Create a project and assign it to a teen (topic optional). */
 export async function createYouthProject(
   parishId: string,

@@ -61,6 +61,7 @@ function topNav(role: Role | null): NavItem[] {
   if (role === "super_admin") items.push({ label: "Super Admin", Icon: Shield });
   if (ociaEligible(role)) items.push({ href: "/ocia", label: "OCIA", Icon: BookOpen, live: true });
   if (youthEligible(role)) items.push({ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true });
+  if (role === "admin" || role === "super_admin") items.push({ href: "/people", label: "People", Icon: Users, live: true });
   return items;
 }
 

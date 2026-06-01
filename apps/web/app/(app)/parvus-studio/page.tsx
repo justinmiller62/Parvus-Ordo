@@ -7,7 +7,7 @@ import {
   listYouthTopics,
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
-import { createProjectAction, createTopicAction } from "./actions";
+import { createProjectAction, createTopicAction, deleteProjectAction } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
   drafting: "Drafting",
@@ -167,11 +167,11 @@ export default async function YouthTeachesHome() {
         ) : (
           <ul className="space-y-2" data-testid="yt-manage-list">
             {projects.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className="flex items-center gap-2">
                 <Link
                   href={`/parvus-studio/projects/${p.id}`}
                   data-testid={`yt-project-${p.id}`}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
+                  className="flex flex-1 items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
                 >
                   <span>
                     <span className="block font-medium text-navy">{p.title}</span>
@@ -181,6 +181,17 @@ export default async function YouthTeachesHome() {
                   </span>
                   <StatusBadge status={p.status} />
                 </Link>
+                <form action={deleteProjectAction}>
+                  <input type="hidden" name="projectId" value={p.id} />
+                  <button
+                    type="submit"
+                    data-testid={`yt-delete-${p.id}`}
+                    className="rounded-md border border-rose/40 px-3 py-3 text-xs font-medium text-rose hover:bg-rose/10"
+                    title="Delete project"
+                  >
+                    Delete
+                  </button>
+                </form>
               </li>
             ))}
           </ul>

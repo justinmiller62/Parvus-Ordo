@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookOpen, Clapperboard } from "lucide-react";
-import { INVITABLE_ROLES, canInviteRole, getMinistries, getParishById } from "@parvaordo/core";
-import { ROLE_LABELS, type Role } from "@parvaordo/shared";
+import { BookOpen, Clapperboard, Users } from "lucide-react";
+import { getMinistries, getParishById } from "@parvaordo/core";
+import { ROLE_LABELS } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
-import { InviteForm } from "./invite-form";
 
 export default async function HomePage() {
   const viewer = await getViewer();
@@ -21,7 +20,7 @@ export default async function HomePage() {
   const parishId = identity?.parishId ?? null;
   const ociaEligible = role === "admin" || role === "super_admin";
   const youthEligible = role === "admin" || role === "super_admin";
-  const invitableRoles = INVITABLE_ROLES.filter((r) => canInviteRole(role, r)) as Role[];
+  const peopleEligible = role === "admin" || role === "super_admin";
 
   const [parish, ministries] = await Promise.all([
     parishId ? getParishById(parishId) : Promise.resolve(null),
@@ -73,7 +72,7 @@ export default async function HomePage() {
             </ul>
           </section>
 
-          {ociaEligible || youthEligible ? (
+          {ociaEligible || youthEligible || peopleEligible ? (
             <section className="mt-6 space-y-3">
               <h2 className="text-sm font-semibold text-gray-400">Modules</h2>
               {ociaEligible ? (
@@ -110,13 +109,23 @@ export default async function HomePage() {
                   </span>
                 </Link>
               ) : null}
-            </section>
-          ) : null}
-
-          {invitableRoles.length > 0 ? (
-            <section className="mt-6">
-              <h2 className="mb-2 text-sm font-semibold text-gray-400">People</h2>
-              <InviteForm roles={invitableRoles} />
+              {peopleEligible ? (
+                <Link
+                  href="/people"
+                  data-testid="module-people"
+                  className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-gold">
+                    <Users className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <span className="block font-medium text-navy">People</span>
+                    <span className="block text-sm text-gray-500">
+                      Invite members, manage roles, review pending invitations
+                    </span>
+                  </span>
+                </Link>
+              ) : null}
             </section>
           ) : null}
         </>

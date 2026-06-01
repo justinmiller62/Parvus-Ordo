@@ -57,26 +57,37 @@ test("studio lands on Parvus Studio home and can open a project", async ({ page 
   await expect(page.getByTestId("yt-status")).toBeVisible();
 });
 
-test("admin sees the dashboard invite form, with Studio as an invitable role", async ({ page }) => {
+test("People console: admin sees members + invite form with Studio as an invitable role", async ({ page }) => {
   await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
-  await page.goto("/");
+  await page.goto("/people");
+  await expect(page.getByRole("heading", { name: "People" })).toBeVisible();
+  // Members list includes the seeded parish people.
+  await expect(page.getByTestId("people-list")).toContainText("E2E Teen");
+  await expect(page.getByTestId("people-list")).toContainText("E2E Catechist");
+  // Invite-by-email form is here, and offers the studio role.
   await expect(page.getByTestId("invite-form")).toBeVisible();
-  // The invite-by-email role list includes studio (the point of this work).
   await expect(page.locator('[data-testid="invite-role"] option[value="studio"]')).toHaveCount(1);
+  // A non-self member has a role selector.
+  await expect(page.getByTestId("role-select-e2e-teen@parvaordo.test")).toBeVisible();
 });
 
-test("admin sees the management view and can assign a new project to a teen", async ({ page }) => {
+test("admin assigns a new project to a creator, then deletes it", async ({ page }) => {
   await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
   await page.goto("/parvus-studio");
   await expect(page.getByRole("heading", { name: "Manage projects" })).toBeVisible();
   // The seeded project shows in the parish-wide list.
   await expect(page.getByTestId("yt-manage-list")).toContainText("Real Presence");
 
-  // Assign a new project to the teen.
+  // Assign a new project to the creator.
   await page.getByTestId("yt-teen-select").selectOption({ label: "E2E Teen" });
   await page.getByTestId("yt-title-input").fill("E2E assigned project");
   await page.getByTestId("yt-create-submit").click();
-  await expect(page.getByTestId("yt-manage-list")).toContainText("E2E assigned project");
+  const row = page.getByTestId("yt-manage-list").locator("li", { hasText: "E2E assigned project" });
+  await expect(row).toBeVisible();
+
+  // Delete it (self-cleans, so re-runs across viewports stay idempotent).
+  await row.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByTestId("yt-manage-list")).not.toContainText("E2E assigned project");
 });
 
 test("teen drafts a script with AI (via MCP) then marks it ready to record", async ({ page, request }) => {

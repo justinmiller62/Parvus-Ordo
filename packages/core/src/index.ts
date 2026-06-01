@@ -24,5 +24,8 @@ export * from "./media";
 // onboarding (invite + public OCIA application)
 export * from "./onboarding";
 
-// youth teaches (teens create short catechetical videos with AI help)
+// people (parish member management console)
+export * from "./people/members";
+
+// parvus studio (studio creators make short catechetical videos with AI help)
 export * from "./youth-teaches";

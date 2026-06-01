@@ -106,3 +106,26 @@ export async function inviteMember(input: InviteInput, caller: InviteCaller): Pr
   const invitationSent = await sendInvitationEmail(email);
   return { userId, isNewUser, invitationSent };
 }
+
+/** Pending WorkOS invitations (env-wide; the caller intersects with parish members
+ * to scope it). Empty when WORKOS_API_KEY is unset (local/tests). */
+export async function listPendingInvitations(): Promise<{ id: string; email: string }[]> {
+  const apiKey = process.env.WORKOS_API_KEY;
+  if (!apiKey) return [];
+  const res = await fetch("https://api.workos.com/user_management/invitations?limit=100", {
+    headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+  });
+  if (!res.ok) return [];
+  const body = (await res.json()) as { data?: { id: string; email: string; state: string }[] };
+  return (body.data ?? []).filter((i) => i.state === "pending").map((i) => ({ id: i.id, email: i.email }));
+}
+
+/** Revoke a pending WorkOS invitation. No-op without WORKOS_API_KEY. */
+export async function revokeInvitation(invitationId: string): Promise<void> {
+  const apiKey = process.env.WORKOS_API_KEY;
+  if (!apiKey) return;
+  await fetch(`https://api.workos.com/user_management/invitations/${invitationId}/revoke`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+}
