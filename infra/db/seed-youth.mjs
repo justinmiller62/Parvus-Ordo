@@ -28,13 +28,13 @@ await c.query("DELETE FROM youth_projects WHERE id = $1", [PROJECT]);
 await c.query("DELETE FROM youth_topics WHERE id = $1", [TOPIC]);
 await c.query("DELETE FROM memberships WHERE parish_id = $1 AND user_id IN (SELECT id FROM users WHERE email = $2)", [HOLY_SPIRIT, SARAH_EMAIL]);
 
-// Sarah (youth_teen at Holy Spirit).
+// Sarah (studio at Holy Spirit).
 const { rows } = await c.query(
   "INSERT INTO users (email, display_name) VALUES ($1, 'Sarah') ON CONFLICT (email) DO UPDATE SET display_name = 'Sarah' RETURNING id",
   [SARAH_EMAIL],
 );
 const sarahId = rows[0].id;
-await c.query("INSERT INTO memberships (user_id, parish_id, role) VALUES ($1, $2, 'youth_teen')", [sarahId, HOLY_SPIRIT]);
+await c.query("INSERT INTO memberships (user_id, parish_id, role) VALUES ($1, $2, 'studio')", [sarahId, HOLY_SPIRIT]);
 
 await c.query(
   `INSERT INTO youth_topics (id, parish_id, category, title, common_misconception, correct_teaching, age_band)
@@ -60,5 +60,5 @@ await c.query(
 );
 
 await c.end();
-console.log(`youth seed complete: Sarah (youth_teen) + Real Presence topic + project ${PROJECT}`);
+console.log(`youth seed complete: Sarah (studio) + Real Presence topic + project ${PROJECT}`);
 console.log(`dev MCP token (Claude Desktop): ${DEV_MCP_TOKEN}`);

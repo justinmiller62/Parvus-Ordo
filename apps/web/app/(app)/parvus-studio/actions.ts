@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createYouthProject, createYouthTopic } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 
-// Staff-only (catechist/admin/super_admin) youth-teaches management actions.
+// Staff-only (catechist/admin/super_admin) parvus-studio management actions.
 async function staffCtx(): Promise<{ parishId: string }> {
   const v = await getViewer();
   const role = v?.identity?.role;
@@ -22,7 +22,7 @@ export async function createProjectAction(formData: FormData): Promise<void> {
   const topicId = String(formData.get("topicId") ?? "") || null;
   if (!teenUserId || !title) return;
   await createYouthProject(parishId, { teenUserId, title, topicId });
-  revalidatePath("/youth-teaches");
+  revalidatePath("/parvus-studio");
 }
 
 /** Add a topic to the parish's topic library. */
@@ -38,5 +38,5 @@ export async function createTopicAction(formData: FormData): Promise<void> {
     correctTeaching: String(formData.get("correctTeaching") ?? "").trim() || undefined,
     ageBand: String(formData.get("ageBand") ?? "").trim() || undefined,
   });
-  revalidatePath("/youth-teaches");
+  revalidatePath("/parvus-studio");
 }

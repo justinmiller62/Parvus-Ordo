@@ -95,7 +95,7 @@ await client.query(
           (CASE u.email
              WHEN 'e2e-admin@parvaordo.test'     THEN 'admin'
              WHEN 'e2e-catechist@parvaordo.test' THEN 'catechist'
-             WHEN 'e2e-teen@parvaordo.test'      THEN 'youth_teen'
+             WHEN 'e2e-teen@parvaordo.test'      THEN 'studio'
              ELSE 'catechumen_candidate' END)::membership_role
    FROM users u
    WHERE u.email LIKE 'e2e-%@parvaordo.test'`,

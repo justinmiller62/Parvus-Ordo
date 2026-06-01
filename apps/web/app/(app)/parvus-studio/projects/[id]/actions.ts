@@ -15,7 +15,7 @@ async function ctx(): Promise<{ parishId: string; userId: string }> {
 export async function saveScriptAction(projectId: string, text: string): Promise<void> {
   const { parishId } = await ctx();
   await updateScriptDraft(parishId, projectId, text);
-  revalidatePath(`/youth-teaches/projects/${projectId}`);
+  revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
 
 /** Poll target: current status + script (Claude writes via MCP; page reflects it live). */
@@ -35,5 +35,5 @@ export async function startAiSessionAction(): Promise<{ token: string; expiresAt
 export async function markReadyAction(projectId: string): Promise<void> {
   const { parishId } = await ctx();
   await setProjectStatus(parishId, projectId, "ready_to_record");
-  revalidatePath(`/youth-teaches/projects/${projectId}`);
+  revalidatePath(`/parvus-studio/projects/${projectId}`);
 }

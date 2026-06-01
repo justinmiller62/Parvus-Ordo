@@ -1,7 +1,7 @@
 import { getProject, presignSlideUrl } from "@parvaordo/core";
 import { authenticateApiRequest } from "@/src/lib/api-auth";
 
-// GET /api/v1/youth-teaches/projects/{id}/package — script + presigned slide URLs +
+// GET /api/v1/parvus-studio/projects/{id}/package — script + presigned slide URLs +
 // upload endpoint, for Parvus Studio to download and record against.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await params;
@@ -25,6 +25,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     title: project.title,
     script: { full_text: project.scriptDraft.full_text, segments: project.scriptDraft.segments },
     visuals,
-    upload_endpoint: `/api/v1/youth-teaches/projects/${id}/recording`,
+    upload_endpoint: `/api/v1/parvus-studio/projects/${id}/recording`,
   });
 }

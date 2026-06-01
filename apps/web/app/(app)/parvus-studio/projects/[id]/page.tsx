@@ -22,7 +22,7 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div>
-        <p className="text-xs uppercase tracking-wide text-gray-400">Youth Teaches</p>
+        <p className="text-xs uppercase tracking-wide text-gray-400">Parvus Studio</p>
         <h1 className="font-heading text-2xl text-navy">{project.title}</h1>
         {details?.topic ? <p className="mt-1 text-sm text-gray-500">Topic: {details.topic}</p> : null}
       </div>

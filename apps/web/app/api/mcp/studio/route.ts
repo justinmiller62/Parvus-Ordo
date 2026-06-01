@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { YOUTH_MCP_TOOLS, callYouthTool, validateMcpToken } from "@parvaordo/core";
 
-// Streamable-HTTP MCP endpoint for the Youth Teaches PROJECT tools. Claude Desktop
+// Streamable-HTTP MCP endpoint for the Parvus Studio PROJECT tools. Claude Desktop
 // connects here (via mcp-remote) with the teen's MCP session token as a Bearer
 // header. corpus_search / corpus_read come from the separate corpus MCP server.
 
@@ -42,7 +42,7 @@ export async function POST(req: Request): Promise<Response> {
     return result(id, {
       protocolVersion: params?.protocolVersion ?? PROTOCOL_VERSION,
       capabilities: { tools: {} },
-      serverInfo: { name: "parvus-youth-teaches", version: "0.1.0" },
+      serverInfo: { name: "parvus-studio", version: "0.1.0" },
     });
   }
 

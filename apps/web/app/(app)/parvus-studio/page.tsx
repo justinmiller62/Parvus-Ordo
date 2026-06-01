@@ -23,7 +23,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// Youth Teaches home. Teens see their own projects; catechists/admins get the
+// Parvus Studio home. Teens see their own projects; catechists/admins get the
 // management view (assign projects, manage topics, oversee every project).
 export default async function YouthTeachesHome() {
   const viewer = await getViewer();
@@ -36,7 +36,7 @@ export default async function YouthTeachesHome() {
     return (
       <div className="mx-auto max-w-3xl space-y-5">
         <div>
-          <p className="text-xs uppercase tracking-wide text-gray-400">Youth Teaches</p>
+          <p className="text-xs uppercase tracking-wide text-gray-400">Parvus Studio</p>
           <h1 className="font-heading text-2xl text-navy">My projects</h1>
         </div>
         {projects.length === 0 ? (
@@ -48,7 +48,7 @@ export default async function YouthTeachesHome() {
             {projects.map((p) => (
               <li key={p.id}>
                 <Link
-                  href={`/youth-teaches/projects/${p.id}`}
+                  href={`/parvus-studio/projects/${p.id}`}
                   data-testid={`yt-project-${p.id}`}
                   className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
                 >
@@ -79,7 +79,7 @@ export default async function YouthTeachesHome() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-wide text-gray-400">Youth Teaches</p>
+        <p className="text-xs uppercase tracking-wide text-gray-400">Parvus Studio</p>
         <h1 className="font-heading text-2xl text-navy">Manage projects</h1>
       </div>
 
@@ -88,13 +88,13 @@ export default async function YouthTeachesHome() {
         <h2 className="mb-3 text-sm font-semibold text-navy">Assign a project</h2>
         {teens.length === 0 ? (
           <p className="text-sm text-gray-500">
-            No teens in this parish yet. Invite one from the{" "}
-            <Link href="/" className="text-burgundy underline">Dashboard</Link> (Invite a member → “Youth (Teen)”) before assigning a project.
+            No studio creators in this parish yet. Invite one from the{" "}
+            <Link href="/" className="text-burgundy underline">Dashboard</Link> (Invite a member → “Studio”) before assigning a project.
           </p>
         ) : (
           <form action={createProjectAction} className="space-y-3" data-testid="yt-create-project">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="teenUserId">Teen</label>
+              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="teenUserId">Studio creator</label>
               <select id="teenUserId" name="teenUserId" required className={inputClass} data-testid="yt-teen-select">
                 {teens.map((t) => (
                   <option key={t.userId} value={t.userId}>{t.displayName}</option>
@@ -169,7 +169,7 @@ export default async function YouthTeachesHome() {
             {projects.map((p) => (
               <li key={p.id}>
                 <Link
-                  href={`/youth-teaches/projects/${p.id}`}
+                  href={`/parvus-studio/projects/${p.id}`}
                   data-testid={`yt-project-${p.id}`}
                   className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
                 >

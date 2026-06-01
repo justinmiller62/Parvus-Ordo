@@ -134,7 +134,7 @@ export function YouthProjectClient({
             className="aspect-video w-full rounded-md border border-navy/15"
             allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
             allowFullScreen
-            title="Youth Teaches recording"
+            title="Parvus Studio recording"
           />
         </div>
       ) : null}

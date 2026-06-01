@@ -46,21 +46,21 @@ function ociaEligible(role: Role | null): boolean {
 }
 
 function youthEligible(role: Role | null): boolean {
-  return role === "youth_teen" || role === "catechist" || role === "admin" || role === "super_admin";
+  return role === "studio" || role === "catechist" || role === "admin" || role === "super_admin";
 }
 
 // Top-level nav (parish home): Dashboard + module launchers. Teens are
 // Youth-Teaches-only (no parish dashboard), like catechists/learners are OCIA-only.
 function topNav(role: Role | null): NavItem[] {
-  if (role === "youth_teen") {
-    return [{ href: "/youth-teaches", label: "Youth Teaches", Icon: Clapperboard, live: true }];
+  if (role === "studio") {
+    return [{ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true }];
   }
   // Catechists & learners are module-only — no parish Dashboard.
   const moduleOnly = role === "catechist" || role === "catechumen_candidate";
   const items: NavItem[] = moduleOnly ? [] : [{ href: "/", label: "Dashboard", Icon: LayoutDashboard, live: true }];
   if (role === "super_admin") items.push({ label: "Super Admin", Icon: Shield });
   if (ociaEligible(role)) items.push({ href: "/ocia", label: "OCIA", Icon: BookOpen, live: true });
-  if (youthEligible(role)) items.push({ href: "/youth-teaches", label: "Youth Teaches", Icon: Clapperboard, live: true });
+  if (youthEligible(role)) items.push({ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true });
   return items;
 }
 
@@ -95,9 +95,9 @@ function ociaNav(role: Role | null): NavItem[] {
       : []),
     { href: "/ocia", label: "OCIA Home", Icon: Home, live: true },
     { href: "/ocia/lessons", label: isLearner ? "My Lessons" : "Lesson Builder", Icon: BookOpen, live: true },
-    // Cross-module link so catechists (OCIA-only) can reach Youth Teaches management.
+    // Cross-module link so catechists (OCIA-only) can reach Parvus Studio management.
     ...(youthEligible(role) && !isLearner
-      ? [{ href: "/youth-teaches", label: "Youth Teaches", Icon: Clapperboard, live: true } as NavItem]
+      ? [{ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true } as NavItem]
       : []),
     ...(isLearner ? LEARNER_MODULES : CATECHIST_MODULES),
   ];

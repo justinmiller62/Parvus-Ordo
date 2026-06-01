@@ -16,7 +16,7 @@ export default async function HomePage() {
   // Catechists & learners are OCIA-only — they have no parish dashboard.
   if (role === "catechist" || role === "catechumen_candidate") redirect("/ocia");
   // Teens are Youth-Teaches-only — land them on their projects.
-  if (role === "youth_teen") redirect("/youth-teaches");
+  if (role === "studio") redirect("/parvus-studio");
 
   const parishId = identity?.parishId ?? null;
   const ociaEligible = role === "admin" || role === "super_admin";
@@ -95,17 +95,17 @@ export default async function HomePage() {
               ) : null}
               {youthEligible ? (
                 <Link
-                  href="/youth-teaches"
-                  data-testid="module-youth-teaches"
+                  href="/parvus-studio"
+                  data-testid="module-parvus-studio"
                   className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
                 >
                   <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-gold">
                     <Clapperboard className="h-5 w-5" />
                   </span>
                   <span>
-                    <span className="block font-medium text-navy">Youth Teaches</span>
+                    <span className="block font-medium text-navy">Parvus Studio</span>
                     <span className="block text-sm text-gray-500">
-                      Teens script &amp; record short catechetical videos
+                      Studio creators script &amp; record short catechetical videos
                     </span>
                   </span>
                 </Link>

@@ -34,7 +34,7 @@ beforeAll(async () => {
   );
   teenId = u.rows[0]!.id;
   await getDb(HS).query("DELETE FROM memberships WHERE user_id = $1 AND parish_id = $2", [teenId, HS]);
-  await getDb(HS).query("INSERT INTO memberships (user_id, parish_id, role) VALUES ($1, $2, 'youth_teen')", [teenId, HS]);
+  await getDb(HS).query("INSERT INTO memberships (user_id, parish_id, role) VALUES ($1, $2, 'studio')", [teenId, HS]);
   const t = await getDb(HS).query<{ id: string }>(
     "INSERT INTO youth_topics (parish_id, category, title, common_misconception, correct_teaching, age_band) VALUES ($1,'Sacraments','Real Presence (int)','symbol only','Real Presence','high_school') RETURNING id",
     [HS],

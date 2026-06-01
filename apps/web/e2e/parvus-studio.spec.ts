@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// Youth Teaches runs inside the dedicated E2E Test Parish (seeded by global-setup).
+// Parvus Studio runs inside the dedicated E2E Test Parish (seeded by global-setup).
 // Two surfaces are exercised: the MCP route (Claude Desktop's door — token-auth, not
 // WorkOS) over HTTP, and the teen's project page (Start AI session → live script poll
 // → mark ready). The /api/v1 REST endpoints authenticate via a WorkOS Bearer JWT that
@@ -11,22 +11,22 @@ const E2E_MCP_TOKEN = "mcp_e2e_youth_token";
 
 const rpc = (method: string, params?: unknown) => ({ jsonrpc: "2.0", id: 1, method, params });
 
-test("MCP route: initialize advertises the youth-teaches server", async ({ request }) => {
-  const res = await request.post("/api/mcp/youth", { data: rpc("initialize", { protocolVersion: "2024-11-05" }) });
+test("MCP route: initialize advertises the parvus-studio server", async ({ request }) => {
+  const res = await request.post("/api/mcp/studio", { data: rpc("initialize", { protocolVersion: "2024-11-05" }) });
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
-  expect(body.result.serverInfo.name).toBe("parvus-youth-teaches");
+  expect(body.result.serverInfo.name).toBe("parvus-studio");
 });
 
 test("MCP route: tools/list is rejected without a valid token", async ({ request }) => {
-  const res = await request.post("/api/mcp/youth", { data: rpc("tools/list") });
+  const res = await request.post("/api/mcp/studio", { data: rpc("tools/list") });
   expect(res.status()).toBe(401);
   const body = await res.json();
   expect(body.error.code).toBe(-32001);
 });
 
 test("MCP route: tools/list returns exactly the 4 project tools with a token", async ({ request }) => {
-  const res = await request.post(`/api/mcp/youth?token=${E2E_MCP_TOKEN}`, { data: rpc("tools/list") });
+  const res = await request.post(`/api/mcp/studio?token=${E2E_MCP_TOKEN}`, { data: rpc("tools/list") });
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
   const names = body.result.tools.map((t: { name: string }) => t.name);
@@ -34,7 +34,7 @@ test("MCP route: tools/list returns exactly the 4 project tools with a token", a
 });
 
 test("MCP route: update_script_draft writes the draft + returns counts", async ({ request }) => {
-  const res = await request.post(`/api/mcp/youth?token=${E2E_MCP_TOKEN}`, {
+  const res = await request.post(`/api/mcp/studio?token=${E2E_MCP_TOKEN}`, {
     data: rpc("tools/call", {
       name: "update_script_draft",
       arguments: { project_id: E2E_YOUTH_PROJECT, new_text: "one two three" },
@@ -46,28 +46,28 @@ test("MCP route: update_script_draft writes the draft + returns counts", async (
   expect(payload.new_word_count).toBe(3);
 });
 
-test("youth_teen lands on Youth Teaches home and can open a project", async ({ page }) => {
-  // /dev/login redirects to "/", which for a teen redirects on to /youth-teaches.
+test("studio lands on Parvus Studio home and can open a project", async ({ page }) => {
+  // /dev/login redirects to "/", which for a teen redirects on to /parvus-studio.
   await page.goto("/dev/login?email=e2e-teen@parvaordo.test");
-  await page.waitForURL(/\/youth-teaches$/);
+  await page.waitForURL(/\/parvus-studio$/);
   await expect(page.getByRole("heading", { name: "My projects" })).toBeVisible();
 
   await page.getByTestId(`yt-project-${E2E_YOUTH_PROJECT}`).click();
-  await page.waitForURL(new RegExp(`youth-teaches/projects/${E2E_YOUTH_PROJECT}$`));
+  await page.waitForURL(new RegExp(`parvus-studio/projects/${E2E_YOUTH_PROJECT}$`));
   await expect(page.getByTestId("yt-status")).toBeVisible();
 });
 
-test("admin sees the dashboard invite form, with Youth (Teen) as an invitable role", async ({ page }) => {
+test("admin sees the dashboard invite form, with Studio as an invitable role", async ({ page }) => {
   await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
   await page.goto("/");
   await expect(page.getByTestId("invite-form")).toBeVisible();
-  // The invite-by-email role list includes youth_teen (the point of this work).
-  await expect(page.locator('[data-testid="invite-role"] option[value="youth_teen"]')).toHaveCount(1);
+  // The invite-by-email role list includes studio (the point of this work).
+  await expect(page.locator('[data-testid="invite-role"] option[value="studio"]')).toHaveCount(1);
 });
 
 test("admin sees the management view and can assign a new project to a teen", async ({ page }) => {
   await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
-  await page.goto("/youth-teaches");
+  await page.goto("/parvus-studio");
   await expect(page.getByRole("heading", { name: "Manage projects" })).toBeVisible();
   // The seeded project shows in the parish-wide list.
   await expect(page.getByTestId("yt-manage-list")).toContainText("Real Presence");
@@ -81,10 +81,10 @@ test("admin sees the management view and can assign a new project to a teen", as
 
 test("teen drafts a script with AI (via MCP) then marks it ready to record", async ({ page, request }) => {
   // Re-runnable across viewports: reset the project to a pristine drafting state.
-  await request.get(`/dev/youth-reset?project=${E2E_YOUTH_PROJECT}&parish=${E2E_PARISH}`);
+  await request.get(`/dev/studio-reset?project=${E2E_YOUTH_PROJECT}&parish=${E2E_PARISH}`);
 
   await page.goto("/dev/login?email=e2e-teen@parvaordo.test");
-  await page.goto(`/youth-teaches/projects/${E2E_YOUTH_PROJECT}`);
+  await page.goto(`/parvus-studio/projects/${E2E_YOUTH_PROJECT}`);
 
   await expect(page.getByRole("heading", { name: /Real Presence/ })).toBeVisible();
   await expect(page.getByText(/just a symbol/i)).toBeVisible(); // common misconception
@@ -96,7 +96,7 @@ test("teen drafts a script with AI (via MCP) then marks it ready to record", asy
 
   // Claude writes the script via the MCP endpoint; the page's 3s poll picks it up live.
   const draft = "Hi, I'm Sarah, and the Eucharist is truly the Body and Blood of Christ.";
-  await request.post(`/api/mcp/youth?token=${E2E_MCP_TOKEN}`, {
+  await request.post(`/api/mcp/studio?token=${E2E_MCP_TOKEN}`, {
     data: rpc("tools/call", { name: "update_script_draft", arguments: { project_id: E2E_YOUTH_PROJECT, new_text: draft } }),
   });
   await expect(page.getByTestId("yt-script")).toHaveValue(draft, { timeout: 8000 });

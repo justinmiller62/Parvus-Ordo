@@ -26,13 +26,13 @@ export async function listParishYouthProjects(parishId: string): Promise<ParishY
   return rows.map((r) => ({ id: r.id, title: r.title, status: r.status, teenName: r.teen_name, topicTitle: r.topic_title }));
 }
 
-/** Parish members with the youth_teen role — the assignable teens. */
+/** Parish members with the studio role — the assignable teens. */
 export async function listYouthTeens(parishId: string): Promise<{ userId: string; displayName: string }[]> {
   const { rows } = await getDb(parishId).query<{ user_id: string; display_name: string }>(
     `SELECT m.user_id, u.display_name
        FROM memberships m
        JOIN users u ON u.id = m.user_id
-      WHERE m.role = 'youth_teen'
+      WHERE m.role = 'studio'
       ORDER BY u.display_name`,
   );
   return rows.map((r) => ({ userId: r.user_id, displayName: r.display_name }));

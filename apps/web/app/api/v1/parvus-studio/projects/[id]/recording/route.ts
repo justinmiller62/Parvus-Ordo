@@ -1,7 +1,7 @@
 import { createRecording, uploadRecordingToBunny } from "@parvaordo/core";
 import { authenticateApiRequest } from "@/src/lib/api-auth";
 
-// POST /api/v1/youth-teaches/projects/{id}/recording — multipart MP4 → Bunny.
+// POST /api/v1/parvus-studio/projects/{id}/recording — multipart MP4 → Bunny.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await params;
   const user = await authenticateApiRequest(req);
@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const slideAdvanceCount = Number(form.get("slide_advance_count")) || undefined;
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const { videoId, playbackUrl } = await uploadRecordingToBunny(bytes, `Youth Teaches ${id}`);
+  const { videoId, playbackUrl } = await uploadRecordingToBunny(bytes, `Parvus Studio ${id}`);
   const rec = await createRecording(user.parishId, {
     projectId: id,
     bunnyVideoId: videoId,

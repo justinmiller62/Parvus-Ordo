@@ -2,8 +2,8 @@ import { setProjectStatus, updateScriptDraft } from "@parvaordo/core";
 import { devBypassEnabled } from "@/src/lib/auth";
 
 /**
- * Dev/test-only: reset a Youth Teaches project to a pristine drafting state
- * (empty script) so the youth-teaches spec is re-runnable across viewports.
+ * Dev/test-only: reset a Parvus Studio project to a pristine drafting state
+ * (empty script) so the parvus-studio spec is re-runnable across viewports.
  * Gated like /dev/login (non-production + AUTH_BYPASS=1).
  */
 export async function GET(request: Request): Promise<Response> {

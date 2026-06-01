@@ -3,7 +3,7 @@ import { canInviteRole } from "./roles";
 
 describe("canInviteRole", () => {
   it("admin and super_admin can invite any invitable role", () => {
-    for (const target of ["admin", "catechist", "catechumen_candidate", "youth_teen", "parish_member"] as const) {
+    for (const target of ["admin", "catechist", "catechumen_candidate", "studio", "parish_member"] as const) {
       expect(canInviteRole("admin", target)).toBe(true);
       expect(canInviteRole("super_admin", target)).toBe(true);
     }
@@ -12,7 +12,7 @@ describe("canInviteRole", () => {
   it("a catechist can invite students/catechists/teens/members but NOT an admin", () => {
     expect(canInviteRole("catechist", "catechumen_candidate")).toBe(true);
     expect(canInviteRole("catechist", "catechist")).toBe(true);
-    expect(canInviteRole("catechist", "youth_teen")).toBe(true);
+    expect(canInviteRole("catechist", "studio")).toBe(true);
     expect(canInviteRole("catechist", "parish_member")).toBe(true);
     expect(canInviteRole("catechist", "admin")).toBe(false);
   });
