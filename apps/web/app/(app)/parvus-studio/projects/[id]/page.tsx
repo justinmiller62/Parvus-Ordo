@@ -55,10 +55,7 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
       />
 
       <section>
-        <h2 className="mb-1 text-sm font-medium text-navy">Slides</h2>
-        <p className="mb-2 text-xs text-gray-400">
-          1920×1080 (16:9). Upload to add; drag to reorder; click to view full screen. Parvus Studio records against these.
-        </p>
+        <h2 className="mb-2 text-sm font-medium text-navy">Slides</h2>
         <SlideManager projectId={id} initialSlides={slidePreviews} />
       </section>
     </div>

@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X } from "lucide-react";
+import { GripVertical, Maximize2, Trash2, UploadCloud, X } from "lucide-react";
 import { deleteSlideAction, reorderSlidesAction } from "./actions";
 
 const MAX_MB = 12;
@@ -39,38 +39,55 @@ function SortableSlide({
   onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: slide.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
+  const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
-    <li ref={setNodeRef} style={style} className="group relative" data-testid={`slide-${slide.id}`}>
-      <button
-        type="button"
-        onClick={onOpen}
-        className="block aspect-video w-full overflow-hidden rounded-md border border-navy/15 bg-navy/5"
-        title="View full screen"
-      >
+    <li
+      ref={setNodeRef}
+      style={style}
+      data-testid={`slide-${slide.id}`}
+      className={`group relative aspect-video overflow-hidden rounded-xl border bg-navy/5 transition-all duration-150 ${
+        isDragging
+          ? "z-10 scale-[1.03] border-gold shadow-xl ring-2 ring-gold/50"
+          : "border-navy/10 shadow-sm hover:-translate-y-0.5 hover:border-gold/40 hover:shadow-md"
+      }`}
+    >
+      <button type="button" onClick={onOpen} className="block h-full w-full" title="View full screen">
         {slide.url ? <img src={slide.url} alt={`Slide ${index + 1}`} className="h-full w-full object-cover" /> : null}
       </button>
-      <span className="absolute left-1 top-1 rounded bg-navy/80 px-1.5 text-xs font-medium text-cream">{index + 1}</span>
+
+      {/* order badge */}
+      <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-navy shadow">
+        {index + 1}
+      </span>
+
+      {/* fullscreen hint on hover */}
+      <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-navy/0 opacity-0 transition group-hover:bg-navy/15 group-hover:opacity-100">
+        <Maximize2 className="h-6 w-6 text-white drop-shadow" />
+      </span>
+
+      {/* drag handle */}
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="absolute bottom-1 left-1 cursor-grab rounded bg-white/90 p-0.5 text-navy/70 opacity-0 group-hover:opacity-100 active:cursor-grabbing"
-        title="Drag to reorder"
         aria-label="Drag to reorder"
+        title="Drag to reorder"
+        className="absolute bottom-2 left-2 cursor-grab rounded-lg bg-white/85 p-1 text-navy/60 shadow-sm backdrop-blur-sm transition hover:bg-white hover:text-navy active:cursor-grabbing sm:opacity-0 sm:group-hover:opacity-100"
       >
         <GripVertical className="h-4 w-4" />
       </button>
+
+      {/* delete */}
       <button
         type="button"
         onClick={onRemove}
         data-testid={`slide-remove-${slide.id}`}
-        className="absolute right-1 top-1 rounded-full bg-white/90 p-0.5 text-rose opacity-0 hover:bg-rose hover:text-white group-hover:opacity-100"
-        title="Remove slide"
         aria-label="Remove slide"
+        title="Remove slide"
+        className="absolute right-2 top-2 rounded-full bg-white/85 p-1 text-rose shadow-sm backdrop-blur-sm transition hover:scale-110 hover:bg-rose hover:text-white sm:opacity-0 sm:group-hover:opacity-100"
       >
-        <X className="h-4 w-4" />
+        <Trash2 className="h-4 w-4" />
       </button>
     </li>
   );
@@ -80,6 +97,7 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
   const [slides, setSlides] = useState<Slide[]>(initialSlides);
   const [status, setStatus] = useState<UploadStatus>({ kind: "idle" });
   const [lightbox, setLightbox] = useState<Slide | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -99,7 +117,6 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
     startTransition(() => deleteSlideAction(projectId, slideId));
   }
 
-  // Upload one file; resolves to the created slide, or null on error.
   function uploadOne(file: File, index: number, total: number): Promise<Slide | null> {
     return new Promise((resolve) => {
       const fd = new FormData();
@@ -149,38 +166,64 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
   return (
     <div className="space-y-3" data-testid="yt-slides">
       {slides.length > 0 ? (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={slides.map((s) => s.id)} strategy={rectSortingStrategy}>
-            <ul className="grid grid-cols-3 gap-3" data-testid="slide-grid">
-              {slides.map((s, i) => (
-                <SortableSlide key={s.id} slide={s} index={i} onOpen={() => setLightbox(s)} onRemove={() => remove(s.id)} />
-              ))}
-            </ul>
-          </SortableContext>
-        </DndContext>
-      ) : (
-        <p className="text-sm text-gray-500">No slides yet — upload your first below.</p>
-      )}
+        <>
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+            <span className="inline-flex items-center gap-1"><GripVertical className="h-3.5 w-3.5" /> drag to reorder</span>
+            <span className="inline-flex items-center gap-1"><Maximize2 className="h-3.5 w-3.5" /> click to enlarge</span>
+            <span className="inline-flex items-center gap-1"><Trash2 className="h-3.5 w-3.5" /> hover to remove</span>
+          </p>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={slides.map((s) => s.id)} strategy={rectSortingStrategy}>
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" data-testid="slide-grid">
+                {slides.map((s, i) => (
+                  <SortableSlide key={s.id} slide={s} index={i} onOpen={() => setLightbox(s)} onRemove={() => remove(s.id)} />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
+        </>
+      ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
+      {/* drag-and-drop upload zone (also the empty state) */}
+      <div
+        onClick={() => !uploading && fileRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          if (e.dataTransfer.files?.length) void uploadFiles(Array.from(e.dataTransfer.files));
+        }}
+        data-testid="slide-dropzone"
+        className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed p-6 text-center transition ${
+          dragOver ? "border-gold bg-gold/10" : "border-navy/20 bg-navy/[0.02] hover:border-gold/50 hover:bg-gold/5"
+        } ${uploading ? "pointer-events-none opacity-60" : ""}`}
+      >
+        <UploadCloud className="h-7 w-7 text-navy/50" />
+        {uploading ? (
+          <p className="text-sm font-medium text-navy">Uploading {status.index} of {status.total}… {status.pct}%</p>
+        ) : (
+          <>
+            <p className="text-sm font-medium text-navy">Drop slides here, or click to browse</p>
+            <p className="text-xs text-gray-400">PNG or JPG · 1920×1080 · up to {MAX_MB} MB · select several at once</p>
+          </>
+        )}
         <input
           ref={fileRef}
           type="file"
           accept="image/png,image/jpeg"
           multiple
-          disabled={uploading}
+          hidden
           onChange={(e) => {
             if (e.target.files?.length) void uploadFiles(Array.from(e.target.files));
           }}
-          className="text-sm text-navy"
           data-testid="slide-upload-input"
         />
-        {uploading ? (
-          <span className="text-sm text-gray-500">
-            Uploading {status.index} of {status.total}… {status.pct}%
-          </span>
-        ) : null}
       </div>
+
       {uploading ? (
         <div className="h-1.5 w-full overflow-hidden rounded bg-navy/10">
           <div className="h-full bg-gold transition-[width] duration-150" style={{ width: `${status.pct}%` }} />
@@ -190,14 +233,14 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
 
       {lightbox ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+          className="fixed inset-0 z-50 flex animate-[po-fade-in_150ms_ease-out] items-center justify-center bg-black/85 p-6"
           onClick={() => setLightbox(null)}
           data-testid="slide-lightbox"
         >
-          {lightbox.url ? <img src={lightbox.url} alt="Slide" className="max-h-full max-w-full rounded-md" /> : null}
+          {lightbox.url ? <img src={lightbox.url} alt="Slide" className="max-h-full max-w-full rounded-lg shadow-2xl" /> : null}
           <button
             type="button"
-            className="absolute right-4 top-4 rounded-full bg-white/90 p-1 text-navy"
+            className="absolute right-4 top-4 rounded-full bg-white/90 p-1.5 text-navy shadow transition hover:scale-110 hover:bg-white"
             aria-label="Close"
           >
             <X className="h-6 w-6" />
