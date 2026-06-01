@@ -8,6 +8,7 @@ import {
   BookOpen,
   BookOpenCheck,
   Calendar,
+  Clapperboard,
   Film,
   Heart,
   Home,
@@ -44,11 +45,20 @@ function ociaEligible(role: Role | null): boolean {
   return role === "admin" || role === "catechist" || role === "catechumen_candidate" || role === "super_admin";
 }
 
-// Top-level nav (parish home): Dashboard + module launchers.
+function youthEligible(role: Role | null): boolean {
+  return role === "youth_teen" || role === "admin" || role === "super_admin";
+}
+
+// Top-level nav (parish home): Dashboard + module launchers. Teens are
+// Youth-Teaches-only (no parish dashboard), like catechists/learners are OCIA-only.
 function topNav(role: Role | null): NavItem[] {
+  if (role === "youth_teen") {
+    return [{ href: "/youth-teaches", label: "Youth Teaches", Icon: Clapperboard, live: true }];
+  }
   const items: NavItem[] = [{ href: "/", label: "Dashboard", Icon: LayoutDashboard, live: true }];
   if (role === "super_admin") items.push({ label: "Super Admin", Icon: Shield });
   if (ociaEligible(role)) items.push({ href: "/ocia", label: "OCIA", Icon: BookOpen, live: true });
+  if (youthEligible(role)) items.push({ href: "/youth-teaches", label: "Youth Teaches", Icon: Clapperboard, live: true });
   return items;
 }
 

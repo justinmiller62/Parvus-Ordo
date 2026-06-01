@@ -46,6 +46,17 @@ test("MCP route: update_script_draft writes the draft + returns counts", async (
   expect(payload.new_word_count).toBe(3);
 });
 
+test("youth_teen lands on Youth Teaches home and can open a project", async ({ page }) => {
+  // /dev/login redirects to "/", which for a teen redirects on to /youth-teaches.
+  await page.goto("/dev/login?email=e2e-teen@parvaordo.test");
+  await page.waitForURL(/\/youth-teaches$/);
+  await expect(page.getByRole("heading", { name: "My projects" })).toBeVisible();
+
+  await page.getByTestId(`yt-project-${E2E_YOUTH_PROJECT}`).click();
+  await page.waitForURL(new RegExp(`youth-teaches/projects/${E2E_YOUTH_PROJECT}$`));
+  await expect(page.getByTestId("yt-status")).toBeVisible();
+});
+
 test("teen drafts a script with AI (via MCP) then marks it ready to record", async ({ page, request }) => {
   // Re-runnable across viewports: reset the project to a pristine drafting state.
   await request.get(`/dev/youth-reset?project=${E2E_YOUTH_PROJECT}&parish=${E2E_PARISH}`);

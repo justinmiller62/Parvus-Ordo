@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Clapperboard } from "lucide-react";
 import { getMinistries, getParishById } from "@parvaordo/core";
 import { ROLE_LABELS } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
@@ -14,9 +14,12 @@ export default async function HomePage() {
 
   // Catechists & learners are OCIA-only — they have no parish dashboard.
   if (role === "catechist" || role === "catechumen_candidate") redirect("/ocia");
+  // Teens are Youth-Teaches-only — land them on their projects.
+  if (role === "youth_teen") redirect("/youth-teaches");
 
   const parishId = identity?.parishId ?? null;
   const ociaEligible = role === "admin" || role === "super_admin";
+  const youthEligible = role === "admin" || role === "super_admin";
 
   const [parish, ministries] = await Promise.all([
     parishId ? getParishById(parishId) : Promise.resolve(null),
@@ -68,24 +71,43 @@ export default async function HomePage() {
             </ul>
           </section>
 
-          {ociaEligible ? (
-            <section className="mt-6">
-              <h2 className="mb-2 text-sm font-semibold text-gray-400">Modules</h2>
-              <Link
-                href="/ocia"
-                data-testid="module-ocia"
-                className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-gold">
-                  <BookOpen className="h-5 w-5" />
-                </span>
-                <span>
-                  <span className="block font-medium text-navy">OCIA</span>
-                  <span className="block text-sm text-gray-500">
-                    Order of Christian Initiation of Adults
+          {ociaEligible || youthEligible ? (
+            <section className="mt-6 space-y-3">
+              <h2 className="text-sm font-semibold text-gray-400">Modules</h2>
+              {ociaEligible ? (
+                <Link
+                  href="/ocia"
+                  data-testid="module-ocia"
+                  className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-gold">
+                    <BookOpen className="h-5 w-5" />
                   </span>
-                </span>
-              </Link>
+                  <span>
+                    <span className="block font-medium text-navy">OCIA</span>
+                    <span className="block text-sm text-gray-500">
+                      Order of Christian Initiation of Adults
+                    </span>
+                  </span>
+                </Link>
+              ) : null}
+              {youthEligible ? (
+                <Link
+                  href="/youth-teaches"
+                  data-testid="module-youth-teaches"
+                  className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-gold">
+                    <Clapperboard className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <span className="block font-medium text-navy">Youth Teaches</span>
+                    <span className="block text-sm text-gray-500">
+                      Teens script &amp; record short catechetical videos
+                    </span>
+                  </span>
+                </Link>
+              ) : null}
             </section>
           ) : null}
         </>
