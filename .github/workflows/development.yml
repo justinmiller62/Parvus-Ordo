@@ -54,6 +54,7 @@ jobs:
             "DATABASE_URL", "WORKOS_CLIENT_ID", "WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD",
             "PARISH_BASE_DOMAIN", "BUNNY_STREAM_LIBRARY_ID", "BUNNY_STREAM_LIBRARY_KEY",
             "BUNNY_STREAM_CDN_HOSTNAME", "GROQ_API_KEY", "CLIP_CALLBACK_SECRET",
+            "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_SLIDES_BUCKET",
           ]
           print(json.dumps({k: os.environ[k] for k in keys if os.environ.get(k)}))
           PY
@@ -69,3 +70,7 @@ jobs:
           BUNNY_STREAM_CDN_HOSTNAME: ${{ secrets.BUNNY_STREAM_CDN_HOSTNAME }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CLIP_CALLBACK_SECRET: ${{ secrets.CLIP_CALLBACK_SECRET }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_SLIDES_BUCKET: ${{ secrets.R2_SLIDES_BUCKET }}
