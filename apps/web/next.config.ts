@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
     // extracted audio (16kHz mono ≈ 1.9MB/min, so ~19MB for a 10-min video). Raise
     // it for the /api/ocia/transcribe upload. (Prod moves transcription out-of-band.)
     proxyClientMaxBodySize: "128mb",
+    // Server Actions default to a 1MB request-body cap — too small for the manual
+    // slide upload (1920×1080 PNGs run several MB). (Video upload is a route handler,
+    // not a Server Action, so it isn't affected.)
+    serverActions: { bodySizeLimit: "16mb" },
   },
 };
 
