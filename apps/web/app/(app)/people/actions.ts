@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { INVITABLE_ROLES, removeMember, revokeInvitation, setMemberRole } from "@parvaordo/core";
+import { INVITABLE_ROLES, removeMember, revokeInvitation, setMemberName, setMemberRole } from "@parvaordo/core";
 import type { Role } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 
@@ -12,6 +12,16 @@ async function adminCtx(): Promise<{ parishId: string; userId: string }> {
   const role = v?.identity?.role;
   if (!v?.identity?.parishId || !v.identity.userId || !(role === "admin" || role === "super_admin")) redirect("/");
   return { parishId: v.identity.parishId, userId: v.identity.userId };
+}
+
+/** Rename a member (display name). */
+export async function renameMemberAction(formData: FormData): Promise<void> {
+  const { parishId } = await adminCtx();
+  const userId = String(formData.get("userId") ?? "");
+  const displayName = String(formData.get("displayName") ?? "").trim();
+  if (!userId || !displayName) return;
+  await setMemberName(parishId, userId, displayName);
+  revalidatePath("/people");
 }
 
 /** Change a member's role. Can't change your own (avoid locking yourself out). */

@@ -1,4 +1,4 @@
-import { getProject, presignSlideUrl } from "@parvaordo/core";
+import { getProject, listProjectSlides, presignSlideUrl } from "@parvaordo/core";
 import { authenticateApiRequest } from "@/src/lib/api-auth";
 
 // GET /api/v1/parvus-studio/projects/{id}/package — script + presigned slide URLs +
@@ -11,12 +11,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const project = await getProject(user.parishId, id);
   if (!project) return Response.json({ error: "not found" }, { status: 404 });
 
-  // The 3 demo slides live in R2 by convention; presign short-lived GET URLs.
+  // Real uploaded slides (manual upload or the MCP upload_slide tool); presign
+  // short-lived GET URLs from the private R2 bucket.
+  const slides = await listProjectSlides(user.parishId, id);
   const visuals = await Promise.all(
-    [1, 2, 3].map(async (n) => ({
-      id: `v${n}`,
-      order: n,
-      url: await presignSlideUrl(`youth-slides/${id}/slide${n}.png`),
+    slides.map(async (s) => ({
+      id: s.id,
+      order: s.order,
+      url: await presignSlideUrl(s.r2Key),
     })),
   );
 

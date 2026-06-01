@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
-import { getLatestRecording, getProject, getProjectDetails } from "@parvaordo/core";
+import { getLatestRecording, getProject, getProjectDetails, listProjectSlides, presignSlideUrl } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { YouthProjectClient } from "./youth-project-client";
+import { deleteSlideAction, uploadSlideAction } from "./actions";
 
 export default async function YouthProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -9,15 +10,21 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
   if (!viewer?.identity?.parishId) redirect("/login");
   const parishId = viewer.identity.parishId;
 
-  const [project, details, recording] = await Promise.all([
+  const [project, details, recording, slides] = await Promise.all([
     getProject(parishId, id),
     getProjectDetails(parishId, id),
     getLatestRecording(parishId, id),
+    listProjectSlides(parishId, id),
   ]);
 
   if (!project) {
     return <div className="mx-auto max-w-3xl p-2 text-sm text-gray-500">Project not found.</div>;
   }
+
+  // Presign previews; tolerate R2 being unconfigured (preview just won't render).
+  const slidePreviews = await Promise.all(
+    slides.map(async (s) => ({ id: s.id, order: s.order, url: await presignSlideUrl(s.r2Key).catch(() => null) })),
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -46,6 +53,41 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
         initialStatus={project.status}
         recordingUrl={recording?.playbackUrl ?? null}
       />
+
+      <section data-testid="yt-slides">
+        <h2 className="mb-1 text-sm font-medium text-navy">Slides</h2>
+        <p className="mb-2 text-xs text-gray-400">1920×1080 (16:9). Parvus Studio downloads these to record against.</p>
+
+        {slidePreviews.length > 0 ? (
+          <ul className="mb-3 grid grid-cols-3 gap-3">
+            {slidePreviews.map((s) => (
+              <li key={s.id} className="space-y-1">
+                <div className="aspect-video overflow-hidden rounded-md border border-navy/15 bg-navy/5">
+                  {s.url ? <img src={s.url} alt={`Slide ${s.order}`} className="h-full w-full object-cover" /> : null}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Slide {s.order}</span>
+                  <form action={deleteSlideAction.bind(null, id, s.order)}>
+                    <button type="submit" className="text-xs text-rose hover:underline">Remove</button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mb-3 text-sm text-gray-500">No slides yet.</p>
+        )}
+
+        <form action={uploadSlideAction.bind(null, id)} className="flex flex-wrap items-center gap-2" data-testid="yt-slide-upload">
+          <select name="slide_order" defaultValue="1" className="rounded-md border border-navy/15 bg-white px-2 py-1.5 text-sm text-navy">
+            {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>Slide {n}</option>)}
+          </select>
+          <input type="file" name="file" accept="image/png,image/jpeg" required className="text-sm text-navy" />
+          <button type="submit" className="rounded-md bg-burgundy px-3 py-1.5 text-sm font-medium text-cream hover:bg-rose">
+            Upload slide
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

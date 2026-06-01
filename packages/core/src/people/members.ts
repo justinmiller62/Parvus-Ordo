@@ -31,6 +31,15 @@ export async function listParishMembers(parishId: string): Promise<ParishMember[
   }));
 }
 
+/** Rename a member. Updates the global users.display_name, but RLS on the
+ * memberships EXISTS-check pins it to a member of THIS parish. */
+export async function setMemberName(parishId: string, userId: string, displayName: string): Promise<void> {
+  await getDb(parishId).query(
+    "UPDATE users SET display_name = $2 WHERE id = $1 AND EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = $1)",
+    [userId, displayName],
+  );
+}
+
 /** Change a member's parish role. */
 export async function setMemberRole(parishId: string, userId: string, role: Role): Promise<void> {
   await getDb(parishId).query(

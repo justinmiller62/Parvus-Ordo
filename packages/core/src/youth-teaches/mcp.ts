@@ -1,5 +1,6 @@
 import { getDb } from "../db/client";
 import { getProjectDetails, listMyProjects, saveCorpusPassage, updateScriptDraft } from "./projects";
+import { addProjectSlideFromUrl } from "./slides";
 
 // The Youth Teaches MCP server exposes ONLY the project tools. corpus_search /
 // corpus_read come from the separate (existing) corpus MCP server — Claude Desktop
@@ -75,6 +76,21 @@ export const YOUTH_MCP_TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "upload_slide",
+    description:
+      "Add a teaching slide to the project from a public image URL. Slides MUST be 1920×1080 (16:9, landscape) — that is the recording aspect ratio. slide_order is 1-based; uploading to an order that already exists replaces it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string" },
+        slide_order: { type: "number", description: "1-based slide position" },
+        image_url: { type: "string", description: "public URL of a 1920×1080 PNG/JPG" },
+      },
+      required: ["project_id", "slide_order", "image_url"],
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 /** Dispatch an MCP tool call within a validated session; logs every call. */
@@ -101,6 +117,13 @@ export async function callYouthTool(session: McpSession, name: string, args: Rec
       const projectId = String(args.project_id);
       await logMcpTool(parishId, projectId, name, args);
       return saveCorpusPassage(parishId, projectId, String(args.citation), args.notes ? String(args.notes) : undefined);
+    }
+    case "upload_slide": {
+      const projectId = String(args.project_id);
+      const order = Number(args.slide_order);
+      await logMcpTool(parishId, projectId, name, { project_id: projectId, slide_order: order });
+      const { r2Key } = await addProjectSlideFromUrl(parishId, projectId, order, String(args.image_url));
+      return { ok: true, slide_order: order, r2_key: r2Key };
     }
     default:
       throw new Error(`unknown tool: ${name}`);

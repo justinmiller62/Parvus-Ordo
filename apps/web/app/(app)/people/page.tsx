@@ -3,7 +3,7 @@ import { INVITABLE_ROLES, canInviteRole, listParishMembers, listPendingInvitatio
 import { ROLE_LABELS, type Role } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 import { InviteForm } from "../invite-form";
-import { removeMemberAction, revokeInvitationAction, setRoleAction } from "./actions";
+import { removeMemberAction, renameMemberAction, revokeInvitationAction, setRoleAction } from "./actions";
 
 // People — parish member management console (admin / super_admin).
 export default async function PeoplePage() {
@@ -54,6 +54,18 @@ export default async function PeoplePage() {
                     {m.email}
                     {m.ministryName ? ` · ${m.ministryName}` : ""}
                   </p>
+                  <form action={renameMemberAction} className="mt-1 flex items-center gap-1">
+                    <input type="hidden" name="userId" value={m.userId} />
+                    <input
+                      name="displayName"
+                      defaultValue={m.displayName}
+                      data-testid={`rename-input-${m.email}`}
+                      className="w-40 rounded-md border border-gray-300 px-2 py-1 text-xs text-navy focus:border-gold focus:outline-none"
+                    />
+                    <button type="submit" className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">
+                      Rename
+                    </button>
+                  </form>
                 </div>
 
                 <div className="flex items-center gap-2">

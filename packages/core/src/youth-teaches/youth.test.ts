@@ -23,9 +23,15 @@ describe("scriptStats", () => {
 });
 
 describe("YOUTH_MCP_TOOLS", () => {
-  it("exposes exactly the 4 project tools (no corpus tools)", () => {
+  it("exposes the project tools (no corpus tools — those come from the corpus server)", () => {
     const names = YOUTH_MCP_TOOLS.map((t) => t.name);
-    expect(names).toEqual(["list_my_projects", "get_project_details", "update_script_draft", "save_corpus_passage"]);
+    expect(names).toEqual([
+      "list_my_projects",
+      "get_project_details",
+      "update_script_draft",
+      "save_corpus_passage",
+      "upload_slide",
+    ]);
     expect(names).not.toContain("corpus_search");
     expect(names).not.toContain("corpus_read");
   });

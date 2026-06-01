@@ -25,12 +25,18 @@ test("MCP route: tools/list is rejected without a valid token", async ({ request
   expect(body.error.code).toBe(-32001);
 });
 
-test("MCP route: tools/list returns exactly the 4 project tools with a token", async ({ request }) => {
+test("MCP route: tools/list returns the project tools (incl. upload_slide) with a token", async ({ request }) => {
   const res = await request.post(`/api/mcp/studio?token=${E2E_MCP_TOKEN}`, { data: rpc("tools/list") });
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
   const names = body.result.tools.map((t: { name: string }) => t.name);
-  expect(names).toEqual(["list_my_projects", "get_project_details", "update_script_draft", "save_corpus_passage"]);
+  expect(names).toEqual([
+    "list_my_projects",
+    "get_project_details",
+    "update_script_draft",
+    "save_corpus_passage",
+    "upload_slide",
+  ]);
 });
 
 test("MCP route: update_script_draft writes the draft + returns counts", async ({ request }) => {

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { closeDb, getDb, listParishMembers, removeMember, setMemberRole } from "@parvaordo/core";
+import { closeDb, getDb, listParishMembers, removeMember, setMemberName, setMemberRole } from "@parvaordo/core";
 
 const HS = "11111111-1111-1111-1111-111111111111";
 const EMAIL = "people-int@inttest.local";
@@ -33,6 +33,12 @@ describe("people (integration)", () => {
     await setMemberRole(HS, userId, "studio");
     const m = await listParishMembers(HS);
     expect(m.find((x) => x.userId === userId)?.role).toBe("studio");
+  });
+
+  it("renames a member", async () => {
+    await setMemberName(HS, userId, "Renamed Person");
+    const m = await listParishMembers(HS);
+    expect(m.find((x) => x.userId === userId)?.displayName).toBe("Renamed Person");
   });
 
   it("removes a member from the parish", async () => {

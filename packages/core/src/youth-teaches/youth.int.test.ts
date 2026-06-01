@@ -6,8 +6,10 @@ import {
   createRecording,
   createYouthProject,
   createYouthTopic,
+  deleteProjectSlide,
   deleteYouthProject,
   getDb,
+  listProjectSlides,
   getLatestRecording,
   getProject,
   getProjectDetails,
@@ -154,6 +156,18 @@ describe("youth-teaches (integration)", () => {
     await deleteYouthProject(HS, proj.id);
     expect((await listParishYouthProjects(HS)).find((p) => p.id === proj.id)).toBeUndefined();
     await getDb(HS).query("DELETE FROM youth_topics WHERE id = $1", [topic.id]);
+  });
+
+  it("lists + deletes project slides", async () => {
+    await getDb(HS).query(
+      "INSERT INTO youth_slides (parish_id, project_id, slide_order, r2_key) VALUES ($1, $2, 1, $3) ON CONFLICT DO NOTHING",
+      [HS, projectId, `studio-slides/${projectId}/slide1.png`],
+    );
+    let slides = await listProjectSlides(HS, projectId);
+    expect(slides.find((s) => s.order === 1)?.r2Key).toContain("slide1.png");
+    await deleteProjectSlide(HS, projectId, 1);
+    slides = await listProjectSlides(HS, projectId);
+    expect(slides.find((s) => s.order === 1)).toBeUndefined();
   });
 
   it("createRecording flips the project to submitted + getLatestRecording returns it", async () => {
