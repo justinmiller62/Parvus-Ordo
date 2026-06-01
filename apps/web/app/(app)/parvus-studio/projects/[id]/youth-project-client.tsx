@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { getScriptAction, markReadyAction, saveScriptAction, startAiSessionAction } from "./actions";
+import { deleteRecordingAction, getScriptAction, markReadyAction, saveScriptAction, startAiSessionAction } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
   drafting: "Drafting",
@@ -130,7 +130,22 @@ export function YouthProjectClient({
 
       {recordingUrl ? (
         <div data-testid="yt-recording">
-          <p className="mb-1 text-sm font-medium text-navy">Recording</p>
+          <div className="mb-1 flex items-center justify-between">
+            <p className="text-sm font-medium text-navy">Recording</p>
+            <button
+              type="button"
+              data-testid="yt-delete-recording"
+              onClick={() => {
+                if (confirm("Delete this recording? The project reopens so it can be re-recorded in Parvus Studio.")) {
+                  startTransition(() => deleteRecordingAction(projectId));
+                }
+              }}
+              disabled={pending}
+              className="text-xs font-medium text-rose hover:underline disabled:opacity-50"
+            >
+              Delete / replace
+            </button>
+          </div>
           <iframe
             src={recordingUrl}
             className="aspect-video w-full rounded-md border border-navy/15"

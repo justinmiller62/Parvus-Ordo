@@ -67,3 +67,27 @@ export async function getLatestRecording(
   const r = rows[0];
   return r ? { id: r.id, playbackUrl: r.playback_url, bunnyVideoId: r.bunny_video_id } : null;
 }
+
+/** Best-effort delete of a Bunny Stream video (no-op without Bunny config). */
+async function deleteBunnyVideo(videoId: string): Promise<void> {
+  const lib = process.env.BUNNY_STREAM_LIBRARY_ID;
+  const key = process.env.BUNNY_STREAM_LIBRARY_KEY;
+  if (!lib || !key) return;
+  await fetch(`https://video.bunnycdn.com/library/${lib}/videos/${videoId}`, {
+    method: "DELETE",
+    headers: { AccessKey: key, Accept: "application/json" },
+  }).catch(() => {});
+}
+
+/** Delete a project's recordings (DB rows + their Bunny videos). Caller decides the
+ * resulting project status (typically back to ready_to_record so it can be re-recorded). */
+export async function deleteRecordings(parishId: string, projectId: string): Promise<void> {
+  const { rows } = await getDb(parishId).query<{ bunny_video_id: string | null }>(
+    "SELECT bunny_video_id FROM youth_recordings WHERE project_id = $1",
+    [projectId],
+  );
+  for (const r of rows) {
+    if (r.bunny_video_id) await deleteBunnyVideo(r.bunny_video_id);
+  }
+  await getDb(parishId).query("DELETE FROM youth_recordings WHERE project_id = $1", [projectId]);
+}

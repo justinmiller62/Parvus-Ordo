@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { deleteProjectSlide, getProject, mintMcpToken, reorderProjectSlides, setProjectStatus, updateScriptDraft } from "@parvaordo/core";
+import { deleteProjectSlide, deleteRecordings, getProject, mintMcpToken, reorderProjectSlides, setProjectStatus, updateScriptDraft } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 
 async function ctx(): Promise<{ parishId: string; userId: string }> {
@@ -34,6 +34,15 @@ export async function startAiSessionAction(): Promise<{ token: string; expiresAt
 /** Flip the project to ready_to_record. */
 export async function markReadyAction(projectId: string): Promise<void> {
   const { parishId } = await ctx();
+  await setProjectStatus(parishId, projectId, "ready_to_record");
+  revalidatePath(`/parvus-studio/projects/${projectId}`);
+}
+
+/** Delete the project's recording (DB + Bunny) and reopen it for re-recording.
+ * "Replace" = delete here, then record again from Parvus Studio. */
+export async function deleteRecordingAction(projectId: string): Promise<void> {
+  const { parishId } = await ctx();
+  await deleteRecordings(parishId, projectId);
   await setProjectStatus(parishId, projectId, "ready_to_record");
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }

@@ -7,6 +7,7 @@ import {
   createYouthProject,
   createYouthTopic,
   deleteProjectSlide,
+  deleteRecordings,
   deleteYouthProject,
   getDb,
   listProjectSlides,
@@ -200,5 +201,10 @@ describe("youth-teaches (integration)", () => {
     expect(latest?.bunnyVideoId).toBe("guid-int");
     const status = await getDb(HS).query<{ status: string }>("SELECT status FROM youth_projects WHERE id = $1", [projectId]);
     expect(status.rows[0]!.status).toBe("submitted");
+  });
+
+  it("deleteRecordings removes the recording so it can be re-recorded", async () => {
+    await deleteRecordings(HS, projectId);
+    expect(await getLatestRecording(HS, projectId)).toBeNull();
   });
 });
