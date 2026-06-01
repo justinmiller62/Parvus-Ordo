@@ -26,13 +26,25 @@ export async function presignSlideUrl(key: string, expiresInSeconds = 3600): Pro
   return signed.url;
 }
 
-/** Upload a slide object (used by the seed / future per-project slide generation). */
+/** Upload a slide object (manual upload, the MCP tool, or the seed). */
 export async function putSlide(key: string, body: ArrayBuffer | Uint8Array, contentType: string): Promise<void> {
   const { client, base } = r2();
-  const res = await client.fetch(`${base}/${key}`, {
+  const url = `${base}/${key}`;
+  const bytes = body instanceof Uint8Array ? body : new Uint8Array(body);
+
+  // aws4fetch's client.fetch wraps the body in a Request, which turns it into a
+  // stream → undici sends it chunked (no Content-Length) and R2 rejects with 411.
+  // So sign to get the headers, then fetch with the byte array directly: passed to
+  // the global fetch (not a pre-built Request), undici sets Content-Length.
+  const signed = await client.sign(url, {
     method: "PUT",
-    body: body as ArrayBuffer, // bridges core (ES2022) + web (DOM) lib configs; valid fetch body in both
     headers: { "content-type": contentType },
+    body: bytes as unknown as ArrayBuffer,
+  });
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: signed.headers,
+    body: bytes as unknown as ArrayBuffer,
   });
   if (!res.ok) throw new Error(`R2 putSlide failed (${res.status})`);
 }
