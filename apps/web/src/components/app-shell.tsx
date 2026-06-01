@@ -71,7 +71,7 @@ const CATECHIST_MODULES: NavItem[] = [
   { label: "Calendar", Icon: Calendar },
   { label: "Cohorts", Icon: Users },
   { href: "/dictionary", label: "Dictionary", Icon: BookOpenCheck, live: true },
-  { label: "Prayers", Icon: Heart },
+  { href: "/prayers", label: "Prayers", Icon: Heart, live: true },
   { label: "Announcements", Icon: Megaphone },
   { label: "Discussion", Icon: MessageSquare },
   { label: "Settings", Icon: Settings },
@@ -80,7 +80,7 @@ const CATECHIST_MODULES: NavItem[] = [
 const LEARNER_MODULES: NavItem[] = [
   { label: "Calendar", Icon: Calendar },
   { href: "/dictionary", label: "Dictionary", Icon: BookOpenCheck, live: true },
-  { label: "Prayers", Icon: Heart },
+  { href: "/prayers", label: "Prayers", Icon: Heart, live: true },
   { label: "Announcements", Icon: Megaphone },
   { label: "Discussion", Icon: MessageSquare },
 ];
@@ -96,11 +96,18 @@ function ociaNav(role: Role | null): NavItem[] {
       : []),
     { href: "/ocia", label: "OCIA Home", Icon: Home, live: true },
     { href: "/ocia/lessons", label: isLearner ? "My Lessons" : "Lesson Builder", Icon: BookOpen, live: true },
-    // Cross-module link so catechists (OCIA-only) can reach Parvus Studio management.
-    ...(youthEligible(role) && !isLearner
-      ? [{ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true } as NavItem]
-      : []),
     ...(isLearner ? LEARNER_MODULES : CATECHIST_MODULES),
+  ];
+}
+
+// Parvus Studio module nav (when inside /parvus-studio/*) — its own sidebar, like OCIA.
+function studioNav(role: Role | null): NavItem[] {
+  const canReturnToDashboard = role === "admin" || role === "super_admin";
+  return [
+    ...(canReturnToDashboard ? [{ href: "/", label: "Dashboard", Icon: ArrowLeft, live: true } as NavItem] : []),
+    { href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true },
+    // Staff can hop to OCIA from here (Studio is removed from the OCIA sidebar).
+    ...(ociaEligible(role) ? [{ href: "/ocia", label: "OCIA", Icon: BookOpen, live: true } as NavItem] : []),
   ];
 }
 
@@ -127,7 +134,8 @@ export function AppShell({
   const activeParishName = memberships?.find((m) => m.parishId === activeParishId)?.parishName;
   const pathname = usePathname();
   const inOcia = pathname === "/ocia" || pathname.startsWith("/ocia/");
-  const items = inOcia ? ociaNav(role) : topNav(role);
+  const inStudio = pathname === "/parvus-studio" || pathname.startsWith("/parvus-studio/");
+  const items = inStudio ? studioNav(role) : inOcia ? ociaNav(role) : topNav(role);
 
   // Exact match for the two landing routes; prefix match for deeper routes.
   const isActive = (href: string) =>

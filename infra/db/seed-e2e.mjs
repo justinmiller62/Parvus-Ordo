@@ -57,6 +57,8 @@ await client.query("DELETE FROM youth_projects      WHERE parish_id = $1", [E2E_
 await client.query("DELETE FROM youth_topics        WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM dictionary_submissions WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM dictionary_overrides   WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM prayer_submissions     WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM prayer_overrides       WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM memberships     WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM ministries      WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM users    WHERE email LIKE 'e2e-%@parvaordo.test'");
@@ -219,5 +221,11 @@ await client.query(
    ON CONFLICT (headword) DO UPDATE SET definition = EXCLUDED.definition`,
 );
 
+await client.query(
+  `INSERT INTO prayer_entries (title, prayer_text, category, status)
+   VALUES ('Hail Mary', 'Hail Mary, full of grace, the Lord is with thee...', 'marian', 'approved')
+   ON CONFLICT (title) DO UPDATE SET prayer_text = EXCLUDED.prayer_text`,
+);
+
 await client.end();
-console.log("e2e fixtures ready: E2E Test Parish (4 users, 1 video asset, 2 lessons, 1 youth project, 1 dictionary entry)");
+console.log("e2e fixtures ready: E2E Test Parish (4 users, 1 video asset, 2 lessons, 1 youth project, 1 dictionary + 1 prayer entry)");
