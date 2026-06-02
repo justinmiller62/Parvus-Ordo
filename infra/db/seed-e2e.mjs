@@ -219,11 +219,10 @@ await client.query(`INSERT INTO cohorts (id, parish_id, name) VALUES ($1, $2, 'E
   E2E_COHORT,
   E2E_PARISH,
 ]);
-await client.query(`INSERT INTO learning_paths (id, parish_id, cohort_id, name) VALUES ($1, $2, $3, 'E2E Adults Path')`, [
-  E2E_PATH,
-  E2E_PARISH,
-  E2E_COHORT,
-]);
+await client.query(
+  `INSERT INTO learning_paths (id, parish_id, cohort_id, name) VALUES ($1, $2, $3, 'E2E Adults Path')`,
+  [E2E_PATH, E2E_PARISH, E2E_COHORT],
+);
 await client.query(`INSERT INTO learning_path_members (parish_id, path_id, student_id) VALUES ($1, $2, $3)`, [
   E2E_PARISH,
   E2E_PATH,

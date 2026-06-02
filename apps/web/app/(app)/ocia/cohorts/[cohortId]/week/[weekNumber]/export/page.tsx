@@ -39,7 +39,10 @@ function PathCard({ path, multiPath, index }: { path: PathWeekData; multiPath: b
       <h3 className="font-heading text-lg text-navy">{path.lessonTitle}</h3>
       {path.lessonDescription ? <p className="mt-1 text-sm text-gray-500">{path.lessonDescription}</p> : null}
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <Stat icon={<BookOpen className="h-3.5 w-3.5 text-gold-dark" />} label={`${path.readingBlocks.length} reading`} />
+        <Stat
+          icon={<BookOpen className="h-3.5 w-3.5 text-gold-dark" />}
+          label={`${path.readingBlocks.length} reading`}
+        />
         <Stat
           icon={<HelpCircle className="h-3.5 w-3.5 text-navy" />}
           label={`${path.questions.length} question${path.questions.length === 1 ? "" : "s"}`}
@@ -74,7 +77,10 @@ export default async function WeeklyExportPage({
 
   return (
     <div className="mx-auto max-w-3xl motion-safe:animate-[po-fade-in_220ms_ease-out]">
-      <Link href="/ocia" className="inline-flex items-center gap-1 text-sm text-gray-400 transition-colors hover:text-navy">
+      <Link
+        href="/ocia"
+        className="inline-flex items-center gap-1 text-sm text-gray-400 transition-colors hover:text-navy"
+      >
         <ArrowLeft className="h-4 w-4" />
         Back to OCIA
       </Link>
@@ -84,7 +90,9 @@ export default async function WeeklyExportPage({
           <Sparkles className="h-3.5 w-3.5" />
           Weekly Export
         </p>
-        <h1 className="mt-1 font-heading text-2xl text-navy">{validWeek ? `Week ${week} Discussion` : "Discussion Export"}</h1>
+        <h1 className="mt-1 font-heading text-2xl text-navy">
+          {validWeek ? `Week ${week} Discussion` : "Discussion Export"}
+        </h1>
         {data ? (
           <p className="mt-1 text-sm text-gray-500">
             {data.cohortName ? <span className="text-navy">{data.cohortName}</span> : "Cohort"}
