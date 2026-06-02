@@ -6,6 +6,7 @@ import {
   createSubmission,
   deleteSubmission,
   getDb,
+  invalidateDictionaryCache,
   listDictionary,
   updateSubmission,
   upsertOverride,
@@ -38,7 +39,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await getDb(HS).query("DELETE FROM dictionary_submissions WHERE parish_id = $1", [HS]);
   await getDb(HS).query("DELETE FROM dictionary_overrides WHERE parish_id = $1", [HS]);
-  await owner.query("DELETE FROM dictionary_entries WHERE headword = 'eucharist-int'");
+  await owner.query("DELETE FROM dictionary_entries WHERE headword IN ('eucharist-int', 'sacristy-int')");
   await owner.end();
   await getDb(null).query("DELETE FROM users WHERE email = $1", [EMAIL]);
   await closeDb();
@@ -88,5 +89,20 @@ describe("dictionary (integration)", () => {
     const matches = (await listDictionary(HS)).filter((x) => x.headword === "eucharist-int");
     expect(matches.length).toBe(1);
     expect(matches[0]!.isLocal).toBe(false); // universal wins
+  });
+
+  it("serves the global glossary from cache until invalidated (owner/MCP write path)", async () => {
+    await listDictionary(HS); // warm the cache before the out-of-band write
+    // Owner adds a new global entry directly (the app role has no write policy here).
+    await owner.query(
+      `INSERT INTO dictionary_entries (headword, definition, status)
+       VALUES ('sacristy-int', 'A room for vestments.', 'approved')
+       ON CONFLICT (headword) DO UPDATE SET definition = EXCLUDED.definition`,
+    );
+    // Still served from the warm cache → not visible yet.
+    expect((await listDictionary(HS)).some((x) => x.headword === "sacristy-int")).toBe(false);
+    // The write path invalidates → the next read picks it up.
+    invalidateDictionaryCache();
+    expect((await listDictionary(HS)).some((x) => x.headword === "sacristy-int")).toBe(true);
   });
 });
