@@ -201,6 +201,19 @@ describe("parseIcal", () => {
     expect(events.every((e) => e.start.endsWith("T19:00:00"))).toBe(true);
   });
 
+  it("caps a pathological unbounded sub-daily RRULE so a malicious feed can't hang the request", () => {
+    // FREQ=MINUTELY with no COUNT/UNTIL would expand to ~130k occurrences across the ~3-month
+    // window. The per-event cap bounds it: the call returns promptly with a truncated list
+    // instead of materializing every minute (a feed's host is whitelisted but its contents are
+    // attacker-influenceable, so this guards the request from a denial-of-service expansion).
+    const events = parseIcal(
+      ics(...vevent("UID:flood", "SUMMARY:Flood", "DTSTART:20260106T000000", "RRULE:FREQ=MINUTELY")),
+      { source: "Parish", ...window },
+    );
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.length).toBeLessThanOrEqual(1000);
+  });
+
   it("excludes events outside the window", () => {
     const events = parseIcal(ics(...vevent("UID:4", "SUMMARY:Far Future", "DTSTART:20260815T100000")), {
       source: "Parish",
