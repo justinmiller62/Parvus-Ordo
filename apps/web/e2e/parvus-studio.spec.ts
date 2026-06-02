@@ -63,6 +63,26 @@ test("studio lands on Parvus Studio home and can open a project", async ({ page 
   await expect(page.getByTestId("yt-status")).toBeVisible();
 });
 
+test("slide upload: a project outside the viewer's parish 404s without leaking internals", async ({ page }) => {
+  // Auth as the teen so the session cookie rides along on page.request.
+  await page.goto("/dev/login?email=e2e-teen@parvaordo.test");
+  await page.waitForURL(/\/parvus-studio$/);
+
+  // POST a slide to a project id that doesn't exist in the teen's parish. The route
+  // must reject it with a fixed 404 — not create an orphan slide and not forward a
+  // raw FK/R2/driver error (which would leak storage keys / infra details).
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  const res = await page.request.post(`/parvus-studio/projects/0e2e0000-0000-0000-0000-0000000000ff/slides`, {
+    multipart: { file: { name: "slide.png", mimeType: "image/png", buffer: png } },
+  });
+  expect(res.status()).toBe(404);
+  const body = await res.json();
+  expect(body.error).toBe("Project not found.");
+});
+
 test("People console: admin sees members + invite form with Studio as an invitable role", async ({ page }) => {
   await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
   await page.goto("/people");
