@@ -16,8 +16,10 @@
   "dependencies": {
     "@parvaordo/shared": "workspace:*",
     "aws4fetch": "^1.0.20",
+    "ical.js": "^2.1.0",
     "jose": "^6.2.3",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "rrule": "^2.8.1"
   },
   "devDependencies": {
     "@types/pg": "^8.11.10"

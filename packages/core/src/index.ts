@@ -23,6 +23,9 @@ export * from "./ocia";
 // cohorts — student grouping, scheduling, gating, learning paths (keystone)
 export * from "./cohorts";
 
+// calendar — unified events + iCal feeds + cohort-schedule overlay (consumes cohorts)
+export * from "./calendar";
+
 // media / asset manager
 export * from "./media";
 
