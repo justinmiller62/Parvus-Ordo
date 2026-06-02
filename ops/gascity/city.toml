@@ -1,0 +1,52 @@
+[workspace]
+provider = "claude"
+
+[defaults]
+[defaults.rig]
+[defaults.rig.imports]
+[defaults.rig.imports.gastown]
+source = ".gc/system/packs/gastown"
+
+[[rigs]]
+name = "parva-ordo"
+prefix = "po"
+default_branch = "main"
+[rigs.imports]
+[rigs.imports.gastown]
+source = ".gc/system/packs/gastown"
+
+[daemon]
+formula_v2 = true
+
+# Review-quorum agents: spawn on-demand when a review bead is routed to them.
+[[named_session]]
+template = "security-auditor"
+mode = "on_demand"
+
+[[named_session]]
+template = "architecture-reviewer"
+mode = "on_demand"
+
+[[named_session]]
+template = "quality-linter"
+mode = "on_demand"
+
+[[named_session]]
+template = "test-engineer"
+mode = "on_demand"
+
+# Pilot guards: hold the autonomous roles so nothing dispatches or merges around
+# the review gate. The refinery merges ONLY when I resume it after the 4 reviewers
+# approve. Lift these (and graft the gated mayor prompt) before unleashing the full run.
+[[patches.agent]]
+name = "gastown.mayor"
+suspended = true
+
+[[patches.agent]]
+name = "gastown.deacon"
+suspended = true
+
+# Released after the 4-reviewer quorum approved po-7my (security/arch/quality/tests).
+[[patches.agent]]
+name = "parva-ordo/gastown.refinery"
+suspended = false
