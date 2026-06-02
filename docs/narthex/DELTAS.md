@@ -10,7 +10,7 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 ## student-lesson-view (~35–40% fidelity)
 | Sev | Delta | Notes |
 | --- | --- | --- |
-| HIGH | ☑ Video gating not enforced | `advanceAction` marks any item complete on Continue regardless of watch; player `watched` is cosmetic |
+| HIGH | ☑ Video gating not enforced | `advanceAction` gates video completion server-side via `isVideoItemWatched` (persisted `max_reached_ms` within 5s of the clip end); the player `watched` button is a cosmetic mirror, and a direct POST is bounced, not completed |
 | HIGH | ☑ Watch progress never persisted | `lesson_item_progress.max_reached_ms` (exists since 0004) never written/read; no resume, enforcement resets on reload |
 | MED | ☐ Engagement telemetry absent | no `lesson_start`/`answer_submit`(+correct)/`reading_complete`/`lesson_complete` events |
 | MED | ☑ Student question + feedback forms on completion step | `student_questions`/`student_feedback` mutations + UI absent |
@@ -23,7 +23,7 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | Sev | Delta | Notes |
 | --- | --- | --- |
 | HIGH | ☑ Persist + resume watch progress | same root as lesson-view; headline gap |
-| HIGH | ☑ Completion tied to actual watching | only the manual Continue writes completion |
+| HIGH | ☑ Completion tied to actual watching | completion is derived server-side from persisted `max_reached_ms` (`videoWatchSatisfied`), never trusted from the client — a forged `saveVideoProgress`/`advanceAction` can't complete an unwatched clip |
 | HIGH | ☑ Transcription Retry control | `failed` renders a dead label, no re-run |
 | HIGH | ☑ Orphan asset cleanup on upload failure | failed TUS/createUpload leaves the asset row behind |
 | HIGH/MED | ☐ YouTube ingest | external asset kind + caption import; entirely absent |

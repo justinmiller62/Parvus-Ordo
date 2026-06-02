@@ -12,6 +12,7 @@ import {
   getDb,
   getItemMaxReached,
   getLessonForEdit,
+  isVideoItemWatched,
   markVideoProgress,
   removeClip,
   requestClip,
@@ -70,24 +71,58 @@ describe("clips (stub processor)", () => {
 });
 
 describe("video watch progress", () => {
-  it("persists the furthest point (grows only) and sticky completion", async () => {
+  it("persists the furthest point (grows only) and server-derives sticky completion", async () => {
     const by = await userId("admin@parvaordo.test");
     const student = await userId("student@parvaordo.test");
     const lessonId = await createLesson({ parishId: HOLY_SPIRIT, createdBy: by, title: "Progress Test" });
     const versionId = (await getLessonForEdit(HOLY_SPIRIT, lessonId))!.selected.versionId;
-    const itemId = await addLessonItem({ parishId: HOLY_SPIRIT, versionId, kind: "video", content: {} });
+    // A 10s clip window: completion is derived from reaching within 5s of the end.
+    const itemId = await addLessonItem({
+      parishId: HOLY_SPIRIT,
+      versionId,
+      kind: "video",
+      content: { start_ms: 0, end_ms: 10_000 },
+    });
 
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 4000 });
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(4000);
+    // 4s of a 10s clip is short of the watch threshold → server keeps it incomplete.
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
 
     // a smaller report does not move it backwards
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 1000 });
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(4000);
 
-    // completion sticks; max still grows
-    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 8000, completed: true });
+    // reaching within tolerance of the end completes it; completion sticks; max grows
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 8000 });
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(8000);
     expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(true);
+
+    await deleteLesson(HOLY_SPIRIT, lessonId);
+  });
+
+  it("isVideoItemWatched gates completion: an unwatched video is refused, a watched one accepted", async () => {
+    const by = await userId("admin@parvaordo.test");
+    const student = await userId("student@parvaordo.test");
+    const lessonId = await createLesson({ parishId: HOLY_SPIRIT, createdBy: by, title: "Gate Test" });
+    const versionId = (await getLessonForEdit(HOLY_SPIRIT, lessonId))!.selected.versionId;
+    const itemId = await addLessonItem({
+      parishId: HOLY_SPIRIT,
+      versionId,
+      kind: "video",
+      content: { start_ms: 0, end_ms: 30_000 },
+    });
+
+    // No progress yet — a direct advanceAction POST would hit this and be refused.
+    expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(false);
+
+    // Partway through (10s of 30s) is still not "watched".
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 10_000 });
+    expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(false);
+
+    // Reaching within tolerance of the end clears the gate.
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 30_000 });
+    expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(true);
 
     await deleteLesson(HOLY_SPIRIT, lessonId);
   });

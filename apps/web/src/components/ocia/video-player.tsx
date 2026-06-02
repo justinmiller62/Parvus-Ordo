@@ -14,8 +14,11 @@ export interface PlayerWord {
 /**
  * Seek-enforcing clip player (ported from Narthex SegmentPlayer). Plays the HLS
  * stream `src` restricted to [startMs, endMs); the learner can't skip past the
- * furthest point they've watched (+2s grace) until the clip is finished. Enforcement
- * is client-side per Architecture §9 — we don't cut server-side clip assets.
+ * furthest point they've watched (+2s grace) until the clip is finished. The
+ * no-skip SEEK enforcement is client-side per Architecture §9 (we don't cut
+ * server-side clip assets); video COMPLETION, however, is gated on the server from
+ * the persisted progress this player reports (see markVideoProgress /
+ * isVideoItemWatched), so reporting progress is the only way to be marked done.
  *
  * `words` is the transcript ALREADY clipped to this window (server-side); we just
  * sync-highlight and allow click-to-seek (still subject to the no-skip rule).
@@ -130,7 +133,7 @@ export function VideoPlayer({
       // Persist progress, throttled to ~10s of new ground.
       if (persist && rel - lastSaveRef.current >= 10) {
         lastSaveRef.current = rel;
-        void saveVideoProgressAction(persistItemId!, Math.round(rel * 1000), false);
+        void saveVideoProgressAction(persistItemId!, Math.round(rel * 1000));
       }
 
       const dur = endSecRef.current - startSec;
@@ -140,9 +143,10 @@ export function VideoPlayer({
           setWatched(true);
           onWatched?.();
         }
-        // In the last 5s, keep retrying the completion save until one lands (≈5 attempts).
+        // In the last 5s, push progress every tick until one save lands (≈5 attempts);
+        // the server derives completion once a reported point reaches the clip end.
         if (persist && !savedCompleteRef.current) {
-          void saveVideoProgressAction(persistItemId!, Math.round(rel * 1000), true)
+          void saveVideoProgressAction(persistItemId!, Math.round(rel * 1000))
             .then(() => {
               savedCompleteRef.current = true;
             })
@@ -168,7 +172,7 @@ export function VideoPlayer({
   // Persist progress on unmount and when the tab is hidden (catches navigation away).
   useEffect(() => {
     if (!persist) return;
-    const save = () => void saveVideoProgressAction(persistItemId!, Math.round(maxReachedRef.current * 1000), savedCompleteRef.current);
+    const save = () => void saveVideoProgressAction(persistItemId!, Math.round(maxReachedRef.current * 1000));
     const onHide = () => {
       if (document.visibilityState === "hidden") save();
     };

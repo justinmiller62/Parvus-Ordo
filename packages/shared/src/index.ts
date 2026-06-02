@@ -144,3 +144,32 @@ export function clipSeek(s: ClipState): { clampTo?: number } {
   }
   return {};
 }
+
+// ─── Server-side video-watch completion gate (pure) ──────────────────────────
+
+/**
+ * How close to the clip end the student's furthest-reached point must come to
+ * count as "watched" (ms). Mirrors the player, which flips its `watched` state in
+ * the final 5s of the clip and seeds completion saves from there — so a learner who
+ * reaches the unlock point is never wrongly rejected by the server, while a
+ * throttled progress save (≈10s granularity) that lands just before completion
+ * still clears the bar.
+ */
+export const VIDEO_WATCH_TOLERANCE_MS = 5_000;
+
+/**
+ * Authoritative server-side gate behind the player's *cosmetic* `watched` button:
+ * a video lesson item may be completed only once the student's persisted
+ * furthest-reached point comes within VIDEO_WATCH_TOLERANCE_MS of the clip end.
+ *
+ * This is what stops a tampered completion — a direct `advanceAction` POST or a
+ * forged `saveVideoProgress(completed=true)` — from marking an unwatched video
+ * done: with no (or too little) persisted progress the gate returns false. An
+ * unknown or non-positive clip length is treated as not-yet-watchable (fail
+ * closed); authoring always supplies a window (`end_ms`) or a probed source
+ * duration, so real learners are unaffected.
+ */
+export function videoWatchSatisfied(maxReachedMs: number, clipDurationMs: number | null): boolean {
+  if (clipDurationMs == null || clipDurationMs <= 0) return false;
+  return maxReachedMs >= clipDurationMs - VIDEO_WATCH_TOLERANCE_MS;
+}
