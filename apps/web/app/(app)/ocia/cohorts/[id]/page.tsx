@@ -9,6 +9,7 @@ import {
   listParishStudents,
   listPaths,
 } from "@parvaordo/core";
+import { isAdmin, isStaff } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 import { CohortDetailClient } from "./cohort-detail-client";
 
@@ -19,9 +20,8 @@ export default async function CohortDetailPage({ params }: { params: Promise<{ i
   const viewer = await getViewer();
   const role = viewer?.identity?.role ?? null;
   const parishId = viewer?.identity?.parishId;
-  const isStaff = role === "admin" || role === "catechist" || role === "super_admin";
-  if (!parishId || !isStaff) redirect("/ocia/cohorts");
-  const canDelete = role === "admin" || role === "super_admin";
+  if (!parishId || !isStaff(role)) redirect("/ocia/cohorts");
+  const canDelete = isAdmin(role);
 
   const settings = await getCohortSettings(parishId, id);
   if (!settings) notFound();

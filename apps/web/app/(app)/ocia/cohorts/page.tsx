@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { listCohortCards } from "@parvaordo/core";
+import { isAdmin, isStaff } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 import { CohortsListClient } from "./cohorts-list-client";
 
@@ -9,10 +10,9 @@ export default async function CohortsPage() {
   const viewer = await getViewer();
   const role = viewer?.identity?.role ?? null;
   const parishId = viewer?.identity?.parishId;
-  const isStaff = role === "admin" || role === "catechist" || role === "super_admin";
-  if (!parishId || !isStaff) redirect("/ocia/lessons");
+  if (!parishId || !isStaff(role)) redirect("/ocia/lessons");
 
-  const canCreate = role === "admin" || role === "super_admin";
+  const canCreate = isAdmin(role);
   const cohorts = await listCohortCards(parishId);
 
   return (

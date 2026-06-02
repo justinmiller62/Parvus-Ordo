@@ -23,6 +23,19 @@ export function isStaff(role: Role | null | undefined): role is "super_admin" | 
   return role === "super_admin" || role === "admin" || role === "catechist";
 }
 
+/**
+ * Parish/diocese administrators: the "can they manage members + roles, send invites,
+ * change parish settings?" set — a strict subset of {@link STAFF_ROLES} (a catechist is
+ * staff but NOT an admin). One rule for the Server Actions, pages, and app shell that
+ * gate admin-only writes, so the client can never drift from the server guards.
+ */
+export const ADMIN_ROLES: Role[] = ["super_admin", "admin"];
+// A type guard (like isStaff) so `if (!isAdmin(role)) redirect()` narrows `role` to the
+// admin subset afterward.
+export function isAdmin(role: Role | null | undefined): role is "super_admin" | "admin" {
+  return role === "super_admin" || role === "admin";
+}
+
 /** Human display labels for roles. */
 export const ROLE_LABELS: Record<Role, string> = {
   super_admin: "Diocese Admin",

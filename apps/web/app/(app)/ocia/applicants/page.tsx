@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { canInviteRole, getParishApplyInfo, listOciaApplicants, INVITABLE_ROLES } from "@parvaordo/core";
-import { isStaff, type Role } from "@parvaordo/shared";
+import { isAdmin, isStaff, type Role } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 import { InviteForm } from "./invite-form";
 import {
@@ -24,7 +24,6 @@ export default async function ApplicantsPage() {
 
   const [applicants, info] = await Promise.all([listOciaApplicants(parishId), getParishApplyInfo(parishId)]);
   const invitableRoles = INVITABLE_ROLES.filter((r) => canInviteRole(role ?? null, r)) as Role[];
-  const isAdmin = role === "admin" || role === "super_admin";
   const applicationsOpen = info?.applicationsEnabled ?? false;
 
   return (
@@ -34,7 +33,7 @@ export default async function ApplicantsPage() {
           <h1 className="font-heading text-2xl text-navy">Applicants &amp; invitations</h1>
           <p className="text-sm text-gray-500">Review OCIA inquiries and invite people to the parish.</p>
         </div>
-        {isAdmin ? (
+        {isAdmin(role) ? (
           <form action={toggleApplicationsAction.bind(null, !applicationsOpen)}>
             <button
               type="submit"

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import {
   IMPERSONATABLE_ROLES,
+  isAdmin,
   ociaEligible,
   peopleEligible,
   ROLE_LABELS,
@@ -89,7 +90,7 @@ const LEARNER_MODULES: NavItem[] = [
 // only admin/super_admin get the "back to parish Dashboard" link.
 function ociaNav(role: Role | null): NavItem[] {
   const isLearner = role === "catechumen_candidate";
-  const canReturnToDashboard = role === "admin" || role === "super_admin";
+  const canReturnToDashboard = isAdmin(role);
   return [
     ...(canReturnToDashboard ? [{ href: "/", label: "Dashboard", Icon: ArrowLeft, live: true } as NavItem] : []),
     { href: "/ocia", label: "OCIA Home", Icon: Home, live: true },
@@ -100,7 +101,7 @@ function ociaNav(role: Role | null): NavItem[] {
 
 // Parvus Studio module nav (when inside /parvus-studio/*) — its own sidebar, like OCIA.
 function studioNav(role: Role | null): NavItem[] {
-  const canReturnToDashboard = role === "admin" || role === "super_admin";
+  const canReturnToDashboard = isAdmin(role);
   return [
     ...(canReturnToDashboard ? [{ href: "/", label: "Dashboard", Icon: ArrowLeft, live: true } as NavItem] : []),
     { href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true },

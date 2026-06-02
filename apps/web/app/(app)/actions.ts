@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { INVITABLE_ROLES, InviteError, inviteMember, lookupAppUser } from "@parvaordo/core";
-import { IMPERSONATABLE_ROLES, type Role } from "@parvaordo/shared";
+import { IMPERSONATABLE_ROLES, isAdmin, type Role } from "@parvaordo/shared";
 import { getAuthedUser, signOutAndRedirect } from "@/src/lib/auth";
 import { ACTIVE_PARISH_COOKIE, VIEW_AS_COOKIE, getViewer } from "@/src/lib/viewer";
 
@@ -52,7 +52,7 @@ export async function inviteMemberAction(_prev: InviteState, form: FormData): Pr
   const role = v?.identity?.role ?? null;
   const parishId = v?.identity?.parishId;
   const userId = v?.identity?.userId;
-  if (!parishId || !userId || !(role === "admin" || role === "super_admin")) {
+  if (!parishId || !userId || !isAdmin(role)) {
     return { ok: false, error: "Not authorized." };
   }
   const email = ((form.get("email") as string) ?? "").trim();

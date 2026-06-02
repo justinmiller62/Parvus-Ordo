@@ -1,6 +1,5 @@
 "use server";
 
-import { isStaff } from "@parvaordo/shared";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
@@ -16,6 +15,7 @@ import {
   updateScriptDraft,
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
+import { requireStaff } from "@/src/lib/require-role";
 
 async function ctx(): Promise<{ parishId: string; userId: string }> {
   const v = await getViewer();
@@ -61,10 +61,8 @@ export async function deleteRecordingAction(projectId: string): Promise<void> {
 
 /** Catechist/admin review of a submitted recording: approve or reject. */
 export async function reviewProjectAction(projectId: string, decision: "approved" | "rejected"): Promise<void> {
-  const v = await getViewer();
-  const role = v?.identity?.role;
-  if (!v?.identity?.parishId || !isStaff(role)) redirect("/");
-  await (decision === "approved" ? approveProject : rejectProject)(v.identity.parishId, projectId);
+  const { parishId } = await requireStaff();
+  await (decision === "approved" ? approveProject : rejectProject)(parishId, projectId);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
 

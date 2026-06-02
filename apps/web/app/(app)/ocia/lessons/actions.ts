@@ -1,36 +1,25 @@
 "use server";
 
-import { isStaff } from "@parvaordo/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createLesson, deleteLesson, forkLesson, removeClipsForLesson, unpublishLesson } from "@parvaordo/core";
-import { getViewer } from "@/src/lib/viewer";
-
-async function requireBuilder(): Promise<{ parishId: string; userId: string }> {
-  const v = await getViewer();
-  const role = v?.identity?.role;
-  const parishId = v?.identity?.parishId;
-  if (!parishId || !isStaff(role)) {
-    redirect("/ocia");
-  }
-  return { parishId, userId: v!.identity!.userId };
-}
+import { requireStaff } from "@/src/lib/require-role";
 
 export async function createLessonAction(): Promise<void> {
-  const { parishId, userId } = await requireBuilder();
+  const { parishId, userId } = await requireStaff("/ocia");
   const id = await createLesson({ parishId, createdBy: userId });
   redirect(`/ocia/lessons/${id}/edit`);
 }
 
 export async function forkLessonAction(sourceLessonId: string): Promise<void> {
-  const { parishId, userId } = await requireBuilder();
+  const { parishId, userId } = await requireStaff("/ocia");
   const id = await forkLesson({ parishId, createdBy: userId, sourceLessonId });
   redirect(`/ocia/lessons/${id}/edit`);
 }
 
 /** Delete a parish lesson straight from the manage list (clips cleaned up first). */
 export async function deleteLessonFromListAction(lessonId: string): Promise<void> {
-  const { parishId } = await requireBuilder();
+  const { parishId } = await requireStaff("/ocia");
   await removeClipsForLesson(parishId, lessonId);
   await deleteLesson(parishId, lessonId);
   revalidatePath("/ocia/lessons");
@@ -38,7 +27,7 @@ export async function deleteLessonFromListAction(lessonId: string): Promise<void
 
 /** Take a parish lesson offline from the manage list. */
 export async function unpublishLessonFromListAction(lessonId: string): Promise<void> {
-  const { parishId } = await requireBuilder();
+  const { parishId } = await requireStaff("/ocia");
   await unpublishLesson({ parishId, lessonId });
   revalidatePath("/ocia/lessons");
 }

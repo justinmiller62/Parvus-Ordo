@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { INVITABLE_ROLES, canInviteRole, listParishMembers, listPendingInvitations } from "@parvaordo/core";
-import { ROLE_LABELS, type Role } from "@parvaordo/shared";
+import { isAdmin, ROLE_LABELS, type Role } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 import { InviteForm } from "../invite-form";
 import { removeMemberAction, renameMemberAction, revokeInvitationAction, setRoleAction } from "./actions";
@@ -11,7 +11,7 @@ export default async function PeoplePage() {
   const role = viewer?.identity?.role ?? null;
   const parishId = viewer?.identity?.parishId;
   const callerId = viewer?.identity?.userId;
-  if (!parishId || !(role === "admin" || role === "super_admin")) redirect("/");
+  if (!parishId || !isAdmin(role)) redirect("/");
 
   const [members, pending] = await Promise.all([listParishMembers(parishId), listPendingInvitations()]);
   const pendingByEmail = new Map(pending.map((p) => [p.email.toLowerCase(), p.id]));
