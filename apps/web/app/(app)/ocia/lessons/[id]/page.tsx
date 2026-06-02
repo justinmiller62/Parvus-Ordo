@@ -10,6 +10,7 @@ import {
   getCompletedItemsForVersion,
   getItemMaxReached,
   getLessonDetail,
+  listDictionary,
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { VideoPlayer, type PlayerWord } from "@/src/components/ocia/video-player";
@@ -17,6 +18,8 @@ import { VideoStep } from "@/src/components/ocia/video-step";
 import { PreviewJumpTo } from "@/src/components/ocia/preview-nav";
 import { CompletionForms } from "@/src/components/ocia/completion-forms";
 import { LessonStartBeacon } from "@/src/components/ocia/lesson-start-beacon";
+import { DictionaryProvider, type DictTermData } from "@/src/components/ocia/dictionary/dictionary-provider";
+import { HighlightedReading } from "@/src/components/ocia/dictionary/highlighted-reading";
 import { advanceAction } from "./actions";
 
 const CARD = "rounded-lg border border-gray-200 bg-white p-6";
@@ -145,6 +148,17 @@ export default async function LessonPage({
     );
   }
 
+  // Dictionary terms for inline highlighting in reading content + the video transcript.
+  // Universal entries are served from the shared cache, so this is cheap per page.
+  const dictTerms: DictTermData[] = (await listDictionary(identity.parishId)).map((d) => ({
+    headword: d.headword,
+    variants: d.variants,
+    definition: d.definition,
+    pronunciation: d.pronunciation,
+    category: d.category,
+    isLocal: d.isLocal,
+  }));
+
   const item = items[current]!;
   const isActive = !isPreview && current === resume;
   const stepNum = current + 1;
@@ -210,7 +224,7 @@ export default async function LessonPage({
   const body = (
     <div className={CARD}>
       {item.kind === "reading" ? (
-        <div className={PROSE} dangerouslySetInnerHTML={{ __html: String(item.content.html ?? "") }} />
+        <HighlightedReading className={PROSE} html={String(item.content.html ?? "")} />
       ) : item.kind === "video" ? (
         videoNode
       ) : (
@@ -330,49 +344,51 @@ export default async function LessonPage({
         </div>
       </div>
 
-      {isActive && item.kind === "video" && playerProps ? (
-        <VideoStep
-          src={playerProps.src}
-          startMs={playerProps.startMs}
-          endMs={playerProps.endMs}
-          words={playerProps.words}
-          itemId={item.id}
-          lessonId={id}
-          step={current}
-          versionId={lesson.versionId}
-          total={total}
-          initialMaxReachedMs={savedMaxReached}
-          backHref={current > 0 ? hrefFor(current - 1) : undefined}
-        />
-      ) : isActive ? (
-        <form action={advanceAction}>
-          <input type="hidden" name="lessonId" value={id} />
-          <input type="hidden" name="itemId" value={item.id} />
-          <input type="hidden" name="kind" value={item.kind} />
-          <input type="hidden" name="step" value={current} />
-          <input type="hidden" name="versionId" value={lesson.versionId} />
-          <input type="hidden" name="total" value={total} />
-          {body}
-          <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
-            {backEl}
-            <button type="submit" className={PRIMARY_BTN} data-testid="wizard-next">
-              {primaryLabel}
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-        </form>
-      ) : (
-        <>
-          {body}
-          <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
-            {backEl}
-            <Link href={hrefFor(current + 1)} className={PRIMARY_BTN} data-testid="wizard-next">
-              {isPreview && isLast ? "Finish" : "Continue"}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </>
-      )}
+      <DictionaryProvider terms={dictTerms}>
+        {isActive && item.kind === "video" && playerProps ? (
+          <VideoStep
+            src={playerProps.src}
+            startMs={playerProps.startMs}
+            endMs={playerProps.endMs}
+            words={playerProps.words}
+            itemId={item.id}
+            lessonId={id}
+            step={current}
+            versionId={lesson.versionId}
+            total={total}
+            initialMaxReachedMs={savedMaxReached}
+            backHref={current > 0 ? hrefFor(current - 1) : undefined}
+          />
+        ) : isActive ? (
+          <form action={advanceAction}>
+            <input type="hidden" name="lessonId" value={id} />
+            <input type="hidden" name="itemId" value={item.id} />
+            <input type="hidden" name="kind" value={item.kind} />
+            <input type="hidden" name="step" value={current} />
+            <input type="hidden" name="versionId" value={lesson.versionId} />
+            <input type="hidden" name="total" value={total} />
+            {body}
+            <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
+              {backEl}
+              <button type="submit" className={PRIMARY_BTN} data-testid="wizard-next">
+                {primaryLabel}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {body}
+            <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
+              {backEl}
+              <Link href={hrefFor(current + 1)} className={PRIMARY_BTN} data-testid="wizard-next">
+                {isPreview && isLast ? "Finish" : "Continue"}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </>
+        )}
+      </DictionaryProvider>
     </main>
   );
 }

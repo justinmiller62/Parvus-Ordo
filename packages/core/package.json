@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./auth": "./src/auth/index.ts",
-    "./branding": "./src/branding/index.ts"
+    "./branding": "./src/branding/index.ts",
+    "./dictionary-text": "./src/dictionary/normalize.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
