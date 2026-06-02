@@ -81,13 +81,17 @@ describe("YOUTH_MCP_TOOLS", () => {
   });
 });
 
-describe("external-provider guards (fail fast when unconfigured)", () => {
+describe("external-provider behavior when unconfigured", () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it("uploadRecordingToBunny throws when Bunny env is missing", async () => {
-    vi.stubEnv("BUNNY_STREAM_LIBRARY_ID", "");
-    vi.stubEnv("BUNNY_STREAM_LIBRARY_KEY", "");
-    await expect(uploadRecordingToBunny(new Uint8Array(), "t")).rejects.toThrow(/Bunny is not configured/);
+  it("uploadRecordingToBunny uses the shared stub provider under MEDIA_STUB (no separate Bunny client)", async () => {
+    // Routing recordings through the media StorageProvider means Studio runs on the
+    // local stub path instead of throwing — the duplicate Bunny client it replaces
+    // had no stub support at all.
+    vi.stubEnv("MEDIA_STUB", "1");
+    const r = await uploadRecordingToBunny(new Uint8Array([1, 2, 3]), "Recording");
+    expect(r.videoId).toMatch(/^stub-/);
+    expect(r.playbackUrl).toBeTruthy();
   });
 
   it("presignSlideUrl / putSlide throw when R2 env is missing", async () => {
