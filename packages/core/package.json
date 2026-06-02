@@ -10,7 +10,8 @@
     "./auth": "./src/auth/index.ts",
     "./branding": "./src/branding/index.ts",
     "./calendar-types": "./src/calendar/types.ts",
-    "./dictionary-text": "./src/dictionary/normalize.ts"
+    "./dictionary-text": "./src/dictionary/normalize.ts",
+    "./youtube-url": "./src/media/youtube-url.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

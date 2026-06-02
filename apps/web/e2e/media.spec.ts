@@ -201,3 +201,32 @@ test("catechist adds a video item and the iMovie-style trimmer mounts", async ({
   await page.getByTestId("delete-lesson-btn").click();
   await page.waitForURL(/\/ocia\/lessons$/);
 });
+
+// The "Add from YouTube" affordance and its live preview are pure client behavior (id
+// extraction → youtube-nocookie embed URL), so this asserts the picker UX without the
+// network — actually ingesting a YouTube video reaches youtube.com, which is out of scope
+// for an offline e2e (see DELTAS: YouTube student-playback e2e is externally blocked).
+test("catechist video picker offers a YouTube source with a live preview", async ({ page }) => {
+  page.on("dialog", (d) => d.accept());
+  await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
+  await page.goto("/ocia/lessons");
+  await page.getByRole("button", { name: "New lesson" }).click();
+  await page.waitForURL(/\/ocia\/lessons\/[0-9a-f-]+\/edit$/);
+
+  await page.getByRole("button", { name: "Video" }).click();
+  await page.getByRole("button", { name: "Edit" }).first().click();
+  await expect(page.getByRole("heading", { name: "Edit Video" })).toBeVisible();
+
+  // Open the YouTube sub-form and paste a watch URL → the privacy-enhanced embed previews.
+  await page.getByTestId("youtube-add-toggle").click();
+  await expect(page.getByTestId("youtube-add-submit")).toBeDisabled(); // empty input
+  await page.getByTestId("youtube-url-input").fill("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  const preview = page.getByTestId("youtube-preview");
+  await expect(preview).toBeVisible();
+  await expect(preview).toHaveAttribute("src", /youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/);
+  await expect(page.getByTestId("youtube-add-submit")).toBeEnabled();
+
+  await page.getByRole("button", { name: "Close editor" }).click();
+  await page.getByTestId("delete-lesson-btn").click();
+  await page.waitForURL(/\/ocia\/lessons$/);
+});

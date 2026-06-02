@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Lock } from "lucide-react";
 import { VideoPlayer, type PlayerWord } from "./video-player";
+import { YouTubePlayer } from "./youtube-player";
 import { advanceAction } from "@/app/(app)/ocia/lessons/[id]/actions";
 
 const BACK_BTN =
@@ -29,6 +30,7 @@ export function VideoStep({
   total,
   initialMaxReachedMs,
   backHref,
+  youTubeVideoId,
 }: {
   src: string;
   startMs: number;
@@ -41,6 +43,8 @@ export function VideoStep({
   total: number;
   initialMaxReachedMs: number;
   backHref?: string;
+  /** When set, the source is a YouTube video — use the IFrame player instead of `<video>`. */
+  youTubeVideoId?: string | null;
 }) {
   const [watched, setWatched] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -61,15 +65,27 @@ export function VideoStep({
   return (
     <>
       <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <VideoPlayer
-          src={src}
-          startMs={startMs}
-          endMs={endMs}
-          words={words}
-          persistItemId={itemId}
-          initialMaxReachedMs={initialMaxReachedMs}
-          onWatched={() => setWatched(true)}
-        />
+        {youTubeVideoId ? (
+          <YouTubePlayer
+            videoId={youTubeVideoId}
+            startMs={startMs}
+            endMs={endMs}
+            words={words}
+            persistItemId={itemId}
+            initialMaxReachedMs={initialMaxReachedMs}
+            onWatched={() => setWatched(true)}
+          />
+        ) : (
+          <VideoPlayer
+            src={src}
+            startMs={startMs}
+            endMs={endMs}
+            words={words}
+            persistItemId={itemId}
+            initialMaxReachedMs={initialMaxReachedMs}
+            onWatched={() => setWatched(true)}
+          />
+        )}
       </div>
       <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
         {backHref ? (

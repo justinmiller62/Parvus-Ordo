@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -32,6 +32,7 @@ import {
   deleteLessonAction,
   deleteVersionAction,
   ensureDraftAction,
+  ingestYouTubeAction,
   materializeClipAction,
   publishAction,
   reorderAction,
@@ -209,6 +210,20 @@ export function LessonBuilder({
   const [generatingClip, setGeneratingClip] = useState(false);
   const [pending, startTransition] = useTransition();
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Videos pickable into a video item: the server-loaded library plus any YouTube videos
+  // added this session (a revalidate folds them into `videoAssets`, so we de-dupe by id).
+  const [addedAssets, setAddedAssets] = useState<VideoAssetOption[]>([]);
+  const assets = useMemo(() => {
+    const seen = new Set(videoAssets.map((a) => a.id));
+    return [...addedAssets.filter((a) => !seen.has(a.id)), ...videoAssets];
+  }, [videoAssets, addedAssets]);
+
+  const addYouTube = async (input: string, title: string): Promise<VideoAssetOption> => {
+    const opt = await ingestYouTubeAction(lessonId, versionId, input, title);
+    setAddedAssets((prev) => (prev.some((a) => a.id === opt.id) ? prev : [opt, ...prev]));
+    return opt;
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -578,13 +593,14 @@ export function LessonBuilder({
               ) : (
                 <VideoEditor
                   content={editingItem.content}
-                  assets={videoAssets}
+                  assets={assets}
                   onChange={(c) => onItemChange(editingItem.id, c)}
                   clipStatus={
                     clipStatuses[editingItem.id] ?? (editingItem.content.clip_asset_id ? "processing" : "none")
                   }
                   onGenerateClip={generateClip}
                   generating={generatingClip}
+                  onAddYouTube={addYouTube}
                 />
               )}
             </div>
