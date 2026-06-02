@@ -1,12 +1,13 @@
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 
 /**
  * getDb(parishId) — the single connection chokepoint (Architecture §7).
  *
- * Every query runs in a transaction that sets `app.parish_id` transaction-local,
- * so RLS policies isolate by tenant. Phase 1 always uses the shared pool; in
- * Phase 4 this function checks `parishes.dedicated_db_url` and routes
- * accordingly — with no changes at any call site.
+ * Every query runs in a transaction that sets `app.parish_id` (and, when the parish
+ * belongs to one, `app.diocese_id`) transaction-local, so RLS policies isolate by
+ * tenant and match diocese-scoped shared content without a per-row subquery. Phase 1
+ * always uses the shared pool; in Phase 4 this function checks
+ * `parishes.dedicated_db_url` and routes accordingly — with no changes at any call site.
  *
  * Driver note: local/Node uses `pg`. The Workers/Neon-serverless swap lives
  * inside this file only (the chokepoint), per CLAUDE.md §5.
@@ -23,6 +24,27 @@ function getPool(): Pool {
   return pool;
 }
 
+/**
+ * Set the transaction-local tenant GUCs the RLS policies read — one place, shared by
+ * both entry points. `app.parish_id` scopes every tenant table. `app.diocese_id` lets
+ * the three-tier *read* policies (lessons / lesson_versions / lesson_items / assets)
+ * match diocese-scoped shared content with a plain GUC compare instead of a per-row
+ * correlated subquery on `parishes` — the active parish's diocese is resolved here,
+ * once per request. It is set ONLY when the parish actually has a diocese; otherwise it
+ * is left unset, which the policy's `NULLIF(...,'')::uuid` reads as NULL (the parish
+ * sees no diocese content). The diocese lookup is RLS-safe because app.parish_id is set
+ * first, so `parishes` exposes exactly the active parish row.
+ */
+async function setTenantContext(client: PoolClient, parishId: string): Promise<void> {
+  await client.query("SELECT set_config('app.parish_id', $1, true)", [parishId]);
+  await client.query(
+    `SELECT set_config('app.diocese_id', p.diocese_id::text, true)
+       FROM parishes p
+      WHERE p.id = $1::uuid AND p.diocese_id IS NOT NULL`,
+    [parishId],
+  );
+}
+
 export interface TenantDb {
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<{ rows: T[] }>;
 }
@@ -33,10 +55,10 @@ export function getDb(parishId: string | null): TenantDb {
       const client = await getPool().connect();
       try {
         await client.query("BEGIN");
-        // Only set the GUC when we have a tenant; leaving it unset yields no rows
-        // (an empty string would fail the ::uuid cast in the RLS policy).
+        // Only set the GUCs when we have a tenant; with none, the policies see no
+        // tenant and return only world-readable (global) rows.
         if (parishId) {
-          await client.query("SELECT set_config('app.parish_id', $1, true)", [parishId]);
+          await setTenantContext(client, parishId);
         }
         const result = await client.query(sql, params);
         await client.query("COMMIT");
@@ -68,7 +90,7 @@ export async function withTenant<T>(
   try {
     await client.query("BEGIN");
     if (parishId) {
-      await client.query("SELECT set_config('app.parish_id', $1, true)", [parishId]);
+      await setTenantContext(client, parishId);
     }
     const q: TenantQuery = async (sql, params = []) => (await client.query(sql, params)).rows;
     const result = await fn(q);
