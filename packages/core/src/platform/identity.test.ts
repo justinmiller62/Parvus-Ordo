@@ -39,3 +39,42 @@ describe("pickActiveMembership", () => {
     expect(pickActiveMembership([a], { parishId: "nope" })).toBe(a);
   });
 });
+
+// The active parish (and thus the parishId fed to getDb for every RSC read) is steered
+// by the client-controlled po_active_parish cookie. The ENTIRE tenant boundary rests on
+// pickActiveMembership only honoring a hint that matches one of the user's OWN
+// memberships. These pin that invariant so a regression to "trust the raw hint" — which
+// would be a cross-tenant escalation — fails CI. (po-h8v)
+describe("pickActiveMembership — tenant boundary (forged po_active_parish cookie)", () => {
+  const own1 = m("own-1", "admin");
+  const own2 = m("own-2", "catechist");
+
+  it("ignores a forged cookie for a foreign parish — stays ambiguous, never a silent pick", () => {
+    // 2+ memberships + a hint the user doesn't hold ⇒ null (show the chooser), NOT a
+    // fallback to an arbitrary membership and NEVER the forged foreign parish.
+    expect(pickActiveMembership([own1, own2], { parishId: "foreign-parish" })).toBeNull();
+  });
+
+  it("a forged cookie cannot override a legitimate host-resolved parish", () => {
+    expect(pickActiveMembership([own1, own2], { parishId: "foreign-parish", hostParishId: "own-2" })).toBe(own2);
+  });
+
+  it("cannot fabricate a parish when BOTH cookie and host are foreign", () => {
+    expect(pickActiveMembership([own1, own2], { parishId: "foreign", hostParishId: "also-foreign" })).toBeNull();
+  });
+
+  it("only ever returns one of the user's own membership objects (no hint-derived parish)", () => {
+    // Referential check: a non-null result must BE an input membership, proving the
+    // function selects from memberships and never constructs a parish from a hint.
+    const cases: Array<{ parishId?: string; hostParishId?: string }> = [
+      { parishId: "foreign-parish" },
+      { parishId: "own-1" },
+      { hostParishId: "own-2" },
+      { parishId: "foreign-parish", hostParishId: "own-1" },
+    ];
+    for (const opts of cases) {
+      const picked = pickActiveMembership([own1, own2], opts);
+      if (picked !== null) expect([own1, own2]).toContain(picked);
+    }
+  });
+});

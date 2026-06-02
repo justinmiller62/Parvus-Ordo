@@ -80,6 +80,12 @@ export function pickActiveMembership(
   opts: { parishId?: string | null; hostParishId?: string | null } = {},
 ): ParishMembership | null {
   if (memberships.length === 0) return null;
+  // SECURITY (tenant boundary): both hints — the client-controlled po_active_parish
+  // cookie and the request host — are UNTRUSTED. They may only SELECT among the user's
+  // own memberships via this .find(); a hint for a parish the user doesn't hold finds no
+  // match and is ignored. Never return (or feed getDb) a parishId that isn't already in
+  // `memberships`, and never trust a hint directly — that would be a cross-tenant
+  // escalation. Locked by identity.test.ts "tenant boundary" cases. (po-h8v)
   for (const hint of [opts.parishId, opts.hostParishId]) {
     if (hint) {
       const match = memberships.find((x) => x.parishId === hint);
