@@ -20,6 +20,8 @@ export * from "./ocia/lessons";
 export * from "./ocia/answers";
 export * from "./ocia/progress";
 export * from "./ocia/feedback";
+export * from "./ocia/discussion-template";
+export * from "./ocia/weekly-export";
 
 // media / asset manager
 export * from "./media";

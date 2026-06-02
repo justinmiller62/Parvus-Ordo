@@ -25,6 +25,8 @@ const E2E_PARISH = "0e2e0000-0000-0000-0000-0000000000a1";
 const E2E_VIDEO = "0e2e0000-0000-0000-0000-0000000000b1";
 const E2E_VIDEO_LESSON = "0e2e0000-0000-0000-0000-0000000000c1";
 const E2E_QUIZ_LESSON = "0e2e0000-0000-0000-0000-0000000000c2";
+const E2E_COHORT = "0e2e0000-0000-0000-0000-0000000000e1";
+const E2E_PATH = "0e2e0000-0000-0000-0000-0000000000e2";
 const E2E_YOUTH_TOPIC = "0e2e0000-0000-0000-0000-0000000000d1";
 const E2E_YOUTH_PROJECT = "0e2e0000-0000-0000-0000-0000000000d2";
 const E2E_MCP_TOKEN = "mcp_e2e_youth_token"; // long-lived; the youth-teaches spec drives MCP with it
@@ -214,6 +216,54 @@ await seedLesson({
   ],
 });
 
+// ── Weekly Export fixtures ───────────────────────────────────────────────────
+// A cohort with one learning path; the student is enrolled and the quiz lesson is
+// assigned to week 1, with the student's answer + a question + feedback. Drives
+// the teacher Weekly Export page (/ocia/cohorts/:id/week/1/export).
+const studentId = (await client.query(`SELECT id FROM users WHERE email = 'e2e-student@parvaordo.test'`)).rows[0].id;
+await client.query(`INSERT INTO cohorts (id, parish_id, name) VALUES ($1, $2, 'E2E OCIA Cohort')`, [
+  E2E_COHORT,
+  E2E_PARISH,
+]);
+await client.query(`INSERT INTO learning_paths (id, parish_id, cohort_id, name) VALUES ($1, $2, $3, 'E2E Adults Path')`, [
+  E2E_PATH,
+  E2E_PARISH,
+  E2E_COHORT,
+]);
+await client.query(`INSERT INTO learning_path_members (parish_id, path_id, student_id) VALUES ($1, $2, $3)`, [
+  E2E_PARISH,
+  E2E_PATH,
+  studentId,
+]);
+await client.query(
+  `INSERT INTO learning_path_lessons (parish_id, path_id, lesson_id, week_number) VALUES ($1, $2, $3, 1)`,
+  [E2E_PARISH, E2E_PATH, E2E_QUIZ_LESSON],
+);
+const openQuestionId = (
+  await client.query(
+    `SELECT li.id FROM lesson_items li
+       JOIN lesson_versions lv ON lv.id = li.version_id
+      WHERE lv.lesson_id = $1 AND li.kind = 'question'
+      ORDER BY li.position LIMIT 1`,
+    [E2E_QUIZ_LESSON],
+  )
+).rows[0].id;
+await client.query(
+  `INSERT INTO answers (parish_id, item_id, student_id, text) VALUES ($1, $2, $3, $4)
+   ON CONFLICT (item_id, student_id) DO UPDATE SET text = EXCLUDED.text`,
+  [E2E_PARISH, openQuestionId, studentId, "I say Jesus is the Son of the living God."],
+);
+await client.query(
+  `INSERT INTO student_questions (parish_id, lesson_id, student_id, text)
+   VALUES ($1, $2, $3, 'How can I be sure Jesus is truly God?')`,
+  [E2E_PARISH, E2E_QUIZ_LESSON, studentId],
+);
+await client.query(
+  `INSERT INTO student_feedback (parish_id, lesson_id, student_id, text)
+   VALUES ($1, $2, $3, 'This lesson really helped me pray.')`,
+  [E2E_PARISH, E2E_QUIZ_LESSON, studentId],
+);
+
 // Global dictionary entry (no parish_id — universal). Owner conn bypasses RLS.
 await client.query(
   `INSERT INTO dictionary_entries (headword, definition, category, status)
@@ -228,4 +278,6 @@ await client.query(
 );
 
 await client.end();
-console.log("e2e fixtures ready: E2E Test Parish (4 users, 1 video asset, 2 lessons, 1 youth project, 1 dictionary + 1 prayer entry)");
+console.log(
+  "e2e fixtures ready: E2E Test Parish (4 users, 1 video asset, 2 lessons, 1 cohort + learning path, 1 youth project, 1 dictionary + 1 prayer entry)",
+);
