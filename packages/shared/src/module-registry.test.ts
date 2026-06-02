@@ -36,34 +36,56 @@ describe("MODULES registry", () => {
   });
 });
 
-describe("resolveEnabled (pure overlay: registry defaults ← parish rows)", () => {
+describe("resolveEnabled (3-layer overlay: defaults ← diocese ← parish)", () => {
   it("with no rows, enables every module whose defaultEnabled is true", () => {
-    expect(resolveEnabled([])).toEqual(new Set(ALL_MODULE_KEYS));
+    expect(resolveEnabled({})).toEqual(new Set(ALL_MODULE_KEYS));
   });
 
   it("a parish row turns a toggleable module off (and leaves its sibling untouched)", () => {
-    const enabled = resolveEnabled([{ module_key: "ocia", enabled: false }]);
+    const enabled = resolveEnabled({ parish: [{ module_key: "ocia", enabled: false }] });
     expect(enabled.has("ocia")).toBe(false);
     expect(enabled.has("studio")).toBe(true);
   });
 
   it("ignores rows for unknown module keys", () => {
-    expect(resolveEnabled([{ module_key: "not_a_module", enabled: true }])).toEqual(new Set(ALL_MODULE_KEYS));
+    expect(resolveEnabled({ parish: [{ module_key: "not_a_module", enabled: true }] })).toEqual(
+      new Set(ALL_MODULE_KEYS),
+    );
   });
 
   it("never disables an always-on (non-toggleable) module, even if a row says so (RFC-001 §3.1 cannot-be-disabled)", () => {
-    const enabled = resolveEnabled([
-      { module_key: "dictionary", enabled: false },
-      { module_key: "people", enabled: false },
-    ]);
-    expect(enabled.has("dictionary")).toBe(true);
-    expect(enabled.has("people")).toBe(true);
+    const enabled = resolveEnabled({
+      diocese: [{ module_key: "people", enabled: false }],
+      parish: [{ module_key: "dictionary", enabled: false }],
+    });
+    expect(enabled.has("dictionary")).toBe(true); // pinned even against a parish row
+    expect(enabled.has("people")).toBe(true); // pinned even against a diocese row
   });
 
   it("overlays a toggleable module in both directions (synthetic dark-launch: default-off, row turns on)", () => {
     const reg: Record<ModuleKey, ModuleDef> = { ...MODULES, ocia: { ...MODULES.ocia, defaultEnabled: false } };
-    expect(resolveEnabled([], reg).has("ocia")).toBe(false);
-    expect(resolveEnabled([{ module_key: "ocia", enabled: true }], reg).has("ocia")).toBe(true);
+    expect(resolveEnabled({}, reg).has("ocia")).toBe(false);
+    expect(resolveEnabled({ parish: [{ module_key: "ocia", enabled: true }] }, reg).has("ocia")).toBe(true);
+  });
+
+  it("a diocese-level disable cascades to the parish when there is no parish row", () => {
+    const enabled = resolveEnabled({ diocese: [{ module_key: "ocia", enabled: false }] });
+    expect(enabled.has("ocia")).toBe(false); // inherited from the diocese
+  });
+
+  it("a parish row OVERRIDES its diocese row (most-specific wins, both directions)", () => {
+    // diocese disables ocia, parish re-enables it → parish wins (on)
+    const reEnabled = resolveEnabled({
+      diocese: [{ module_key: "ocia", enabled: false }],
+      parish: [{ module_key: "ocia", enabled: true }],
+    });
+    expect(reEnabled.has("ocia")).toBe(true);
+    // diocese enables studio (redundant), parish disables it → parish wins (off)
+    const reDisabled = resolveEnabled({
+      diocese: [{ module_key: "studio", enabled: true }],
+      parish: [{ module_key: "studio", enabled: false }],
+    });
+    expect(reDisabled.has("studio")).toBe(false);
   });
 });
 
@@ -71,7 +93,7 @@ describe("moduleAvailable (enabled AND role-capable)", () => {
   const enabledAll = new Set<ModuleKey>(ALL_MODULE_KEYS);
 
   it("is false when the module is disabled, regardless of role", () => {
-    const enabled = resolveEnabled([{ module_key: "ocia", enabled: false }]);
+    const enabled = resolveEnabled({ parish: [{ module_key: "ocia", enabled: false }] });
     expect(moduleAvailable("admin", "ocia", enabled)).toBe(false);
   });
 

@@ -144,27 +144,45 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   },
 };
 
+/** A sparse module-enablement row, from parish_modules or diocese_modules. */
+export interface ModuleRow {
+  module_key: string;
+  enabled: boolean;
+}
+
 /**
- * Resolve which modules are enabled for a parish: a pure overlay of the parish's
- * `parish_modules` rows onto the registry defaults (RFC-001 §3.3). Sparse-row
- * semantics — a missing row means "use defaultEnabled" (§3.2). A non-toggleable
- * module is always pinned to its default (true): it cannot be disabled by a row
- * (§3.1), so the registry stays the source of truth even against a stray or legacy
- * row. Rows for unknown module keys are ignored. The layered shape
- * (`defaults ← parish rows`) is the seam a future diocese-cascade layer slots into
- * without changing this signature (§3.3).
+ * Resolve which modules are enabled for a parish: a pure 3-layer overlay of the registry
+ * defaults with the diocese's then the parish's sparse rows — MOST-SPECIFIC WINS:
+ *   defaults  ←  diocese_modules  ←  parish_modules
+ * (RFC-001 §3.3). Sparse-row semantics — a missing row at a layer falls through to the next
+ * (§3.2): a parish row overrides its diocese row, which overrides the registry default. A
+ * non-toggleable module is always pinned to its default (true): it cannot be disabled by ANY
+ * layer (§3.1), so the registry stays the source of truth even against a stray row. Rows for
+ * unknown module keys are ignored. Passing only `parish` gives the original per-parish
+ * behavior; the `diocese` layer is the cascade activated by RFC-004 D1.
  */
 export function resolveEnabled(
-  rows: ReadonlyArray<{ module_key: string; enabled: boolean }>,
+  layers: { diocese?: ReadonlyArray<ModuleRow>; parish?: ReadonlyArray<ModuleRow> },
   registry: Record<ModuleKey, ModuleDef> = MODULES,
 ): Set<ModuleKey> {
-  const overrides = new Map<string, boolean>();
-  for (const r of rows) overrides.set(r.module_key, r.enabled);
+  const parish = new Map<string, boolean>();
+  for (const r of layers.parish ?? []) parish.set(r.module_key, r.enabled);
+  const diocese = new Map<string, boolean>();
+  for (const r of layers.diocese ?? []) diocese.set(r.module_key, r.enabled);
+
   const enabled = new Set<ModuleKey>();
   for (const key of Object.keys(registry) as ModuleKey[]) {
     const def = registry[key];
-    // Always-on modules ignore rows; only a toggleable module honors a present row.
-    const on = def.toggleable && overrides.has(key) ? overrides.get(key)! : def.defaultEnabled;
+    let on: boolean;
+    if (!def.toggleable) {
+      on = def.defaultEnabled; // always-on: no layer can disable it
+    } else if (parish.has(key)) {
+      on = parish.get(key)!; // most specific — parish overrides everything below
+    } else if (diocese.has(key)) {
+      on = diocese.get(key)!; // cascades to the parish unless a parish row overrides
+    } else {
+      on = def.defaultEnabled;
+    }
     if (on) enabled.add(key);
   }
   return enabled;
