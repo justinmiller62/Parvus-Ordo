@@ -404,6 +404,74 @@ export function videoWatchSatisfied(maxReachedMs: number, clipDurationMs: number
   return maxReachedMs >= videoWatchThresholdMs(clipDurationMs);
 }
 
+// ─── Wall-clock pacing of the furthest-reached point (po-4dyo) ────────────────
+//
+// `videoWatchSatisfied` decides completion from the persisted furthest point, but that
+// point is reported by the player. The residual the gate left open: a client could POST a
+// single saveVideoProgress with the furthest point AT the clip end and self-complete
+// without watching. `pacedMaxReachedMs` closes it server-side — it bounds how far the
+// stored point may advance in one save to the REAL wall-clock elapsed since the previous
+// save (times the max believable playback rate). Reaching the clip end therefore costs
+// roughly a clip-length of real elapsed time, so a one-shot forge no longer works.
+
+/**
+ * How much new ground (ms) the player batches before persisting watch progress. The
+ * client throttles its progress saves to this cadence; the server's first-save budget is
+ * sized against it so a real watcher's opening save is never paced away.
+ */
+export const VIDEO_PROGRESS_SAVE_INTERVAL_MS = 10_000;
+
+/**
+ * Ceiling on believable playback speed used to pace the furthest-reached point against
+ * wall-clock. Native `<video>` controls allow up to 2×; the extra 0.5 margin absorbs
+ * network/clock jitter on the completion-deciding save so a genuine watcher at any normal
+ * speed is never throttled, while a forge to the clip end still costs ~clip-length / this
+ * of real elapsed time.
+ */
+export const VIDEO_WATCH_MAX_RATE = 2.5;
+
+/**
+ * Budget (ms) for the FIRST progress save of an item, when there is no prior timestamp to
+ * pace against. Sized just over one save interval so a real watcher's opening save (the
+ * first ~interval-of-ground throttle save, or a short clip's single completion save)
+ * always lands, while a single forged save still can't jump a longer clip to its end —
+ * that now needs further saves spaced over real time.
+ */
+export const VIDEO_WATCH_FIRST_SAVE_BUDGET_MS = VIDEO_PROGRESS_SAVE_INTERVAL_MS + 2_000;
+
+/**
+ * Wall-clock pacing of the furthest-reached point. Bounds how far the stored point may
+ * advance in a single save to the real time elapsed since the previous save (times the max
+ * believable playback rate), so a client can't forge one save to the clip end and
+ * self-complete (po-4dyo). Pure + deterministic — the caller passes wall-clock in — so it
+ * unit-tests without a real clock. The caller still clamps the result to the clip length.
+ *
+ * @param prevMaxMs     furthest point already stored (treated as 0 if missing/invalid)
+ * @param reportedMs    the client's (shape-validated) furthest-reached report
+ * @param wallElapsedMs real ms since the previous save, or `null` for the first save of an
+ *                      item (no prior timestamp — the fixed first-save budget applies).
+ *                      A non-positive/non-finite measured elapsed grants no advance.
+ * @returns the furthest point to store: never below `prevMaxMs`, never beyond what real
+ *          elapsed time allows.
+ */
+export function pacedMaxReachedMs(prevMaxMs: number, reportedMs: number, wallElapsedMs: number | null): number {
+  const prev = Number.isFinite(prevMaxMs) && prevMaxMs > 0 ? prevMaxMs : 0;
+  const reported = Number.isFinite(reportedMs) && reportedMs > 0 ? reportedMs : 0;
+  if (reported <= prev) return prev; // the point only ever grows
+  let budget: number;
+  if (wallElapsedMs == null) {
+    // First save for this item: no prior timestamp, so the one fixed budget applies.
+    budget = VIDEO_WATCH_FIRST_SAVE_BUDGET_MS;
+  } else if (!Number.isFinite(wallElapsedMs) || wallElapsedMs <= 0) {
+    // A rapid second save (or clock skew) gives no real elapsed time → no advance. This is
+    // what defeats a walk-up: spamming saves can't climb to the end without real time.
+    budget = 0;
+  } else {
+    budget = wallElapsedMs * VIDEO_WATCH_MAX_RATE;
+  }
+  return Math.min(reported, prev + budget);
+}
+
 // ─── Recording upload policy (pure; server route + iOS client both validate) ──
 
 /** Max bytes for a Parvus Studio recording upload (~120MB, under the proxy's

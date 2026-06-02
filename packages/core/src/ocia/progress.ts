@@ -1,4 +1,4 @@
-import { videoWatchSatisfied } from "@parvaordo/shared";
+import { pacedMaxReachedMs, videoWatchSatisfied } from "@parvaordo/shared";
 import { getDb } from "../db/client";
 import { getAsset } from "../media/assets";
 
@@ -54,13 +54,15 @@ async function videoItemDurationMs(parishId: string, itemId: string): Promise<nu
 /**
  * Persist video watch progress: the furthest point reached (only ever grows) and a
  * completion flag DERIVED SERVER-SIDE from that point against the clip's real length —
- * never trusted from the client. The stored furthest point is clamped to the clip (it
- * seeds the seek-enforcement ceiling, so a forged value mustn't inflate it), and
- * completion is gated on `videoWatchSatisfied`. This closes the trivial forges (a
- * direct advanceAction POST, a save with no/too-little progress); it stays best-effort
- * because the furthest point is client-reported, so a forge to the clip end can still
- * self-complete (residual tracked in po-4dyo). When the clip length can't be resolved
- * the report is stored as-is and completion stays false.
+ * never trusted from the client. The client report is first PACED against the real
+ * wall-clock elapsed since the previous save (`pacedMaxReachedMs`), so a single forged
+ * save can't jump the point to the clip end — reaching the end takes roughly a clip-length
+ * of real time (closes the po-4dyo residual). The paced point is then clamped to the clip
+ * (it seeds the seek-enforcement ceiling, so a forged value mustn't inflate it), and
+ * completion is gated on `videoWatchSatisfied`. Together these close the forges: the
+ * client `completed` flag (gone), a direct advanceAction POST, a save with no/too-little
+ * progress, AND a one-shot jump to the clip end. When the clip length can't be resolved
+ * the (paced) report is stored as-is and completion stays false.
  */
 export async function markVideoProgress(params: {
   parishId: string;
@@ -70,13 +72,32 @@ export async function markVideoProgress(params: {
 }): Promise<void> {
   const reportedMax = Number.isFinite(params.maxReachedMs) ? Math.max(0, params.maxReachedMs) : 0;
   const durationMs = await videoItemDurationMs(params.parishId, params.itemId);
-  // Clamp the stored furthest point to the clip so a forged report can't inflate the
-  // seek-enforcement ceiling beyond the real window.
-  const storedMax = durationMs != null ? Math.min(reportedMax, durationMs) : reportedMax;
-  // Completion is derived from the (clamped) furthest point — never from the client.
+  const db = getDb(params.parishId);
+
+  // Read the prior furthest point AND the real time since it was last written, both on the
+  // DB clock, so the report can be paced against actual elapsed time. No prior row → this
+  // is the first save (null elapsed → the fixed first-save budget). (Two statements rather
+  // than one CTE keep the pacing math pure + unit-tested; saves for one student+item are
+  // effectively serial — one throttled player — so the read→write window isn't a vector.)
+  const { rows } = await db.query<{ prev_max: number | null; wall_elapsed_ms: number | null }>(
+    `SELECT max_reached_ms AS prev_max,
+            EXTRACT(EPOCH FROM (now() - updated_at)) * 1000 AS wall_elapsed_ms
+       FROM lesson_item_progress
+      WHERE student_id = $1 AND item_id = $2`,
+    [params.studentId, params.itemId],
+  );
+  const prior = rows[0];
+  const prevMax = prior?.prev_max ?? 0;
+  const wallElapsedMs = prior ? Number(prior.wall_elapsed_ms) : null;
+
+  // Pace against real elapsed time, THEN clamp to the clip so a forged report can't inflate
+  // the seek-enforcement ceiling beyond the real window.
+  const paced = pacedMaxReachedMs(prevMax, reportedMax, wallElapsedMs);
+  const storedMax = Math.floor(durationMs != null ? Math.min(paced, durationMs) : paced);
+  // Completion is derived from the (paced + clamped) furthest point — never from the client.
   const completed = videoWatchSatisfied(storedMax, durationMs);
 
-  await getDb(params.parishId).query(
+  await db.query(
     `INSERT INTO lesson_item_progress (parish_id, student_id, item_id, completed, max_reached_ms)
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (student_id, item_id) DO UPDATE SET
