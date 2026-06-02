@@ -1,3 +1,4 @@
+import { orNull, trimOrEmpty } from "@parvaordo/shared";
 import { getDb } from "../db/client";
 
 // Prayer Book data access — mirrors the dictionary three-layer model: global
@@ -23,8 +24,6 @@ export interface NewPrayerInput {
   context?: string | null;
   attribution?: string | null;
 }
-
-const orNull = (s?: string | null) => (s && s.trim() ? s.trim() : null);
 
 /** All prayers a parish sees: approved universal prayers (with this parish's
  * overrides applied) + the parish's pending submissions (universal wins on title). */
@@ -104,8 +103,8 @@ export async function createPrayerSubmission(
   submittedBy: string,
   input: NewPrayerInput,
 ): Promise<{ id: string } | null> {
-  const title = input.title.trim();
-  const text = input.prayerText.trim();
+  const title = trimOrEmpty(input.title);
+  const text = trimOrEmpty(input.prayerText);
   if (!title || !text) return null;
   const { rows } = await getDb(parishId).query<{ id: string }>(
     `INSERT INTO prayer_submissions (parish_id, title, prayer_text, latin_text, category, context, attribution, submitted_by)
@@ -131,8 +130,8 @@ export async function updatePrayerSubmission(parishId: string, id: string, input
     [
       id,
       parishId,
-      input.title.trim(),
-      input.prayerText.trim(),
+      trimOrEmpty(input.title),
+      trimOrEmpty(input.prayerText),
       orNull(input.latinText),
       orNull(input.category),
       orNull(input.context),

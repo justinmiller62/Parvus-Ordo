@@ -1,3 +1,4 @@
+import { orNull, trimOrEmpty } from "@parvaordo/shared";
 import { getDb, type TenantDb } from "../db/client";
 
 // Dictionary data access. Three layers: global dictionary_entries (universal,
@@ -178,7 +179,6 @@ const cleanVariants = (v?: string[] | null) => {
   const out = (v ?? []).map((s) => s.trim()).filter(Boolean);
   return out.length ? out : null;
 };
-const orNull = (s?: string | null) => (s && s.trim() ? s.trim() : null);
 
 /** Create a parish submission (pending). Returns null if headword/definition empty. */
 export async function createSubmission(
@@ -186,8 +186,8 @@ export async function createSubmission(
   submittedBy: string,
   input: NewSubmissionInput,
 ): Promise<{ id: string } | null> {
-  const headword = input.headword.trim().toLowerCase();
-  const definition = input.definition.trim();
+  const headword = trimOrEmpty(input.headword).toLowerCase();
+  const definition = trimOrEmpty(input.definition);
   if (!headword || !definition) return null;
   const { rows } = await getDb(parishId).query<{ id: string }>(
     `INSERT INTO dictionary_submissions
@@ -223,9 +223,9 @@ export async function updateSubmission(
     [
       submissionId,
       parishId,
-      input.headword.trim().toLowerCase(),
+      trimOrEmpty(input.headword).toLowerCase(),
       cleanVariants(input.variants),
-      input.definition.trim(),
+      trimOrEmpty(input.definition),
       orNull(input.greekWord),
       orNull(input.greekDefinition),
       orNull(input.hebrewWord),
