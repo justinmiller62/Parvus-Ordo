@@ -77,7 +77,9 @@ export async function markVideoProgress(params: {
   if (durationMs != null) {
     if (reportedMax != null) storedMax = Math.min(Math.max(reportedMax, 0), durationMs);
     const reachedEnd =
-      reportedMax != null && reportedMax >= durationMs - COMPLETION_GRACE_MS && reportedMax <= durationMs + OVERSHOOT_GRACE_MS;
+      reportedMax != null &&
+      reportedMax >= durationMs - COMPLETION_GRACE_MS &&
+      reportedMax <= durationMs + OVERSHOOT_GRACE_MS;
     completed = completed && reachedEnd;
   }
 
