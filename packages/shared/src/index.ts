@@ -77,7 +77,7 @@ export function peopleEligible(role: Role | null): boolean {
 // never drift across them. `platform`/`branding`/`auth` are infra, not modules;
 // `media` is an OCIA-internal asset library gated transitively by `ocia`, not a key.
 
-export type ModuleKey = "ocia" | "people" | "studio" | "dictionary" | "prayers" | "onboarding";
+export type ModuleKey = "ocia" | "people" | "studio" | "dictionary" | "prayers" | "onboarding" | "gather";
 
 export interface ModuleDef {
   key: ModuleKey;
@@ -87,18 +87,21 @@ export interface ModuleDef {
   roles: Role[];
   /** false = always-on platform capability a parish cannot disable (RFC-001 §3.1). */
   toggleable: boolean;
-  /** Enablement when a parish has no explicit row. true for every module today, so
-   *  introducing the toggle is a zero-behavior-change deploy (RFC-001 §3.6). */
+  /** Enablement when a parish has no explicit row. true for every pre-existing module, so
+   *  introducing the toggle was a zero-behavior-change deploy (RFC-001 §3.6); `gather` is
+   *  false — a net-new major module ships dark and is opt-in per parish (RFC-005 §2). */
   defaultEnabled: boolean;
 }
 
-// Locked override po-wisp-rrwul (supersedes RFC-001 §6.1): ONLY `ocia` and `studio`
-// are toggleable; `people`, `dictionary`, `prayers`, `onboarding` are always-on
-// platform capabilities a parish cannot disable. Per-module `roles` mirror the
+// Locked override po-wisp-rrwul (supersedes RFC-001 §6.1): of the pre-existing modules
+// ONLY `ocia` and `studio` are toggleable; `people`, `dictionary`, `prayers`, `onboarding`
+// are always-on platform capabilities a parish cannot disable. RFC-005 §2 adds `gather` as
+// a 3rd toggleable module, opt-in per parish (`defaultEnabled: false` — ships dark, each
+// parish turns it on via the RFC-004 systems-admin toggle). Per-module `roles` mirror the
 // existing eligibility predicates where they exist (ocia↔ociaEligible,
 // studio↔studioEligible, people↔peopleEligible); dictionary/prayers are usable by any
 // parish role (their routes gate on parish, not role); onboarding (OCIA applications +
-// invites) is a staff capability.
+// invites) is a staff capability; gather is parishioner-facing (every role).
 export const MODULES: Record<ModuleKey, ModuleDef> = {
   ocia: {
     key: "ocia",
@@ -141,6 +144,14 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
     roles: ["super_admin", "admin", "catechist"],
     toggleable: false,
     defaultEnabled: true,
+  },
+  gather: {
+    key: "gather",
+    label: "Gather",
+    // Parishioner-facing community module — every parish role may use it once enabled.
+    roles: ["super_admin", "admin", "catechist", "catechumen_candidate", "parish_member", "studio"],
+    toggleable: true,
+    defaultEnabled: false, // ships dark; opt-in per parish via the RFC-004 systems-admin toggle (§2)
   },
 };
 
@@ -524,3 +535,334 @@ export function resolveBrand(system: BrandConfig, diocese?: BrandConfig, parish?
   }
   return out;
 }
+
+// ─── Parvus Gather — group RBAC contract (RFC-005 §3.2) ───────────────────────
+//
+// The isomorphic, unit-tested Gather permission contract shared by core + UI, so the
+// group-authz vocabulary has ONE definition and can never drift between the server guard
+// (`requireGroupPermission`, core) and the client (which actions to offer). The WHOLE §3.2
+// union is defined now (the contract) even though T1 only exercises group.*/request.*.
+//
+// Three SCOPES of permission share this one union (RFC-005 §3.2):
+//   • group-INSTANCE — held within ONE group via a member's role.permissions[] (a Grand
+//     Knight administers the KofC council only). The bulk of the union.
+//   • PARISH-scoped — group.create/delete/archive, health_dashboard.view,
+//     parishioner.approve_pending: resolved at the parish tenant (staff in T1), never
+//     carried by a group role.
+//   • GRANT-FREE — group.self_leave: implicit for every active member, needs no grant.
+
+/**
+ * The FIXED Gather permission union (RFC-005 §3.2, "from spec RBAC"). This const array is
+ * the single source of truth; {@link GatherPermission} is derived from it (the PARISH_STATUSES
+ * idiom) so the type and the runtime list can never disagree. Grouped by area for review.
+ */
+export const GATHER_PERMISSIONS = [
+  // group instance — settings & public discovery profile
+  "group.edit_settings",
+  "group.edit_public_profile",
+  // group instance — roster management
+  "group.roster.add",
+  "group.roster.invite_new",
+  "group.roster.remove",
+  "group.roster.assign_role",
+  "group.roster.transfer_role",
+  "group.roster.approve_join_request",
+  // group instance — defining what roles exist/can do: a SEPARATE grant (§3.2), excluded
+  // from the default leadership bundle (staff or a founding-admin grant only)
+  "group.roles.define",
+  // group instance — meetings (§6)
+  "meeting.draft",
+  "meeting.finalize",
+  "meeting.define_recurrence",
+  "meeting.set_quorum",
+  "agenda_thread.moderate",
+  // group instance — sign-ups (§7)
+  "signup.create",
+  "signup.edit",
+  "signup.save_template",
+  "signup.instantiate_template",
+  // group instance — broadcasts (§8)
+  "broadcast.send",
+  "broadcast.view_read_receipts",
+  // group instance — document vault (§9)
+  "document.upload",
+  "document.delete",
+  // group instance — forms engine (§10)
+  "form.create",
+  "form.edit",
+  "form.delete",
+  "form.review_submissions",
+  "form.publish_public",
+  "form.use_starter_template",
+  "form.export_submissions",
+  // group instance — requests, the coordination spine (§4)
+  "request.create",
+  "request.assign",
+  "request.manage_board",
+  // parish-scoped — group lifecycle + parish-level Gather powers (staff in T1, never a group role)
+  "group.create",
+  "group.delete",
+  "group.archive",
+  "health_dashboard.view",
+  "parishioner.approve_pending",
+  // grant-free — implicit for every member (§3.2)
+  "group.self_leave",
+] as const;
+
+/** A single Gather permission (RFC-005 §3.2). Derived from {@link GATHER_PERMISSIONS}. */
+export type GatherPermission = (typeof GATHER_PERMISSIONS)[number];
+
+/**
+ * Parish-scoped permissions (RFC-005 §3.2): resolved at the parish tenant — held by parish
+ * staff in T1, NEVER carried by a group role. {@link holdsGroupPermission} refuses them for a
+ * non-staff actor regardless of that actor's group role.permissions[].
+ */
+export const PARISH_SCOPED_PERMISSIONS: ReadonlySet<GatherPermission> = new Set([
+  "group.create",
+  "group.delete",
+  "group.archive",
+  "health_dashboard.view",
+  "parishioner.approve_pending",
+]);
+
+/**
+ * Grant-free permissions (RFC-005 §3.2): implicit for every active member, so no role
+ * bundle lists them. `group.self_leave` — leaving a group needs no grant.
+ */
+export const GRANT_FREE_PERMISSIONS: ReadonlySet<GatherPermission> = new Set(["group.self_leave"]);
+
+/**
+ * The default leadership bundle (Chair / Coordinator / Lead): every GROUP-INSTANCE
+ * permission EXCEPT `group.roles.define` (a separate grant, §3.2). Derived from the union so
+ * a new instance permission flows in automatically; the parish-scoped + grant-free
+ * permissions are excluded by construction (a group role can grant neither). A parish
+ * customizes its roles afterward via `group.roles.define`.
+ */
+export const GROUP_LEADERSHIP_PERMISSIONS: readonly GatherPermission[] = GATHER_PERMISSIONS.filter(
+  (p) => !PARISH_SCOPED_PERMISSIONS.has(p) && !GRANT_FREE_PERMISSIONS.has(p) && p !== "group.roles.define",
+);
+
+/**
+ * The default member bundle: a plain member may raise a gentle ask (`request.create`) — the
+ * invitation-first spine (§4). Leaving a group (`group.self_leave`) is implicit (grant-free),
+ * so it is intentionally NOT listed here.
+ */
+export const GROUP_MEMBER_PERMISSIONS: readonly GatherPermission[] = ["request.create"];
+
+/** The four shapes of the one Group primitive (RFC-005 §3.1 CHECK) — one definition shared
+ *  by the migration intent, core, and UI. */
+export const GROUP_TYPES = ["committee", "board", "ministry", "event_team"] as const;
+export type GroupType = (typeof GROUP_TYPES)[number];
+
+/**
+ * A starter role a new group is seeded with: the parish's word for it (`label`), whether it
+ * is a leadership role (drives `leaders_only` visibility, §3.1), and its permission bundle.
+ * Maps 1:1 onto a `gather_group_roles` row (label, is_leadership, permissions[]).
+ */
+export interface DefaultGroupRole {
+  label: string;
+  isLeadership: boolean;
+  permissions: readonly GatherPermission[];
+}
+
+/**
+ * Default role→permission bundles per group type (RFC-005 §3.2: "Default bundles per group
+ * type live in shared"). A new group is seeded with these starter roles; a parish then
+ * renames/re-scopes them (the `label` is the parish's own word) and adds more via
+ * `group.roles.define`. Each type ships ONE leadership role (the full leadership bundle) +
+ * one member role; `group.roles.define` (separate grant) and `group.self_leave` (grant-free)
+ * therefore appear in no default bundle.
+ */
+export const DEFAULT_GROUP_ROLES: Record<GroupType, readonly DefaultGroupRole[]> = {
+  committee: [
+    { label: "Chair", isLeadership: true, permissions: GROUP_LEADERSHIP_PERMISSIONS },
+    { label: "Member", isLeadership: false, permissions: GROUP_MEMBER_PERMISSIONS },
+  ],
+  board: [
+    { label: "Chair", isLeadership: true, permissions: GROUP_LEADERSHIP_PERMISSIONS },
+    { label: "Member", isLeadership: false, permissions: GROUP_MEMBER_PERMISSIONS },
+  ],
+  ministry: [
+    { label: "Coordinator", isLeadership: true, permissions: GROUP_LEADERSHIP_PERMISSIONS },
+    { label: "Member", isLeadership: false, permissions: GROUP_MEMBER_PERMISSIONS },
+  ],
+  event_team: [
+    { label: "Lead", isLeadership: true, permissions: GROUP_LEADERSHIP_PERMISSIONS },
+    { label: "Volunteer", isLeadership: false, permissions: GROUP_MEMBER_PERMISSIONS },
+  ],
+};
+
+/** The inputs `requireGroupPermission` (core) resolves before deciding: the actor's parish
+ *  role + the permission bundle of their role WITHIN the group being acted on. */
+export interface GroupPermissionActor {
+  /** Parish role — parish STAFF implicitly hold every group-scoped permission (§3.2). */
+  role: Role;
+  /** The actor's `gather_group_roles.permissions[]` for THIS group (empty if no group role). */
+  permissions: readonly GatherPermission[];
+}
+
+/**
+ * The pure decision behind `requireGroupPermission` (core, §3.3) — unit-tested here so the
+ * group-authz table (staff short-circuit, instance scoping, the roles.define gate) is locked
+ * in shared. The core shim does the async work (module-enabled → getDb(parishId) → load
+ * member.role_id.permissions) then calls this:
+ *   • parish STAFF short-circuit to allow ANY permission (older-volunteer on-behalf, §3.2);
+ *   • `group.self_leave` (grant-free) is allowed for everyone;
+ *   • a PARISH-scoped permission is never satisfied by a group role — a non-staff actor is
+ *     refused (it is a parish-tenant decision, not a group-role grant, §3.2);
+ *   • otherwise the permission must be in the actor's group role bundle (INSTANCE scoping —
+ *     a role in group A grants nothing in group B).
+ * Group VISIBILITY (public/members_only/leaders_only) is a separate read filter (§3.3).
+ */
+export function holdsGroupPermission(actor: GroupPermissionActor, perm: GatherPermission): boolean {
+  if (isStaff(actor.role)) return true;
+  if (GRANT_FREE_PERMISSIONS.has(perm)) return true;
+  if (PARISH_SCOPED_PERMISSIONS.has(perm)) return false;
+  return actor.permissions.includes(perm);
+}
+
+// ─── Parvus Gather — Requests state machine (RFC-005 §4.2) ────────────────────
+//
+// A Requestable is a gentle ticket (§4): someone asks a person OR a group-role pool to do a
+// thing; they do it, hand it back, or gently decline; the asker sees it handled. Tone is
+// part of the model — surfaced copy lives in the GATHER_*_COPY constants below, never
+// "task/queue". This is the single coordination spine every Gather flow emits into (§4.4).
+
+/** Requestable lifecycle states (RFC-005 §4.1 CHECK / §4.2). `done`/`declined`/`cancelled`
+ *  are terminal. */
+export const REQUEST_STATUSES = ["open", "assigned", "in_progress", "done", "declined", "cancelled"] as const;
+export type RequestStatus = (typeof REQUEST_STATUSES)[number];
+
+/** Gentle 3-level priority (RFC-005 §4.1/§4.5) — a soft sense of urgency, never P1–P4. */
+export const REQUEST_PRIORITIES = ["low", "normal", "soon"] as const;
+export type RequestPriority = (typeof REQUEST_PRIORITIES)[number];
+
+/** The transitions a Requestable supports (RFC-005 §4.2). Reassign / re-prioritize are
+ *  field updates that do NOT change status (gated by request.manage_board), so they are
+ *  intentionally not modeled by {@link nextRequestStatus}. */
+export const REQUEST_ACTIONS = ["assign", "claim", "start", "done", "decline", "hand_back", "cancel"] as const;
+export type RequestAction = (typeof REQUEST_ACTIONS)[number];
+
+/**
+ * The actor's relationship to the Requestable, resolved by the core shim before a
+ * transition. The pure machine encodes the workflow authorization INTRINSIC to each action
+ * (only the assignee may start/finish; only the requester may cancel) — these cannot be
+ * delegated by a group permission. `canManageBoard`/`isStaff` widen who may direct or triage.
+ */
+export interface RequestActor {
+  /** Created the ask — the only one who may `cancel` it (RFC-005 §4.2). */
+  isRequester: boolean;
+  /** Currently holds the ask — may `start` / `done` / `decline` / `hand_back`. */
+  isAssignee: boolean;
+  /** Holds the role the ask was offered to — may `claim` an open pool ask (§4.2). */
+  isPoolEligible: boolean;
+  /** Holds request.assign/manage_board on the owning group — may `assign` on the board (§4.3). */
+  canManageBoard: boolean;
+  /** Parish staff — acts on any parishioner's behalf (older-volunteer rule, §3.2); may
+   *  perform any STATE-legal action. */
+  isStaff: boolean;
+}
+
+/**
+ * Pure Requestable transition (RFC-005 §4.2): `open → assigned → in_progress → done`, with
+ * `declined` / `cancelled` exits. Returns the next status for a legal (source-state + actor)
+ * combination, or `null` to REJECT — an illegal source state OR an unauthorized actor.
+ * Associated data changes are applied by the core (claim/assign set the assignee; hand_back
+ * clears it and re-offers to the pool; done sets completed_at + fires the thank-you, §4.2).
+ * `decline`/`hand_back` are allowed from `in_progress` too, so an assignee who started can
+ * always bow out "with grace, no guilt" (§4.2) rather than being trapped (cancel is
+ * requester-only). Terminal states accept no action — not even staff.
+ */
+export function nextRequestStatus(
+  cur: RequestStatus,
+  action: RequestAction,
+  actor: RequestActor,
+): RequestStatus | null {
+  const staff = actor.isStaff;
+  switch (action) {
+    case "assign": // requester directs it — or a board manager triages it — to a person
+      if (cur !== "open") return null;
+      return actor.isRequester || actor.canManageBoard || staff ? "assigned" : null;
+    case "claim": // a pool-eligible member pulls an open ask from the role pool
+      if (cur !== "open") return null;
+      return actor.isPoolEligible || staff ? "assigned" : null;
+    case "start": // the assignee begins
+      if (cur !== "assigned") return null;
+      return actor.isAssignee || staff ? "in_progress" : null;
+    case "done": // the assignee finishes (core sets completed_at + fires a thank-you)
+      if (cur !== "assigned" && cur !== "in_progress") return null;
+      return actor.isAssignee || staff ? "done" : null;
+    case "hand_back": // the assignee re-offers it to the pool — no guilt
+      if (cur !== "assigned" && cur !== "in_progress") return null;
+      return actor.isAssignee || staff ? "open" : null;
+    case "decline": // the assignee gently says "not this time"
+      if (cur !== "assigned" && cur !== "in_progress") return null;
+      return actor.isAssignee || staff ? "declined" : null;
+    case "cancel": // requester only (or staff on-behalf) — no longer needed
+      if (cur !== "open" && cur !== "assigned" && cur !== "in_progress") return null;
+      return actor.isRequester || staff ? "cancelled" : null;
+    default:
+      return null; // unknown action (defensive against an unvalidated string)
+  }
+}
+
+// ─── Parvus Gather — invitation-first copy (RFC-005 §4.5, §15) ────────────────
+//
+// The locked, invitation-first voice lives in shared so NO component can build corporate
+// task UI on the Requests model (§4.5): every ask is an invitation, gratitude on completion,
+// gentle nudges. `GATHER_NEVER_SAY` is the guardrail — a unit test asserts that no constant
+// below contains a banned word, so the tone cannot regress at the source (§15).
+
+/** Words Gather's surfaced copy must NEVER use — it is invitation-first, not a work tracker
+ *  (RFC-005 §4.5/§15). Enforced by {@link gatherToneViolations} + a unit test over the copy. */
+export const GATHER_NEVER_SAY: readonly string[] = ["task", "queue", "overdue", "assigned to you"];
+
+/** The lowercased banned words from {@link GATHER_NEVER_SAY} that appear in `text` (empty =
+ *  clean). Backs the guardrail test over the copy constants; usable as a dev check on any
+ *  Gather-facing string. */
+export function gatherToneViolations(text: string): string[] {
+  const lower = text.toLowerCase();
+  return GATHER_NEVER_SAY.filter((w) => lower.includes(w));
+}
+
+/** Invitation-first phrases (RFC-005 §4.5): the asker line, the gentle CTA, the graceful no,
+ *  and the gratitude on completion. */
+export const GATHER_INVITATION_COPY = {
+  /** Precedes the asker, e.g. "Maria asked you to help bring the readings." */
+  askedYouToHelp: "asked you to help",
+  /** The gentle CTA on an invitation. */
+  canYou: "Can you?",
+  /** Declining, with grace (never "reject" / "refuse"). */
+  notThisTime: "Not this time",
+  /** Gratitude shown on completion (§4.2 thank-you). */
+  thankYou: "Thank you",
+} as const;
+
+/** Invitation-first label for each Requestable status (RFC-005 §4.5) — what the state is
+ *  CALLED in the UI. Never "queue" / "overdue" / "assigned to you". */
+export const REQUEST_STATUS_COPY: Record<RequestStatus, string> = {
+  open: "Open invitation",
+  assigned: "You're helping",
+  in_progress: "Underway",
+  done: "All done — thank you",
+  declined: "Not this time",
+  cancelled: "No longer needed",
+};
+
+/** Gentle label for each priority (RFC-005 §4.5) — a soft sense, never "urgent" / "overdue". */
+export const REQUEST_PRIORITY_COPY: Record<RequestPriority, string> = {
+  low: "Whenever you can",
+  normal: "When you have a moment",
+  soon: "Sooner would help",
+};
+
+/** Invitation-first label for each transition action (RFC-005 §4.2/§4.5). */
+export const REQUEST_ACTION_COPY: Record<RequestAction, string> = {
+  assign: "Ask someone",
+  claim: "I can help",
+  start: "Get started",
+  done: "Mark done, with thanks",
+  decline: "Not this time",
+  hand_back: "Pass it on",
+  cancel: "No longer needed",
+};

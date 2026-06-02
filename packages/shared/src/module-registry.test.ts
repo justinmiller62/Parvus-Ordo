@@ -1,21 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { MODULES, moduleAvailable, resolveEnabled, type ModuleDef, type ModuleKey, type Role } from "./index";
 
-const ALL_MODULE_KEYS: ModuleKey[] = ["ocia", "people", "studio", "dictionary", "prayers", "onboarding"];
+const ALL_MODULE_KEYS: ModuleKey[] = ["ocia", "people", "studio", "dictionary", "prayers", "onboarding", "gather"];
+// The modules enabled when a parish has no row. `gather` ships DARK (defaultEnabled:false,
+// RFC-005 §2), so it is the one module absent here.
+const DEFAULT_ON_KEYS: ModuleKey[] = ["ocia", "people", "studio", "dictionary", "prayers", "onboarding"];
 const EVERY_ROLE = ["admin", "catechist", "catechumen_candidate", "parish_member", "studio", "super_admin"];
 
 describe("MODULES registry", () => {
-  it("contains exactly the six module keys, each self-keyed", () => {
+  it("contains exactly the seven module keys, each self-keyed", () => {
     expect([...Object.keys(MODULES)].sort()).toEqual([...ALL_MODULE_KEYS].sort());
     for (const key of ALL_MODULE_KEYS) expect(MODULES[key].key).toBe(key);
   });
 
-  it("marks ONLY ocia and studio toggleable (locked override po-wisp-rrwul); all others always-on", () => {
-    expect(ALL_MODULE_KEYS.filter((k) => MODULES[k].toggleable).sort()).toEqual(["ocia", "studio"]);
+  it("marks ocia, studio, and gather toggleable (po-wisp-rrwul + RFC-005 §2); all others always-on", () => {
+    expect(ALL_MODULE_KEYS.filter((k) => MODULES[k].toggleable).sort()).toEqual(["gather", "ocia", "studio"]);
   });
 
-  it("defaults every module enabled — introducing the toggle is a zero-behavior-change deploy (RFC-001 §3.6)", () => {
-    for (const key of ALL_MODULE_KEYS) expect(MODULES[key].defaultEnabled).toBe(true);
+  it("defaults every pre-existing module enabled (zero-change deploy, RFC-001 §3.6); gather ships dark (RFC-005 §2)", () => {
+    for (const key of DEFAULT_ON_KEYS) expect(MODULES[key].defaultEnabled).toBe(true);
+    expect(MODULES.gather.defaultEnabled).toBe(false);
+  });
+
+  it("gather is a parishioner-facing module usable by every parish role (RFC-005 §2)", () => {
+    expect([...MODULES.gather.roles].sort()).toEqual(EVERY_ROLE);
   });
 
   it("ocia capability mirrors ociaEligible (staff + OCIA learners)", () => {
@@ -37,8 +45,8 @@ describe("MODULES registry", () => {
 });
 
 describe("resolveEnabled (3-layer overlay: defaults ← diocese ← parish)", () => {
-  it("with no rows, enables every module whose defaultEnabled is true", () => {
-    expect(resolveEnabled({})).toEqual(new Set(ALL_MODULE_KEYS));
+  it("with no rows, enables every default-on module — and NOT gather (ships dark, RFC-005 §2)", () => {
+    expect(resolveEnabled({})).toEqual(new Set(DEFAULT_ON_KEYS));
   });
 
   it("a parish row turns a toggleable module off (and leaves its sibling untouched)", () => {
@@ -47,9 +55,16 @@ describe("resolveEnabled (3-layer overlay: defaults ← diocese ← parish)", ()
     expect(enabled.has("studio")).toBe(true);
   });
 
+  it("gather ships dark and a row turns it on (RFC-005 §2 opt-in, both layers)", () => {
+    expect(resolveEnabled({}).has("gather")).toBe(false);
+    expect(resolveEnabled({ parish: [{ module_key: "gather", enabled: true }] }).has("gather")).toBe(true);
+    // a diocese can opt a whole diocese in, cascading to parishes with no row
+    expect(resolveEnabled({ diocese: [{ module_key: "gather", enabled: true }] }).has("gather")).toBe(true);
+  });
+
   it("ignores rows for unknown module keys", () => {
     expect(resolveEnabled({ parish: [{ module_key: "not_a_module", enabled: true }] })).toEqual(
-      new Set(ALL_MODULE_KEYS),
+      new Set(DEFAULT_ON_KEYS),
     );
   });
 
@@ -114,5 +129,11 @@ describe("moduleAvailable (enabled AND role-capable)", () => {
   it("for an always-on module, availability is purely the role capability", () => {
     expect(moduleAvailable("admin", "people", enabledAll)).toBe(true);
     expect(moduleAvailable("catechist", "people", enabledAll)).toBe(false);
+  });
+
+  it("gather is available to any role once enabled, and to none while dark (RFC-005 §2)", () => {
+    expect(moduleAvailable("parish_member", "gather", enabledAll)).toBe(true);
+    expect(moduleAvailable("catechumen_candidate", "gather", enabledAll)).toBe(true);
+    expect(moduleAvailable("parish_member", "gather", resolveEnabled({}))).toBe(false); // default-dark
   });
 });
