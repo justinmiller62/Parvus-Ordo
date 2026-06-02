@@ -1,4 +1,5 @@
 import { getDb } from "../db/client";
+import { submitProject } from "./projects";
 
 export interface CreateRecordingInput {
   projectId: string;
@@ -9,11 +10,14 @@ export interface CreateRecordingInput {
 }
 
 /** Record an uploaded recording's metadata (the MP4 itself lives in Bunny) and flip
- * the project to submitted. */
+ * the project to submitted. The status flip goes through the guarded submitProject
+ * transition FIRST, so an upload against a project that is not ready_to_record is
+ * rejected before any recording row is created (no orphan row on an illegal submit). */
 export async function createRecording(
   parishId: string,
   input: CreateRecordingInput,
 ): Promise<{ recordingId: string; playbackUrl: string; projectStatus: "submitted" }> {
+  await submitProject(parishId, input.projectId);
   const { rows } = await getDb(parishId).query<{ id: string }>(
     `INSERT INTO youth_recordings
        (parish_id, project_id, bunny_video_id, playback_url, duration_seconds, slide_advance_count)
@@ -27,9 +31,6 @@ export async function createRecording(
       input.slideAdvanceCount ?? null,
     ],
   );
-  await getDb(parishId).query("UPDATE youth_projects SET status = 'submitted', updated_at = now() WHERE id = $1", [
-    input.projectId,
-  ]);
   return { recordingId: rows[0]!.id, playbackUrl: input.playbackUrl, projectStatus: "submitted" };
 }
 

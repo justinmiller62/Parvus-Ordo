@@ -131,10 +131,91 @@ export async function updateScriptDraft(
   return { ok: true, new_word_count: words, new_estimated_seconds: seconds };
 }
 
-export async function setProjectStatus(parishId: string, projectId: string, status: YouthProjectStatus): Promise<void> {
+// ─── Project lifecycle state machine ────────────────────────────────────────
+// drafting → ready_to_record → submitted → approved | rejected, with a "reopen"
+// edge back to ready_to_record so a recording can be replaced. These legal edges
+// are the SINGLE source of truth — call sites use the intent-named wrappers below
+// (markProjectReady / submitProject / approveProject / rejectProject / reopenProject)
+// instead of writing `status` directly, so an illegal jump (e.g. approving a draft)
+// cannot be expressed.
+const PROJECT_TRANSITIONS: Record<YouthProjectStatus, readonly YouthProjectStatus[]> = {
+  drafting: ["ready_to_record"],
+  ready_to_record: ["submitted"],
+  submitted: ["approved", "rejected", "ready_to_record"],
+  approved: ["ready_to_record"],
+  rejected: ["ready_to_record"],
+};
+
+/** Is `to` a legal forward transition from `from`? Pure + unit-testable. A same-state
+ * edge is intentionally false here; transitionProject treats from===to as a no-op. */
+export function canTransitionProject(from: YouthProjectStatus, to: YouthProjectStatus): boolean {
+  return PROJECT_TRANSITIONS[from].includes(to);
+}
+
+/** Thrown when a status change would violate the lifecycle (e.g. approving a draft). */
+export class InvalidProjectTransition extends Error {
+  constructor(
+    readonly from: YouthProjectStatus,
+    readonly to: YouthProjectStatus,
+  ) {
+    super(`illegal project transition: ${from} → ${to}`);
+    this.name = "InvalidProjectTransition";
+  }
+}
+
+/**
+ * Guarded status change: read the current status, enforce the transition table, then
+ * update. A same-state change is an idempotent no-op (tolerates double-clicks / repeat
+ * uploads). Throws InvalidProjectTransition on an illegal edge, or if the project does
+ * not exist. Returns the resulting status. Prefer the intent-named wrappers below.
+ */
+export async function transitionProject(
+  parishId: string,
+  projectId: string,
+  to: YouthProjectStatus,
+): Promise<YouthProjectStatus> {
+  const { rows } = await getDb(parishId).query<{ status: YouthProjectStatus }>(
+    "SELECT status FROM youth_projects WHERE id = $1",
+    [projectId],
+  );
+  const from = rows[0]?.status;
+  if (!from) throw new Error(`project not found: ${projectId}`);
+  if (from === to) return from; // idempotent
+  if (!canTransitionProject(from, to)) throw new InvalidProjectTransition(from, to);
   await getDb(parishId).query("UPDATE youth_projects SET status = $2, updated_at = now() WHERE id = $1", [
     projectId,
-    status,
+    to,
+  ]);
+  return to;
+}
+
+/** Teen marks the script done and ready to record (drafting → ready_to_record). */
+export const markProjectReady = (parishId: string, projectId: string): Promise<YouthProjectStatus> =>
+  transitionProject(parishId, projectId, "ready_to_record");
+
+/** A recording was uploaded for review (ready_to_record → submitted). */
+export const submitProject = (parishId: string, projectId: string): Promise<YouthProjectStatus> =>
+  transitionProject(parishId, projectId, "submitted");
+
+/** Catechist/admin approves a submitted recording (submitted → approved). */
+export const approveProject = (parishId: string, projectId: string): Promise<YouthProjectStatus> =>
+  transitionProject(parishId, projectId, "approved");
+
+/** Catechist/admin rejects a submitted recording (submitted → rejected). */
+export const rejectProject = (parishId: string, projectId: string): Promise<YouthProjectStatus> =>
+  transitionProject(parishId, projectId, "rejected");
+
+/** Reopen for re-recording after the recording is deleted (submitted/approved/rejected → ready_to_record). */
+export const reopenProject = (parishId: string, projectId: string): Promise<YouthProjectStatus> =>
+  transitionProject(parishId, projectId, "ready_to_record");
+
+/**
+ * Hard-reset a project to drafting, OUTSIDE the lifecycle guard. Not a product
+ * transition — only the dev reset route uses this to recycle a project for testing.
+ */
+export async function resetProjectToDrafting(parishId: string, projectId: string): Promise<void> {
+  await getDb(parishId).query("UPDATE youth_projects SET status = 'drafting', updated_at = now() WHERE id = $1", [
+    projectId,
   ]);
 }
 

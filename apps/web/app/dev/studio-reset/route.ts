@@ -1,4 +1,4 @@
-import { setProjectStatus, updateScriptDraft } from "@parvaordo/core";
+import { resetProjectToDrafting, updateScriptDraft } from "@parvaordo/core";
 import { devBypassEnabled } from "@/src/lib/auth";
 
 /**
@@ -17,6 +17,6 @@ export async function GET(request: Request): Promise<Response> {
     return new Response("project and parish query params required", { status: 400 });
   }
   await updateScriptDraft(parish, project, "");
-  await setProjectStatus(parish, project, "drafting");
+  await resetProjectToDrafting(parish, project);
   return new Response("ok");
 }

@@ -3,12 +3,15 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
+  approveProject,
   deleteProjectSlide,
   deleteRecordings,
   getProject,
+  markProjectReady,
   mintMcpToken,
+  rejectProject,
+  reopenProject,
   reorderProjectSlides,
-  setProjectStatus,
   updateScriptDraft,
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
@@ -39,10 +42,10 @@ export async function startAiSessionAction(): Promise<{ token: string; expiresAt
   return mintMcpToken(parishId, userId);
 }
 
-/** Flip the project to ready_to_record. */
+/** Teen marks the project ready to record. */
 export async function markReadyAction(projectId: string): Promise<void> {
   const { parishId } = await ctx();
-  await setProjectStatus(parishId, projectId, "ready_to_record");
+  await markProjectReady(parishId, projectId);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
 
@@ -51,7 +54,7 @@ export async function markReadyAction(projectId: string): Promise<void> {
 export async function deleteRecordingAction(projectId: string): Promise<void> {
   const { parishId } = await ctx();
   await deleteRecordings(parishId, projectId);
-  await setProjectStatus(parishId, projectId, "ready_to_record");
+  await reopenProject(parishId, projectId);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
 
@@ -61,7 +64,7 @@ export async function reviewProjectAction(projectId: string, decision: "approved
   const role = v?.identity?.role;
   const isStaff = role === "catechist" || role === "admin" || role === "super_admin";
   if (!v?.identity?.parishId || !isStaff) redirect("/");
-  await setProjectStatus(v.identity.parishId, projectId, decision);
+  await (decision === "approved" ? approveProject : rejectProject)(v.identity.parishId, projectId);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
 
