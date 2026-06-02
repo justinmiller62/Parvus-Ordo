@@ -5,6 +5,7 @@ import {
   createAsset,
   deleteAsset,
   getAsset,
+  getAssetParishId,
   getDb,
   listAssets,
   setTranscript,
@@ -118,5 +119,39 @@ describe("asset lifecycle", () => {
     });
     expect(await getAsset(ST_PETER, id)).toBeNull();
     await deleteAsset(HOLY_SPIRIT, id);
+  });
+});
+
+// po-k92: the clip cut-service callback (POST /api/ocia/clips/:assetId/ready) must derive
+// the parish from the asset itself rather than trusting a client-supplied parishId.
+// getAssetParishId is the SECURITY DEFINER lookup that makes that possible — it runs
+// pre-tenant-context (no app.parish_id, like the secret-authenticated callback) yet
+// returns the asset's TRUE owner, so the route can ignore body.parishId entirely.
+describe("getAssetParishId — definer lookup of an asset's owning parish (po-k92)", () => {
+  it("returns the owning parish with no caller tenant context", async () => {
+    const id = await createAsset({
+      parishId: HOLY_SPIRIT,
+      createdBy: await userId("admin@parvaordo.test"),
+      kind: "video",
+      title: "Clip HS",
+    });
+    expect(await getAssetParishId(id)).toBe(HOLY_SPIRIT);
+    await deleteAsset(HOLY_SPIRIT, id);
+  });
+
+  it("returns each asset's real owner across tenants (not a fixed or caller-supplied value)", async () => {
+    const by = await userId("admin@parvaordo.test");
+    const hs = await createAsset({ parishId: HOLY_SPIRIT, createdBy: by, kind: "video", title: "HS" });
+    const sp = await createAsset({ parishId: ST_PETER, createdBy: by, kind: "video", title: "SP" });
+    // Each resolves to its own parish — so the callback updates the correct tenant's row
+    // regardless of what parishId a buggy/compromised cutter job puts in the body.
+    expect(await getAssetParishId(hs)).toBe(HOLY_SPIRIT);
+    expect(await getAssetParishId(sp)).toBe(ST_PETER);
+    await deleteAsset(HOLY_SPIRIT, hs);
+    await deleteAsset(ST_PETER, sp);
+  });
+
+  it("returns null for an unknown asset id (route → 404)", async () => {
+    expect(await getAssetParishId("00000000-0000-0000-0000-000000000000")).toBeNull();
   });
 });
