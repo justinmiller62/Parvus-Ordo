@@ -27,6 +27,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       viewingAs={viewer.viewingAs}
       memberships={viewer.identity?.memberships ?? []}
       activeParishId={viewer.identity?.parishId ?? null}
+      enabledModules={viewer.enabledModules}
     >
       {children}
     </AppShell>

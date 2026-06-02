@@ -46,30 +46,6 @@ export const ROLE_LABELS: Record<Role, string> = {
   studio: "Studio",
 };
 
-// ─── Module → role eligibility ────────────────────────────────────────────────
-// Defined once and consumed by BOTH the parish dashboard (which module launcher
-// cards to render) and the app shell (which module nav links to show), so the two
-// can never drift. The dashboard redirects single-module roles away before these
-// run (catechist/learner → OCIA, studio → Parvus Studio), so the broader OCIA/
-// Studio predicates resolve to "admins only" there while staying correct for the
-// shell, which serves every role. This is also the single seam a future per-parish
-// module-enable toggle should gate on.
-
-/** OCIA: parish staff (admins, catechists) + OCIA learners. */
-export function ociaEligible(role: Role | null): boolean {
-  return role === "super_admin" || role === "admin" || role === "catechist" || role === "catechumen_candidate";
-}
-
-/** Parvus Studio (formerly "Youth Teaches"): studio creators + catechists + admins. */
-export function studioEligible(role: Role | null): boolean {
-  return role === "super_admin" || role === "admin" || role === "catechist" || role === "studio";
-}
-
-/** People (invite members, manage roles): parish + diocese admins only. */
-export function peopleEligible(role: Role | null): boolean {
-  return role === "super_admin" || role === "admin";
-}
-
 // ─── Module registry + per-parish enablement resolver (RFC-001) ───────────────
 // One definition of "what modules exist, who may use each, and whether a parish may
 // turn it off" — shared by the app shell (nav), the module entry-point guards, the
@@ -97,11 +73,13 @@ export interface ModuleDef {
 // ONLY `ocia` and `studio` are toggleable; `people`, `dictionary`, `prayers`, `onboarding`
 // are always-on platform capabilities a parish cannot disable. RFC-005 §2 adds `gather` as
 // a 3rd toggleable module, opt-in per parish (`defaultEnabled: false` — ships dark, each
-// parish turns it on via the RFC-004 systems-admin toggle). Per-module `roles` mirror the
-// existing eligibility predicates where they exist (ocia↔ociaEligible,
-// studio↔studioEligible, people↔peopleEligible); dictionary/prayers are usable by any
-// parish role (their routes gate on parish, not role); onboarding (OCIA applications +
-// invites) is a staff capability; gather is parishioner-facing (every role).
+// parish turns it on via the RFC-004 systems-admin toggle). Per-module `roles` is the single
+// source of role capability — consumed via `moduleAvailable()` by both the app-shell nav and
+// the dashboard launcher cards (RFC-001 §3.5), so capability + enablement can never drift:
+// ocia = parish staff + OCIA learners; studio = studio creators + catechists + admins;
+// people = admins only; dictionary/prayers are usable by any parish role (their routes gate
+// on parish, not role); onboarding (OCIA applications + invites) is a staff capability;
+// gather is parishioner-facing (every role).
 export const MODULES: Record<ModuleKey, ModuleDef> = {
   ocia: {
     key: "ocia",

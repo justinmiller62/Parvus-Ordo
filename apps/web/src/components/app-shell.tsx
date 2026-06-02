@@ -29,10 +29,10 @@ import {
 import {
   IMPERSONATABLE_ROLES,
   isAdmin,
-  ociaEligible,
-  peopleEligible,
+  MODULES,
+  type ModuleKey,
+  moduleAvailable,
   ROLE_LABELS,
-  studioEligible,
   type Role,
 } from "@parvaordo/shared";
 import { exitImpersonationAction, impersonateAction, setActiveParishAction, signOutAction } from "@/app/(app)/actions";
@@ -50,20 +50,33 @@ interface NavItem {
   live?: boolean;
 }
 
-// Top-level nav (parish home): Dashboard + module launchers. Teens are
-// Youth-Teaches-only (no parish dashboard), like catechists/learners are OCIA-only.
-function topNav(role: Role | null): NavItem[] {
-  if (role === "studio") {
-    return [{ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true }];
-  }
-  // Catechists & learners are module-only — no parish Dashboard.
-  const moduleOnly = role === "catechist" || role === "catechumen_candidate";
+// Top-level module launchers, in nav order. CAPABILITY (which role may use a module) and
+// per-parish ENABLEMENT both come from the MODULES registry via moduleAvailable() — the
+// single source of truth, so the nav can never offer a launcher the server's module guard
+// would deny (RFC-001 §3.5, defense-in-depth layer 1). Only the PRESENTATION (icon, route,
+// order) lives here, because icons are React components and can't live in the framework-
+// agnostic @parvaordo/shared registry. dictionary/prayers/onboarding are registry modules
+// too, but they're surfaced inside OCIA rather than as top-level launchers, so they are
+// intentionally absent here. The label comes from the registry so it can't drift.
+const LAUNCHERS: { key: ModuleKey; href: string; Icon: LucideIcon }[] = [
+  { key: "ocia", href: "/ocia", Icon: BookOpen },
+  { key: "studio", href: "/parvus-studio", Icon: Clapperboard },
+  { key: "people", href: "/people", Icon: Users },
+];
+
+// Top-level nav (parish home): Dashboard + module launchers generated from the registry.
+// Single-module roles get no parish Dashboard — studio creators are Parvus-Studio-only and
+// catechists/OCIA learners are OCIA-only. A parish that disables a toggleable module (ocia
+// or studio) hides its launcher here automatically, via moduleAvailable.
+function topNav(role: Role | null, enabledModules: Set<ModuleKey>): NavItem[] {
+  const moduleOnly = role === "studio" || role === "catechist" || role === "catechumen_candidate";
   const items: NavItem[] = moduleOnly ? [] : [{ href: "/", label: "Dashboard", Icon: LayoutDashboard, live: true }];
   if (role === "super_admin") items.push({ label: "Super Admin", Icon: Shield });
-  if (ociaEligible(role)) items.push({ href: "/ocia", label: "OCIA", Icon: BookOpen, live: true });
-  if (studioEligible(role))
-    items.push({ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true });
-  if (peopleEligible(role)) items.push({ href: "/people", label: "People", Icon: Users, live: true });
+  for (const m of LAUNCHERS) {
+    if (moduleAvailable(role, m.key, enabledModules)) {
+      items.push({ href: m.href, label: MODULES[m.key].label, Icon: m.Icon, live: true });
+    }
+  }
   return items;
 }
 
@@ -104,13 +117,16 @@ function ociaNav(role: Role | null): NavItem[] {
 }
 
 // Parvus Studio module nav (when inside /parvus-studio/*) — its own sidebar, like OCIA.
-function studioNav(role: Role | null): NavItem[] {
+function studioNav(role: Role | null, enabledModules: Set<ModuleKey>): NavItem[] {
   const canReturnToDashboard = isAdmin(role);
   return [
     ...(canReturnToDashboard ? [{ href: "/", label: "Dashboard", Icon: ArrowLeft, live: true } as NavItem] : []),
     { href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true },
-    // Staff can hop to OCIA from here (Studio is removed from the OCIA sidebar).
-    ...(ociaEligible(role) ? [{ href: "/ocia", label: "OCIA", Icon: BookOpen, live: true } as NavItem] : []),
+    // Staff can hop to OCIA from here (Studio is removed from the OCIA sidebar) — but only
+    // when OCIA is enabled for this parish and the role is OCIA-capable (same registry gate).
+    ...(moduleAvailable(role, "ocia", enabledModules)
+      ? [{ href: "/ocia", label: "OCIA", Icon: BookOpen, live: true } as NavItem]
+      : []),
   ];
 }
 
@@ -129,6 +145,7 @@ export function AppShell({
   viewingAs = null,
   memberships = [],
   activeParishId = null,
+  enabledModules = new Set<ModuleKey>(),
   children,
 }: {
   brandName: string;
@@ -138,6 +155,8 @@ export function AppShell({
   viewingAs?: Role | null;
   memberships?: ShellMembership[];
   activeParishId?: string | null;
+  /** Modules enabled for the active parish (RFC-001 §3.4); gates the launcher nav. */
+  enabledModules?: Set<ModuleKey>;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -147,9 +166,11 @@ export function AppShell({
   // aren't popped out to the bare global nav; non-OCIA members keep their normal nav (no staff-only OCIA
   // links). Real /ocia* access is gated by ocia/layout.tsx. (po-s2lm)
   const inOcia =
-    pathname === "/ocia" || pathname.startsWith("/ocia/") || (ociaEligible(role) && isOciaAdjacent(pathname));
+    pathname === "/ocia" ||
+    pathname.startsWith("/ocia/") ||
+    (moduleAvailable(role, "ocia", enabledModules) && isOciaAdjacent(pathname));
   const inStudio = pathname === "/parvus-studio" || pathname.startsWith("/parvus-studio/");
-  const items = inStudio ? studioNav(role) : inOcia ? ociaNav(role) : topNav(role);
+  const items = inStudio ? studioNav(role, enabledModules) : inOcia ? ociaNav(role) : topNav(role, enabledModules);
 
   // Exact match for the two landing routes; prefix match for deeper routes.
   const isActive = (href: string) => (href === "/" || href === "/ocia" ? pathname === href : pathname.startsWith(href));

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BookOpen, Clapperboard, Users } from "lucide-react";
 import { getMinistries, getParishById } from "@parvaordo/core";
-import { ociaEligible, peopleEligible, ROLE_LABELS, studioEligible } from "@parvaordo/shared";
+import { moduleAvailable, ROLE_LABELS } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 
 export default async function HomePage() {
@@ -18,11 +18,13 @@ export default async function HomePage() {
   if (role === "studio") redirect("/parvus-studio");
 
   const parishId = identity?.parishId ?? null;
-  // Single-module roles (catechist/learner, studio) are redirected away above, so
-  // these shared predicates resolve to "admins only" here — see @parvaordo/shared.
-  const showOcia = ociaEligible(role);
-  const showStudio = studioEligible(role);
-  const showPeople = peopleEligible(role);
+  // Module launcher cards — the same single source of truth as the app-shell nav:
+  // moduleAvailable(role, key, enabledModules) gates on BOTH role capability AND the
+  // parish's per-module enablement (RFC-001 §3.5). Single-module roles (catechist/learner,
+  // studio) are redirected away above, so OCIA/Studio here resolve to "admins only" by role.
+  const showOcia = moduleAvailable(role, "ocia", viewer.enabledModules);
+  const showStudio = moduleAvailable(role, "studio", viewer.enabledModules);
+  const showPeople = moduleAvailable(role, "people", viewer.enabledModules);
 
   const [parish, ministries] = await Promise.all([
     parishId ? getParishById(parishId) : Promise.resolve(null),

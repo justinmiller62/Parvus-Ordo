@@ -26,15 +26,15 @@ describe("MODULES registry", () => {
     expect([...MODULES.gather.roles].sort()).toEqual(EVERY_ROLE);
   });
 
-  it("ocia capability mirrors ociaEligible (staff + OCIA learners)", () => {
+  it("ocia capability = parish staff + OCIA learners", () => {
     expect([...MODULES.ocia.roles].sort()).toEqual(["admin", "catechist", "catechumen_candidate", "super_admin"]);
   });
 
-  it("studio capability mirrors studioEligible (studio creators + catechists + admins)", () => {
+  it("studio capability = studio creators + catechists + admins", () => {
     expect([...MODULES.studio.roles].sort()).toEqual(["admin", "catechist", "studio", "super_admin"]);
   });
 
-  it("people capability mirrors peopleEligible (admins only)", () => {
+  it("people capability = admins only", () => {
     expect([...MODULES.people.roles].sort()).toEqual(["admin", "super_admin"]);
   });
 
