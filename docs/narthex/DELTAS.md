@@ -100,7 +100,7 @@ write/read model + pure gating the student surfaces depend on.
 | MED | ☑ Cohorts UI (list + 5-tab detail) | `/ocia/cohorts` + `/ocia/cohorts/[id]` (Lessons/Schedule/Students/Learning Paths/Settings); nav wired live |
 | MED | ☑ Single completion signal | sequential lock = lesson's live-version items all complete (`lesson_item_progress`); teacher progress = answered/total questions — no new `engagement_events` table |
 | MED | ☑ Dropped `cohort_schedule.discussion_location` flag | fixed: 0023 adds `time_override`/`location_override`; effective time/location = `COALESCE(override, cohort default)` |
-| — | ☐ Unified Calendar + iCal (deferred) | the calendar half of schedule-calendar.md (`calendar_events`+`observed_date`, `calendar_sources`, SSRF-proxied iCal/RRULE, react-big-calendar, Calendar tab) is a noted follow-up `phase=port` bead; carries the remaining two flagged fixes (`observed_date`, leaked `service_role` key) |
+| — | ◐ Unified Calendar + iCal | backend + security foundation LANDED in **po-oa5n** (see below); the React UI (Calendar page, Calendar tab, modal, sources admin, e2e) is the follow-up `phase=port` bead **po-d98g**. Both flagged fixes are resolved in the backend slice (`observed_date` column; no leaked `service_role` key) |
 
 ## engagement-dashboard (Slice 1: lesson-level, SQL-aggregated — po-on7)
 | Sev | Delta | Notes |
@@ -116,3 +116,23 @@ write/read model + pure gating the student surfaces depend on.
 | MED | ☐ Diocese-admin / super-admin cross-parish rollup | new ParvaOrdo enhancement (no legacy equiv); needs a cross-parish read path (`getDb` pins one parish). v1 is per-active-parish — every acceptance criterion is per-parish |
 | LOW | ☐ Nightly Cron rollup table (`infra/workers`) | optional scaling; raw-event SQL is fine at parish scale today |
 | LOW | ☐ Richer video telemetry (watched %, seeks) | `metadata` jsonb + enum are extensible; v1 video timing uses step deltas, and `lesson_item_progress.max_reached_ms` already records watch depth |
+
+## unified-calendar — backend & security (po-oa5n)
+The data + pure-logic + security half of the calendar surface of schedule-calendar.md
+(Cohorts list already shipped in po-mf1). All three event streams normalize to one pure
+`MergedEvent`; the React layer (follow-up `po-d98g`) only concatenates, hides by source,
+and renders. `core/calendar`: `ical` (SSRF-guarded `fetchFeed` + `parseIcal` RRULE/EXDATE),
+`events` (CRUD + pure ghost/observed `expandCalendarEvent`), `sources` (enabled read + admin
+CRUD), `overlay` (cohort-schedule → events, reusing po-mf1 `getCohortSchedule`). Migration
+0026 adds `calendar_events`/`calendar_sources` on the three-tier scope model.
+| Sev | Delta / decision | Notes |
+| --- | --- | --- |
+| HIGH | ☑ Flagged fix — missing `observed_date` column | added as a real column on `calendar_events` (Narthex read/wrote it with no migration → silently broken); drives the transferred-feast ghost split |
+| HIGH | ☑ Flagged fix — leaked `service_role` JWT | NOT carried over; `proxy-ical` is `GET /api/v1/calendar/ical`, authed by the WorkOS session (any parish member), hardening in `core/calendar/ical.fetchFeed` |
+| HIGH | ☑ SSRF/host-whitelist/HTTPS/size+time guard | `fetchFeed`: https-only, host suffix whitelist (+`ICAL_ALLOWED_HOSTS`), private/loopback-IP rejection re-checked on every redirect hop, 10 s timeout, 5 MB streamed cap; unit-tested with injected fetch/DNS |
+| HIGH | ☑ Cross-tenant + diocese-cascade RLS | three-tier (global/diocese/parish) READ cascade via the `app.diocese_id` GUC, parish-scope WRITE — like lessons; int test proves AJ↔Erie isolation both ways + global cascade on the RLS DB |
+| MED | ☑ Diocese-scoped feasts/feeds (new capability) | a diocese publishes its liturgical calendar / feeds once → every parish inherits (Narthex was parish-only); diocese/global rows are seeded/managed out of band like diocese lessons |
+| MED | ☑ Pure RRULE/EXDATE + ghost + time parsing | `parseIcal` (ical.js+rrule, range-bounded to month ±1), `expandCalendarEvent` (ghost on actual date + full on observed), `parseTimeString` (1-h block / all-day) — all pure + unit-tested |
+| MED | ☑ "Students see only enabled sources" | enforced on the read path (`listEnabledSources` filters `enabled`); the full list + CRUD are reached only via admin/catechist-gated actions (PO gates role at the boundary, not in RLS) |
+| MED | ☐ Calendar UI (deferred → po-d98g) | unified Calendar page (decide react-big-calendar vs custom month/agenda), per-source filter chips, sacred-text-normalized titles, ghost rendering, Add/edit/detail modals, Calendar tab in cohort detail, `calendar_sources` admin UI, Playwright e2e |
+| LOW | ☐ Annual recurrence projection | `recurrence='annual'` is stored + returned but not projected across years (Narthex defined no algorithm + no AC covers it); a feast shows on its stored date. Project in the UI follow-up if desired |
