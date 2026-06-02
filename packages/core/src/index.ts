@@ -6,6 +6,7 @@
 // shared infra
 export * from "./db";
 export * from "./branding";
+export * from "./content"; // three-layer content engine shared by dictionary + prayers
 
 // MCP transport (generic JSON-RPC framing shared by every MCP route)
 export * from "./mcp";

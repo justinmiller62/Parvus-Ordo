@@ -1,10 +1,12 @@
 import { orNull, trimOrEmpty } from "@parvaordo/shared";
 import { getDb, type TenantDb } from "../db/client";
+import { deleteParishSubmission, mergeLayered, upsertParishOverride } from "../content/layered";
 
 // Dictionary data access. Three layers: global dictionary_entries (universal,
 // approved), per-parish dictionary_overrides (wide-column field overrides), and
 // per-parish dictionary_submissions (pending new terms). listDictionary merges
-// them (universal wins by lowercased headword) with overrides applied.
+// them (universal wins by lowercased headword) with overrides applied — the merge
+// itself is the shared mergeLayered engine in ../content/layered.
 
 export interface DictionaryItem {
   id: string;
@@ -53,6 +55,27 @@ interface EntryRow {
   category: string | null;
 }
 
+interface OverrideRow {
+  entry_id: string;
+  override_definition: string | null;
+  override_greek_definition: string | null;
+  override_hebrew_definition: string | null;
+  override_first_century_context: string | null;
+  override_notes: string | null;
+}
+
+interface SubmissionRow {
+  id: string;
+  headword: string;
+  variants: string[] | null;
+  definition: string;
+  greek_word: string | null;
+  greek_definition: string | null;
+  hebrew_word: string | null;
+  hebrew_definition: string | null;
+  first_century_context: string | null;
+}
+
 // The approved universal glossary (dictionary_entries) has no parish_id and its RLS
 // policy exposes every approved row to every tenant (0019_dictionary.sql), so the same
 // bytes are re-read and re-sorted per request for each parish. It changes only via
@@ -97,40 +120,24 @@ export async function listDictionary(parishId: string, nowMs: number = Date.now(
   // run fresh, in parallel with a cold-cache universal fetch.
   const [universal, { rows: overrides }, { rows: submissions }] = await Promise.all([
     getUniversalEntries(db, nowMs),
-    db.query<{
-      entry_id: string;
-      override_definition: string | null;
-      override_greek_definition: string | null;
-      override_hebrew_definition: string | null;
-      override_first_century_context: string | null;
-      override_notes: string | null;
-    }>(
+    db.query<OverrideRow>(
       `SELECT entry_id, override_definition, override_greek_definition, override_hebrew_definition,
               override_first_century_context, override_notes FROM dictionary_overrides`,
     ),
-    db.query<{
-      id: string;
-      headword: string;
-      variants: string[] | null;
-      definition: string;
-      greek_word: string | null;
-      greek_definition: string | null;
-      hebrew_word: string | null;
-      hebrew_definition: string | null;
-      first_century_context: string | null;
-    }>(
+    db.query<SubmissionRow>(
       `SELECT id, headword, variants, definition, greek_word, greek_definition, hebrew_word,
               hebrew_definition, first_century_context
          FROM dictionary_submissions WHERE status = 'pending' ORDER BY headword`,
     ),
   ]);
 
-  const ovByEntry = new Map(overrides.map((o) => [o.entry_id, o]));
-  const byHeadword = new Map<string, DictionaryItem>();
-
-  for (const e of universal) {
-    const o = ovByEntry.get(e.id);
-    byHeadword.set(e.headword.toLowerCase(), {
+  return mergeLayered<EntryRow, OverrideRow, SubmissionRow, DictionaryItem>({
+    universal,
+    overrides,
+    submissions,
+    overrideEntryId: (o) => o.entry_id,
+    universalEntryId: (e) => e.id,
+    fromUniversal: (e, o) => ({
       id: e.id,
       headword: e.headword,
       variants: e.variants,
@@ -146,14 +153,9 @@ export async function listDictionary(parishId: string, nowMs: number = Date.now(
       category: e.category,
       isLocal: false,
       overrideNote: o?.override_notes ?? null,
-    });
-  }
-
-  // Parish submissions: added only if no universal entry has that headword.
-  for (const s of submissions) {
-    const key = s.headword.toLowerCase();
-    if (byHeadword.has(key)) continue;
-    byHeadword.set(key, {
+    }),
+    // Parish submissions carry no pronunciation/references/category and never an override note.
+    fromSubmission: (s) => ({
       id: s.id,
       headword: s.headword,
       variants: s.variants,
@@ -169,10 +171,10 @@ export async function listDictionary(parishId: string, nowMs: number = Date.now(
       category: null,
       isLocal: true,
       overrideNote: null,
-    });
-  }
-
-  return [...byHeadword.values()].sort((a, b) => a.headword.localeCompare(b.headword));
+    }),
+    dedupeKey: (it) => it.headword.toLowerCase(),
+    sortKey: (it) => it.headword,
+  });
 }
 
 const cleanVariants = (v?: string[] | null) => {
@@ -236,10 +238,7 @@ export async function updateDictionarySubmission(
 }
 
 export async function deleteDictionarySubmission(parishId: string, submissionId: string): Promise<void> {
-  await getDb(parishId).query("DELETE FROM dictionary_submissions WHERE id = $1 AND parish_id = $2", [
-    submissionId,
-    parishId,
-  ]);
+  await deleteParishSubmission(parishId, "dictionary_submissions", submissionId);
 }
 
 export interface OverrideInput {
@@ -252,25 +251,11 @@ export interface OverrideInput {
 
 /** Upsert a per-parish override of a universal entry (only changed fields; rest null). */
 export async function upsertOverride(parishId: string, entryId: string, o: OverrideInput): Promise<void> {
-  await getDb(parishId).query(
-    `INSERT INTO dictionary_overrides
-       (parish_id, entry_id, override_definition, override_greek_definition,
-        override_hebrew_definition, override_first_century_context, override_notes)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
-     ON CONFLICT (parish_id, entry_id) DO UPDATE SET
-       override_definition = EXCLUDED.override_definition,
-       override_greek_definition = EXCLUDED.override_greek_definition,
-       override_hebrew_definition = EXCLUDED.override_hebrew_definition,
-       override_first_century_context = EXCLUDED.override_first_century_context,
-       override_notes = EXCLUDED.override_notes`,
-    [
-      parishId,
-      entryId,
-      orNull(o.definition),
-      orNull(o.greekDefinition),
-      orNull(o.hebrewDefinition),
-      orNull(o.firstCenturyContext),
-      orNull(o.notes),
-    ],
-  );
+  await upsertParishOverride(parishId, "dictionary_overrides", entryId, {
+    override_definition: orNull(o.definition),
+    override_greek_definition: orNull(o.greekDefinition),
+    override_hebrew_definition: orNull(o.hebrewDefinition),
+    override_first_century_context: orNull(o.firstCenturyContext),
+    override_notes: orNull(o.notes),
+  });
 }
