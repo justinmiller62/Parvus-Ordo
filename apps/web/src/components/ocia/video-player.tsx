@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Hls from "hls.js";
 import { clipResumeSeconds, clipSeek, clipTimeUpdate } from "@parvaordo/shared";
+import { findDictionaryTerms } from "@parvaordo/core/dictionary-text";
 import { saveVideoProgressAction } from "@/app/(app)/ocia/lessons/[id]/actions";
+import { useDictionary } from "@/src/components/ocia/dictionary/dictionary-provider";
 
 export interface PlayerWord {
   word: string;
@@ -185,6 +187,18 @@ export function VideoPlayer({
 
   const activeIndex = words.findIndex((w) => currentTime >= w.start && currentTime < w.end);
 
+  // Dictionary highlighting of transcript words (no-op when no DictionaryProvider is
+  // mounted, e.g. outside the lesson view). Each word index covered by a matched term
+  // maps to its headword, so clicking it opens the definition instead of seeking.
+  const dict = useDictionary();
+  const termWordMap = useMemo(() => {
+    const map = new Map<number, string>();
+    if (!dict) return map;
+    const matches = findDictionaryTerms(words.map((w) => w.word).join(" "), dict.index);
+    for (const m of matches) for (let k = 0; k < m.length; k++) map.set(m.at + k, m.headword);
+    return map;
+  }, [words, dict]);
+
   // Auto-scroll the active word into view.
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -215,16 +229,35 @@ export function VideoPlayer({
           className="max-h-48 overflow-auto rounded-lg border border-gray-200 bg-white p-3 text-sm leading-relaxed"
           data-testid="transcript"
         >
-          {words.map((w, i) => (
-            <button
-              key={i}
-              ref={i === activeIndex ? activeRef : undefined}
-              onClick={() => seekToWord(w)}
-              className={`rounded px-0.5 ${i === activeIndex ? "bg-gold/30 text-navy" : "text-gray-600 hover:bg-parchment"}`}
-            >
-              {w.word}{" "}
-            </button>
-          ))}
+          {words.map((w, i) => {
+            const headword = termWordMap.get(i);
+            if (headword) {
+              return (
+                <button
+                  key={i}
+                  ref={i === activeIndex ? activeRef : undefined}
+                  onClick={() => dict?.open(headword)}
+                  data-testid="transcript-term"
+                  title="View definition"
+                  className={`rounded px-0.5 font-medium text-burgundy underline decoration-dotted decoration-gold underline-offset-2 hover:bg-cream/50 ${
+                    i === activeIndex ? "bg-gold/30" : ""
+                  }`}
+                >
+                  {w.word}{" "}
+                </button>
+              );
+            }
+            return (
+              <button
+                key={i}
+                ref={i === activeIndex ? activeRef : undefined}
+                onClick={() => seekToWord(w)}
+                className={`rounded px-0.5 ${i === activeIndex ? "bg-gold/30 text-navy" : "text-gray-600 hover:bg-parchment"}`}
+              >
+                {w.word}{" "}
+              </button>
+            );
+          })}
         </div>
       ) : null}
     </div>

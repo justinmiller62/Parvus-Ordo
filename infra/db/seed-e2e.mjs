@@ -139,6 +139,9 @@ const WORDS = [
   { word: "Initiation", start: 2.4, end: 3.1 },
   { word: "of", start: 3.1, end: 3.3 },
   { word: "Adults.", start: 3.3, end: 4.0 },
+  // Within the video lesson item's [0, 8000]ms clip window so it renders in the synced
+  // transcript — exercises dictionary-term highlighting in the transcript (po-6y7j).
+  { word: "Eucharist.", start: 4.2, end: 4.9 },
 ];
 await client.query(
   `INSERT INTO assets
@@ -193,7 +196,11 @@ await seedLesson({
   title: "E2E: Who Do You Say That I Am",
   description: "E2E fixture — completable lesson with a question + MC.",
   items: [
-    { position: 0, kind: "reading", content: { html: '<p>Jesus asked, "Who do you say that I am?"</p>' } },
+    {
+      position: 0,
+      kind: "reading",
+      content: { html: '<p>Jesus asked, "Who do you say that I am?" We meet him in the Eucharist.</p>' },
+    },
     { position: 1, kind: "question", content: { prompt: "Who do you say that Jesus is?", format: "open_ended" } },
     {
       position: 2,
