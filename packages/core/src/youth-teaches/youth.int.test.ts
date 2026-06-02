@@ -94,9 +94,20 @@ describe("youth-teaches (integration)", () => {
   });
 
   it("mints + validates an MCP token (and rejects an unknown one)", async () => {
-    const { token } = await mintMcpToken(HS, teenId);
+    const { token, expiresAt } = await mintMcpToken(HS, teenId);
+    expect(new Date(expiresAt).getTime()).toBeGreaterThan(Date.now()); // a fresh token's TTL is in the future
     expect(await validateMcpToken(token)).toEqual({ parishId: HS, teenUserId: teenId });
     expect(await validateMcpToken("mcp_does_not_exist")).toBeNull();
+  });
+
+  it("rejects an MCP token once it has expired (the TTL boundary, not just unknown tokens)", async () => {
+    const { token } = await mintMcpToken(HS, teenId);
+    // Push it past its TTL using the same clock (DB now()) the validator compares against,
+    // so the assertion can't flake on client/server clock skew.
+    await getDb(HS).query("UPDATE youth_mcp_tokens SET expires_at = now() - interval '1 minute' WHERE token = $1", [
+      token,
+    ]);
+    expect(await validateMcpToken(token)).toBeNull();
   });
 
   it("callYouthTool dispatches tools + writes a tenant-scoped, parish-isolated audit log", async () => {
