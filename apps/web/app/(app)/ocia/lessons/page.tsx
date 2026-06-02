@@ -1,3 +1,4 @@
+import { isStaff } from "@parvaordo/shared";
 import Link from "next/link";
 import { getManageLessons, getPublishedLessons, type ContentScope, type LessonStatus } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
@@ -36,7 +37,7 @@ export default async function LessonsPage({
   const viewer = await getViewer();
   const parishId = viewer?.identity?.parishId ?? null;
   const role = viewer?.identity?.role ?? null;
-  const canBuild = role === "catechist" || role === "admin" || role === "super_admin";
+  const canBuild = isStaff(role);
 
   // Learners: a simple list of published lessons they can take.
   if (!canBuild) {

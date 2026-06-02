@@ -1,3 +1,4 @@
+import { isStaff } from "@parvaordo/shared";
 import { notFound, redirect } from "next/navigation";
 import { getAsset, getLessonForEdit, listAssets } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
@@ -14,7 +15,7 @@ export default async function EditLessonPage({
   const viewer = await getViewer();
   const role = viewer?.identity?.role;
   const parishId = viewer?.identity?.parishId ?? null;
-  if (!parishId || !(role === "catechist" || role === "admin" || role === "super_admin")) {
+  if (!parishId || !isStaff(role)) {
     redirect("/ocia");
   }
 

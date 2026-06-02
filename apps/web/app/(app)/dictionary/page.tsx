@@ -1,3 +1,4 @@
+import { isStaff } from "@parvaordo/shared";
 import { redirect } from "next/navigation";
 import { listDictionary } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
@@ -9,7 +10,7 @@ export default async function DictionaryPage() {
   const viewer = await getViewer();
   if (!viewer?.identity?.parishId) redirect("/login");
   const role = viewer.identity.role;
-  const canEdit = role === "catechist" || role === "admin" || role === "super_admin";
+  const canEdit = isStaff(role);
   const entries = await listDictionary(viewer.identity.parishId);
 
   return (

@@ -1,5 +1,6 @@
 "use server";
 
+import { isStaff } from "@parvaordo/shared";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
@@ -14,8 +15,7 @@ import { getViewer } from "@/src/lib/viewer";
 async function staffCtx(): Promise<{ parishId: string; userId: string }> {
   const v = await getViewer();
   const role = v?.identity?.role;
-  const isStaff = role === "catechist" || role === "admin" || role === "super_admin";
-  if (!v?.identity?.parishId || !v.identity.userId || !isStaff) redirect("/");
+  if (!v?.identity?.parishId || !v.identity.userId || !isStaff(role)) redirect("/");
   return { parishId: v.identity.parishId, userId: v.identity.userId };
 }
 

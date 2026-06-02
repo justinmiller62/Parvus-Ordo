@@ -1,3 +1,4 @@
+import { isStaff } from "@parvaordo/shared";
 import { redirect } from "next/navigation";
 import { listAssets } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
@@ -8,7 +9,7 @@ export default async function MediaPage() {
   const viewer = await getViewer();
   const role = viewer?.identity?.role;
   const parishId = viewer?.identity?.parishId;
-  const canManage = role === "catechist" || role === "admin" || role === "super_admin";
+  const canManage = isStaff(role);
   if (!parishId || !canManage) redirect("/ocia");
 
   const assets = await listAssets(parishId);

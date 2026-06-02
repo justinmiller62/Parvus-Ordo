@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ociaEligible, studioEligible, peopleEligible, type Role } from "./index";
+import { isStaff, ociaEligible, peopleEligible, STAFF_ROLES, studioEligible, type Role } from "./index";
 
 // Every role, in declaration order, plus the unauthenticated `null` case.
 const ALL_ROLES: (Role | null)[] = [
@@ -34,5 +34,15 @@ describe("module eligibility predicates", () => {
     expect(ociaEligible(null)).toBe(false);
     expect(studioEligible(null)).toBe(false);
     expect(peopleEligible(null)).toBe(false);
+  });
+});
+
+describe("isStaff (content-managing parish staff)", () => {
+  it("is exactly admins + catechists — not learners, studio creators, members, or signed-out", () => {
+    expect(ALL_ROLES.filter((r) => isStaff(r))).toEqual(["super_admin", "admin", "catechist"]);
+  });
+
+  it("STAFF_ROLES lists those same roles — the single source the predicate reads", () => {
+    expect(STAFF_ROLES).toEqual(["super_admin", "admin", "catechist"]);
   });
 });

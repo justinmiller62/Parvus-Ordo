@@ -1,3 +1,4 @@
+import { isStaff } from "@parvaordo/shared";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -45,7 +46,7 @@ export default async function LessonPage({
   if (!identity?.parishId) redirect("/");
 
   const role = identity.role;
-  const isBuilder = role === "catechist" || role === "admin" || role === "super_admin";
+  const isBuilder = isStaff(role);
 
   const { id } = await params;
   const sp = await searchParams;
