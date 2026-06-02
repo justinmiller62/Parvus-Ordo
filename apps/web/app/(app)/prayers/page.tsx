@@ -16,7 +16,7 @@ export default async function PrayersPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div>
-        <p className="text-xs uppercase tracking-wide text-gray-400">Reference</p>
+        <p className="text-xs uppercase tracking-wide text-gray-400">OCIA › Reference</p>
         <h1 className="font-heading text-2xl text-navy">Prayer Book</h1>
       </div>
       <PrayersClient prayers={prayers} canEdit={canEdit} />
