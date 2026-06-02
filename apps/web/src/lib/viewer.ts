@@ -48,6 +48,10 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   const host = (await headers()).get("host");
   // The request hostname resolves to a parish by slug (subdomain) or custom domain.
   const hostParishId = await resolveParishIdForHost(host);
+  // The po_active_parish cookie is UNTRUSTED — passed only as a hint that
+  // pickActiveMembership cross-checks against the user's own memberships. The effective
+  // parishId below comes from the matched membership, never from the raw cookie, so it is
+  // safe to feed getDb. Never bypass pickActiveMembership with the cookie value directly.
   const active: ParishMembership | null = pickActiveMembership(real.memberships, {
     parishId: jar.get(ACTIVE_PARISH_COOKIE)?.value,
     hostParishId,
