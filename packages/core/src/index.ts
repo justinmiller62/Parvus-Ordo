@@ -7,6 +7,9 @@
 export * from "./db/client";
 export * from "./branding";
 
+// MCP transport (generic JSON-RPC framing shared by every MCP route)
+export * from "./mcp";
+
 // auth (app-issued API token + password login for the iOS surface)
 export * from "./auth";
 
