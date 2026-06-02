@@ -6,6 +6,7 @@ import {
   markItemComplete,
   markVideoProgress,
   recordEngagementEvent,
+  resolveStudentLessonCohort,
   submitAnswer,
   submitStudentFeedback,
   submitStudentQuestion,
@@ -32,11 +33,13 @@ export async function recordLessonStartAction(lessonId: string, versionId: strin
   const ctx = await studentContext();
   if (!ctx || !versionId) return;
   try {
+    const cohortId = await resolveStudentLessonCohort(ctx.parishId, ctx.userId, lessonId);
     await recordEngagementEvent({
       parishId: ctx.parishId,
       studentId: ctx.userId,
       lessonId,
       versionId,
+      cohortId,
       type: "lesson_start",
     });
   } catch (err) {
@@ -112,7 +115,8 @@ export async function advanceAction(formData: FormData): Promise<void> {
   if (versionId && stepKind) {
     after(async () => {
       try {
-        const base = { parishId: ctx.parishId, studentId: ctx.userId, lessonId, versionId };
+        const cohortId = await resolveStudentLessonCohort(ctx.parishId, ctx.userId, lessonId);
+        const base = { parishId: ctx.parishId, studentId: ctx.userId, lessonId, versionId, cohortId };
         await recordEngagementEvent({ ...base, type: "step_complete", itemId, stepIndex: step, stepKind });
         if (kind === "question") {
           await recordEngagementEvent({
