@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clipSeek, clipTimeUpdate } from "./index";
+import { clipResumeSeconds, clipSeek, clipTimeUpdate } from "./index";
 
 // Window 1:40 → 6:00 (a non-zero start, like the bug repro).
 const base = { startSec: 100, endSec: 360, maxReached: 0, watched: false };
@@ -44,5 +44,38 @@ describe("clipSeek (manual seek)", () => {
 
   it("allows free seeking once watched", () => {
     expect(clipSeek({ ...base, currentTime: 300, watched: true })).toEqual({});
+  });
+});
+
+// po-a7c: persisted watch progress (max_reached_ms) must seed the player's
+// seek-enforcement ceiling on (re)load — not only the resume position. The player
+// converts the stored ms to clip-relative seconds and uses that ONE value for both
+// resume AND `ClipState.maxReached`; clipResumeSeconds is that conversion. Seeding the
+// ceiling at 0 (fetching the value but spending it on resume only) silently brings
+// back the legacy "enforcement resets on reload" bug, so it is guarded here.
+describe("clipResumeSeconds (seek-enforcement seed restored from persisted progress)", () => {
+  it("converts persisted ms to clip-relative seconds", () => {
+    expect(clipResumeSeconds(10_000)).toBe(10);
+  });
+
+  it("floors absent / negative / non-finite progress to 0 (no ground covered)", () => {
+    expect(clipResumeSeconds(0)).toBe(0);
+    expect(clipResumeSeconds(-5_000)).toBe(0);
+    expect(clipResumeSeconds(Number.NaN)).toBe(0);
+  });
+
+  it("seeds maxReached so a reloaded (unwatched) learner keeps their earned ground", () => {
+    // Fresh load → `watched` starts false; only the restored ceiling gates seeks.
+    const maxReached = clipResumeSeconds(10_000); // 10s previously watched, persisted
+    const reloaded = { startSec: 0, endSec: 360, maxReached, watched: false };
+    // Returning within already-watched ground is allowed; skipping past it is clamped.
+    expect(clipSeek({ ...reloaded, currentTime: 8 })).toEqual({});
+    expect(clipSeek({ ...reloaded, currentTime: 300 })).toEqual({ clampTo: 10 });
+    expect(clipTimeUpdate({ ...reloaded, currentTime: 300 })).toEqual({ clampTo: 10 });
+  });
+
+  it("WITHOUT the seed (ceiling 0) a reloaded learner is re-locked to the start — the legacy bug", () => {
+    const unseeded = { startSec: 0, endSec: 360, maxReached: 0, watched: false };
+    expect(clipSeek({ ...unseeded, currentTime: 8 })).toEqual({ clampTo: 0 });
   });
 });

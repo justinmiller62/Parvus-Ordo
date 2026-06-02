@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
-import { clipSeek, clipTimeUpdate } from "@parvaordo/shared";
+import { clipResumeSeconds, clipSeek, clipTimeUpdate } from "@parvaordo/shared";
 import { saveVideoProgressAction } from "@/app/(app)/ocia/lessons/[id]/actions";
 
 export interface PlayerWord {
@@ -45,7 +45,10 @@ export function VideoPlayer({
   const activeRef = useRef<HTMLButtonElement>(null);
   const startSec = startMs / 1000;
   const endSecRef = useRef<number>(endMs != null ? endMs / 1000 : Infinity);
-  const maxReachedRef = useRef(initialMaxReachedMs / 1000); // furthest relative seconds reached (resume seed)
+  // Furthest relative seconds reached, restored from persisted progress. Seeds BOTH
+  // the resume position and the seek-enforcement ceiling (see state() below), so the
+  // no-skip rule survives a reload rather than resetting to the clip start (po-a7c).
+  const maxReachedRef = useRef(clipResumeSeconds(initialMaxReachedMs));
   const watchedRef = useRef(unlocked);
   const lastSaveRef = useRef(0);
   const savedCompleteRef = useRef(false);

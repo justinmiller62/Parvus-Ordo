@@ -142,3 +142,15 @@ export function clipSeek(s: ClipState): { clampTo?: number } {
   }
   return {};
 }
+
+/**
+ * Clip-relative seconds for the furthest point a learner has watched, restored from
+ * persisted progress (max_reached_ms) on (re)load. The player seeds BOTH the resume
+ * position AND the seek-enforcement ceiling (`ClipState.maxReached`) from this single
+ * value, so a learner's earned navigation survives a reload. Seeding the ceiling at 0
+ * is the legacy "enforcement resets on reload" bug — so absent or forged (negative,
+ * non-finite) progress floors to 0 rather than corrupting the window.
+ */
+export function clipResumeSeconds(maxReachedMs: number): number {
+  return Number.isFinite(maxReachedMs) && maxReachedMs > 0 ? maxReachedMs / 1000 : 0;
+}
