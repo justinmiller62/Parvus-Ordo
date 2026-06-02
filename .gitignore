@@ -28,3 +28,6 @@ coverage/
 # via `gc`. The durable, version-controlled city config lives in ops/gascity/.
 .gc/
 .beads/
+
+# agent git worktrees (Scribe/Porter implement dirs — local only)
+.worktrees/
