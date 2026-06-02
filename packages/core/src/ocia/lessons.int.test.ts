@@ -1,5 +1,6 @@
 import "dotenv/config";
-import { afterAll, describe, expect, it } from "vitest";
+import { Client } from "pg";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   addLessonItem,
   closeDb,
@@ -26,10 +27,126 @@ const DIOCESE_LESSON_AJ = "cccccccc-cccc-cccc-cccc-cccccccccccc";
 const HS_LESSON = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 const SM_LESSON = "dddddddd-dddd-dddd-dddd-dddddddddddd";
 
+const DIOCESE_AJ = "00000000-0000-0000-0000-000000000001"; // matches infra/db/seed.mjs
+
 async function userId(email: string): Promise<string> {
   const { rows } = await getDb(HOLY_SPIRIT).query<{ id: string }>("SELECT id FROM users WHERE email = $1", [email]);
   return rows[0]!.id;
 }
+
+// The canonical three-tier seed lessons this suite reads (mirrors infra/db/seed.mjs).
+// Only the shape the assertions below rely on: GLOBAL keeps its 3 items (reading,
+// question, question) for the item-count/fork checks; the rest just need to exist,
+// published. created_by is omitted (nullable — "system content").
+type Fixture = {
+  id: string;
+  scope: "global" | "diocese" | "parish";
+  dioceseId: string | null;
+  parishId: string | null;
+  lessonOrder: number;
+  title: string;
+  items: { position: number; kind: "reading" | "question" | "video"; content: Record<string, unknown> }[];
+};
+const SEED_LESSONS: Fixture[] = [
+  {
+    id: GLOBAL_LESSON,
+    scope: "global",
+    dioceseId: null,
+    parishId: null,
+    lessonOrder: 1,
+    title: "Who Do You Say That I Am?",
+    items: [
+      { position: 0, kind: "reading", content: { html: "<p>seed</p>" } },
+      { position: 1, kind: "question", content: { prompt: "Who?", format: "open_ended" } },
+      {
+        position: 2,
+        kind: "question",
+        content: { prompt: "Which?", format: "multiple_choice", choices: [{ label: "A", correct: true }] },
+      },
+    ],
+  },
+  {
+    id: DIOCESE_LESSON_AJ,
+    scope: "diocese",
+    dioceseId: DIOCESE_AJ,
+    parishId: null,
+    lessonOrder: 1,
+    title: "Saints & History of Altoona-Johnstown",
+    items: [{ position: 0, kind: "reading", content: { html: "<p>seed</p>" } }],
+  },
+  {
+    id: HS_LESSON,
+    scope: "parish",
+    dioceseId: null,
+    parishId: HOLY_SPIRIT,
+    lessonOrder: 0,
+    title: "Welcome to OCIA at Holy Spirit",
+    items: [{ position: 0, kind: "reading", content: { html: "<p>seed</p>" } }],
+  },
+  {
+    id: SM_LESSON,
+    scope: "parish",
+    dioceseId: null,
+    parishId: ST_MONICA,
+    lessonOrder: 0,
+    title: "St. Monica Parish Orientation",
+    items: [],
+  },
+];
+
+/**
+ * Self-heal the seed lessons this suite reads (po-c00). The integration DB is shared
+ * across many worktrees; a concurrent process can cascade these fixtures away, which
+ * reddened the three-tier/fork/manage tests for every reviewer. Recreate any that are
+ * missing — as the superuser, since RLS forbids the app role from inserting global/
+ * diocese content — serialized by an advisory lock so concurrent runs don't race.
+ * Idempotent: fixtures that already exist are left untouched.
+ */
+async function ensureSeedLessons(): Promise<void> {
+  const url = process.env.MIGRATION_DATABASE_URL; // a required int env var (see int-guard)
+  if (!url) throw new Error("MIGRATION_DATABASE_URL is required to repair seed fixtures");
+  const su = new Client({ connectionString: url });
+  await su.connect();
+  try {
+    await su.query("BEGIN");
+    await su.query("SELECT pg_advisory_xact_lock(hashtext('po-c00:seed-lessons'))");
+    for (const f of SEED_LESSONS) {
+      const present = await su.query("SELECT 1 FROM lessons WHERE id = $1", [f.id]);
+      if (present.rowCount) continue; // already seeded — leave it as-is
+      await su.query("INSERT INTO lessons (id, scope, diocese_id, parish_id, lesson_order) VALUES ($1,$2,$3,$4,$5)", [
+        f.id,
+        f.scope,
+        f.dioceseId,
+        f.parishId,
+        f.lessonOrder,
+      ]);
+      const { rows } = await su.query<{ id: string }>(
+        `INSERT INTO lesson_versions (lesson_id, scope, diocese_id, parish_id, version_number, title, published_at)
+         VALUES ($1,$2,$3,$4,1,$5,now()) RETURNING id`,
+        [f.id, f.scope, f.dioceseId, f.parishId, f.title],
+      );
+      const versionId = rows[0]!.id;
+      for (const it of f.items) {
+        await su.query(
+          `INSERT INTO lesson_items (scope, diocese_id, parish_id, version_id, position, kind, content)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [f.scope, f.dioceseId, f.parishId, versionId, it.position, it.kind, JSON.stringify(it.content)],
+        );
+      }
+      await su.query("UPDATE lessons SET live_version_id = $1 WHERE id = $2", [versionId, f.id]);
+    }
+    await su.query("COMMIT");
+  } catch (err) {
+    await su.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    await su.end();
+  }
+}
+
+beforeAll(async () => {
+  await ensureSeedLessons();
+});
 
 afterAll(async () => {
   await closeDb();
