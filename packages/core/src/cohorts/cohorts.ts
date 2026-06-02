@@ -488,3 +488,31 @@ export async function getCohortStudents(parishId: string, cohortId: string): Pro
     return { userId: r.user_id, displayName: r.display_name, email: r.email, completed, total: lessonsWithQuestions };
   });
 }
+
+/**
+ * The cohort a student's lesson activity should be attributed to: the earliest-created
+ * cohort the student belongs to that ALSO schedules this lesson. Used to stamp `cohort_id`
+ * on engagement events so the cohort-scoped dashboards can filter by it (the player has no
+ * explicit cohort context — the student navigates to a lesson, not a cohort). Returns null
+ * when the student isn't in any cohort scheduling the lesson (the event stays un-attributed,
+ * still visible in the all-cohorts lesson view). RLS pins the lookup to the active parish.
+ * The (created_at, id) tie-break makes a multi-cohort student deterministic — Narthex
+ * assumed a single cohort.
+ */
+export async function resolveStudentLessonCohort(
+  parishId: string,
+  studentId: string,
+  lessonId: string,
+): Promise<string | null> {
+  const { rows } = await getDb(parishId).query<{ cohort_id: string }>(
+    `SELECT s.cohort_id
+       FROM cohort_schedule s
+       JOIN cohort_members m ON m.cohort_id = s.cohort_id AND m.student_id = $2
+       JOIN cohorts c ON c.id = s.cohort_id
+      WHERE s.lesson_id = $1
+      ORDER BY c.created_at, c.id
+      LIMIT 1`,
+    [lessonId, studentId],
+  );
+  return rows[0]?.cohort_id ?? null;
+}

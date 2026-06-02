@@ -16,6 +16,7 @@ import {
   listCohortCards,
   listParishStudents,
   markItemComplete,
+  resolveStudentLessonCohort,
   setPathLessons,
   setSequential,
   togglePathMember,
@@ -233,6 +234,23 @@ describe("cohorts — student gating read model (integration)", () => {
   it("a student not in any cohort sees zero lessons", async () => {
     const orphan = await makeStudent(HS, "cohort-int-orphan@test.local");
     expect(await getStudentLessons(HS, orphan)).toEqual([]);
+  });
+
+  it("resolveStudentLessonCohort attributes a lesson to the student's scheduling cohort (parish-isolated)", async () => {
+    const { lessonId } = await seedLesson(HS, "RSLC", [{ kind: "reading", content: { html: "x" } }]);
+    const rslcStudent = await makeStudent(HS, "cohort-int-rslc@test.local");
+    const rslcCohort = (await createCohort(HS, NAME + "RSLC"))!;
+    await toggleMember(HS, rslcCohort, rslcStudent, true);
+    await addScheduleEntry(HS, rslcCohort, lessonId);
+
+    expect(await resolveStudentLessonCohort(HS, rslcStudent, lessonId)).toBe(rslcCohort);
+
+    // A student in no scheduling cohort → null (the event stays un-attributed).
+    const outsider = await makeStudent(HS, "cohort-int-rslc-out@test.local");
+    expect(await resolveStudentLessonCohort(HS, outsider, lessonId)).toBeNull();
+
+    // Cross-parish: under SM, RLS hides the HS cohort + membership → null.
+    expect(await resolveStudentLessonCohort(SM, rslcStudent, lessonId)).toBeNull();
   });
 
   it("sequential cohort locks each lesson until the prior is complete", async () => {
