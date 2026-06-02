@@ -14,6 +14,7 @@ import {
   getLatestRecording,
   getProject,
   getProjectDetails,
+  getProjectOwnerId,
   listMyProjects,
   listParishYouthProjects,
   listYouthTeens,
@@ -242,12 +243,14 @@ describe("youth-teaches (integration)", () => {
     await transitionProject(HS, projectId, "ready_to_record"); // createRecording submits, which requires ready_to_record
     const rec = await createRecording(HS, {
       projectId,
+      teenUserId: teenId,
       bunnyVideoId: "guid-int",
       playbackUrl: "https://iframe.mediadelivery.net/embed/672172/guid-int",
       durationSeconds: 100,
       slideAdvanceCount: 3,
     });
-    expect(rec.projectStatus).toBe("submitted");
+    expect(rec).not.toBeNull();
+    expect(rec!.projectStatus).toBe("submitted");
     const latest = await getLatestRecording(HS, projectId);
     expect(latest?.bunnyVideoId).toBe("guid-int");
     const status = await getDb(HS).query<{ status: string }>("SELECT status FROM youth_projects WHERE id = $1", [
@@ -270,6 +273,7 @@ describe("youth-teaches (integration)", () => {
     // (the owner can still see the row) rather than reading a coincidentally empty table.
     await createRecording(HS, {
       projectId,
+      teenUserId: teenId,
       bunnyVideoId: "guid-rls",
       playbackUrl: "https://iframe.mediadelivery.net/embed/672172/guid-rls",
       durationSeconds: 42,
@@ -299,5 +303,43 @@ describe("youth-teaches (integration)", () => {
     // Clean up the rows seeded here (afterAll only knows the fixed fixtures).
     await deleteRecordings(HS, projectId);
     for (const s of await listProjectSlides(HS, projectId)) await deleteProjectSlide(HS, projectId, s.id);
+  });
+
+  it("getProjectOwnerId returns the owner, null for missing, and is parish-isolated", async () => {
+    expect(await getProjectOwnerId(HS, projectId)).toBe(teenId);
+    expect(await getProjectOwnerId(HS, "00000000-0000-0000-0000-0000000000ff")).toBeNull();
+    // RLS: another parish cannot resolve this project's owner at all (po-7ge).
+    expect(await getProjectOwnerId(ST_PETER, projectId)).toBeNull();
+  });
+
+  it("createRecording refuses a project the caller does not own — no write, status unchanged (po-7ge)", async () => {
+    // A second teen in the SAME parish. RLS is parish-level only, so without a
+    // project-ownership check this attacker could overwrite the victim's recording and
+    // flip the project to 'submitted'. The guard must block exactly that.
+    const a = await getDb(null).query<{ id: string }>(
+      "INSERT INTO users (email, display_name) VALUES ($1,'Attacker Int') ON CONFLICT (email) DO UPDATE SET display_name='Attacker Int' RETURNING id",
+      ["youth-int-attacker@inttest.local"],
+    );
+    const attackerId = a.rows[0]!.id;
+
+    // Victim baseline: ready_to_record, no recording.
+    await transitionProject(HS, projectId, "ready_to_record");
+    await deleteRecordings(HS, projectId);
+
+    const rec = await createRecording(HS, {
+      projectId, // owned by teenId, NOT attackerId
+      teenUserId: attackerId,
+      bunnyVideoId: "guid-attacker",
+      playbackUrl: "https://iframe.mediadelivery.net/embed/672172/guid-attacker",
+    });
+
+    expect(rec).toBeNull(); // refused
+    expect(await getLatestRecording(HS, projectId)).toBeNull(); // nothing written
+    const { rows } = await getDb(HS).query<{ status: string }>("SELECT status FROM youth_projects WHERE id = $1", [
+      projectId,
+    ]);
+    expect(rows[0]!.status).toBe("ready_to_record"); // NOT flipped to submitted
+
+    await getDb(null).query("DELETE FROM users WHERE email = $1", ["youth-int-attacker@inttest.local"]);
   });
 });

@@ -114,6 +114,17 @@ export async function getProject(
     : null;
 }
 
+/** The teen who owns a project (its `teen_user_id`), or null if it doesn't exist in
+ * this parish. Entry points use this to authorize project-scoped actions, since RLS is
+ * parish-level only and cannot tell one teen's project from another's (po-7ge). */
+export async function getProjectOwnerId(parishId: string, projectId: string): Promise<string | null> {
+  const { rows } = await getDb(parishId).query<{ teen_user_id: string }>(
+    "SELECT teen_user_id FROM youth_projects WHERE id = $1",
+    [projectId],
+  );
+  return rows[0]?.teen_user_id ?? null;
+}
+
 /** Overwrite the script's full_text (the update_script_draft MCP tool + the web editor). */
 export async function updateScriptDraft(
   parishId: string,

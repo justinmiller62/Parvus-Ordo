@@ -1,8 +1,10 @@
 import { getDb } from "../db/client";
 import { getStorage } from "../media/storage";
-import { submitProject } from "./projects";
+import { getProjectOwnerId, submitProject } from "./projects";
 
 export interface CreateRecordingInput {
+  /** The teen recording — must own `projectId` (RLS is parish-level, not per-project). */
+  teenUserId: string;
   projectId: string;
   bunnyVideoId: string;
   playbackUrl: string;
@@ -10,14 +12,19 @@ export interface CreateRecordingInput {
   slideAdvanceCount?: number;
 }
 
-/** Record an uploaded recording's metadata (the MP4 itself lives in Bunny) and flip
- * the project to submitted. The status flip goes through the guarded submitProject
- * transition FIRST, so an upload against a project that is not ready_to_record is
- * rejected before any recording row is created (no orphan row on an illegal submit). */
+/** Record an uploaded recording's metadata (the MP4 itself lives in Bunny) and flip the
+ * project to submitted. Authorization: only the project's owner (`teenUserId`) may record
+ * against it — parish RLS isn't per-project — so a non-owner gets null, which the route
+ * maps to 404 (po-7ge). The status flip then goes through the guarded submitProject
+ * transition, so an upload against a project that is not ready_to_record is rejected before
+ * any recording row is created (no orphan row on an illegal submit) (po-nd4). */
 export async function createRecording(
   parishId: string,
   input: CreateRecordingInput,
-): Promise<{ recordingId: string; playbackUrl: string; projectStatus: "submitted" }> {
+): Promise<{ recordingId: string; playbackUrl: string; projectStatus: "submitted" } | null> {
+  // Ownership gate first: a non-owner (or unknown project) must change nothing — no status
+  // flip, no recording row — before the guarded transition can take effect.
+  if ((await getProjectOwnerId(parishId, input.projectId)) !== input.teenUserId) return null;
   await submitProject(parishId, input.projectId);
   const { rows } = await getDb(parishId).query<{ id: string }>(
     `INSERT INTO youth_recordings
