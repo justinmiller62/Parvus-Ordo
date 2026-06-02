@@ -96,6 +96,11 @@ Node `proxy.ts` isn't buildable on OpenNext). Cloudflare's edge **caches** in fr
   `app.parish_id` transaction-local; Postgres RLS policies pin rows to that parish. **Cross-tenant
   access is a bug.** The seed/migration role bypasses RLS (owner); pre-tenant lookups (e.g. MCP token
   validation) use a `SECURITY DEFINER` function.
+  - **`users` is intentionally RLS-exempt** (it must be readable pre-tenant by `login_lookup`). So its
+    rows are NOT parish-isolated by the DB: any parish-scoped query that touches `users` MUST reach it
+    only through an RLS-scoped parent (e.g. a `memberships` join) and carry an **explicit `parish_id`
+    guard** — never select/mutate `users` unscoped (outside the pre-tenant lookup). Note `users.display_name`
+    is global: editing it is visible in every parish the user belongs to (no per-parish override yet).
 - **Tenancy hierarchy:** diocese → parish → ministry/council → member. Parishes resolve by **slug +
   `PARISH_BASE_DOMAIN`** (per env), with `custom_domains` overrides.
 - **Roles** (`membership_role`): `super_admin, admin, catechist, catechumen_candidate, parish_member,
