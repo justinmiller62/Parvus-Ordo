@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import {
   isLessonLockedForStudent,
+  isVideoItemWatched,
   markItemComplete,
   markVideoProgress,
   recordEngagementEvent,
@@ -66,21 +67,18 @@ export async function submitFeedbackAction(lessonId: string, text: string): Prom
   return { ok: true };
 }
 
-/** Persist video watch progress (furthest point + completion). Best-effort. */
-export async function saveVideoProgressAction(itemId: string, maxReachedMs: number, completed: boolean): Promise<void> {
+/**
+ * Persist video watch progress (the furthest point reached). Best-effort. Completion is
+ * derived server-side from this point (see markVideoProgress) — the client does not get
+ * to assert that a video is "done".
+ */
+export async function saveVideoProgressAction(itemId: string, maxReachedMs: number): Promise<void> {
   const ctx = await studentContext();
   if (!ctx) return;
-  // Shape-validate the client-supplied values here; core enforces them against the
-  // clip's real length so a forged position can't self-award completion (see
-  // markVideoProgress). A non-finite report is treated as zero progress.
+  // Shape-validate the client report; core clamps it to the clip and derives completion.
+  // A non-finite report is treated as zero progress.
   const safeMax = Number.isFinite(maxReachedMs) ? Math.max(0, Math.floor(maxReachedMs)) : 0;
-  await markVideoProgress({
-    parishId: ctx.parishId,
-    studentId: ctx.userId,
-    itemId,
-    maxReachedMs: safeMax,
-    completed: completed === true,
-  });
+  await markVideoProgress({ parishId: ctx.parishId, studentId: ctx.userId, itemId, maxReachedMs: safeMax });
 }
 
 /**
@@ -115,6 +113,16 @@ export async function advanceAction(formData: FormData): Promise<void> {
       redirect(`/ocia/lessons/${lessonId}?step=${step}`);
     }
     await submitAnswer({ parishId: ctx.parishId, studentId: ctx.userId, itemId, text: answerText });
+  } else if (kind === "video") {
+    // The client `watched` state that unlocks Continue is cosmetic — enforce the watch
+    // server-side so a direct POST here can't complete an unwatched video. If the
+    // persisted furthest point isn't yet within the end-grace, bounce back to the same
+    // step instead of completing. A learner who clicks the instant it unlocks (before the
+    // final progress save lands) simply re-lands on the step, which resumes at the end and
+    // re-unlocks — self-healing, exactly like the unanswered-question bounce above.
+    if (!(await isVideoItemWatched({ parishId: ctx.parishId, studentId: ctx.userId, itemId }))) {
+      redirect(`/ocia/lessons/${lessonId}?step=${step}`);
+    }
   }
 
   await markItemComplete({ parishId: ctx.parishId, studentId: ctx.userId, itemId });

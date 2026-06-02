@@ -1,3 +1,4 @@
+import { videoWatchSatisfied } from "@parvaordo/shared";
 import { getDb } from "../db/client";
 import { getAsset } from "../media/assets";
 
@@ -18,14 +19,6 @@ export async function markItemComplete(params: { parishId: string; studentId: st
     [params.parishId, params.studentId, params.itemId],
   );
 }
-
-// How close to the clip's end (ms) a student must reach for completion to count as
-// "earned". Matches the player, which flips the clip to "watched" within 5s of the end.
-const COMPLETION_GRACE_MS = 5_000;
-// Slack above the recorded duration tolerated before a report is treated as forged:
-// the decoded video can run marginally longer than its stored metadata. A value past
-// this is rejected for completion (and the stored furthest point is clamped to the clip).
-const OVERSHOOT_GRACE_MS = 2_000;
 
 /**
  * Trusted upper bound (ms) for how far a student can legitimately have watched a video
@@ -59,36 +52,29 @@ async function videoItemDurationMs(parishId: string, itemId: string): Promise<nu
 }
 
 /**
- * Persist video watch progress: the furthest point reached (only ever grows) and,
- * optionally, completion. Used for resume + seek-enforcement that survives reloads.
- *
- * `maxReachedMs` and `completed` arrive straight from the client, so they're validated
- * against the clip's real length before they're trusted: the stored furthest point is
- * clamped to the clip (it gates seek-enforcement, so a forged value mustn't inflate it),
- * and completion is only honored when the report actually reaches the clip's end — a
- * forged or over-large value can't self-award completion. When the length can't be
- * resolved we fall back to recording the report as-is.
+ * Persist video watch progress: the furthest point reached (only ever grows) and a
+ * completion flag DERIVED SERVER-SIDE from that point against the clip's real length —
+ * never trusted from the client. The stored furthest point is clamped to the clip (it
+ * seeds the seek-enforcement ceiling, so a forged value mustn't inflate it), and
+ * completion is gated on `videoWatchSatisfied`. This closes the trivial forges (a
+ * direct advanceAction POST, a save with no/too-little progress); it stays best-effort
+ * because the furthest point is client-reported, so a forge to the clip end can still
+ * self-complete (residual tracked in po-4dyo). When the clip length can't be resolved
+ * the report is stored as-is and completion stays false.
  */
 export async function markVideoProgress(params: {
   parishId: string;
   studentId: string;
   itemId: string;
-  maxReachedMs?: number;
-  completed?: boolean;
+  maxReachedMs: number;
 }): Promise<void> {
-  const reportedMax = Number.isFinite(params.maxReachedMs) ? (params.maxReachedMs as number) : null;
-  let storedMax = reportedMax;
-  let completed = params.completed ?? false;
-
+  const reportedMax = Number.isFinite(params.maxReachedMs) ? Math.max(0, params.maxReachedMs) : 0;
   const durationMs = await videoItemDurationMs(params.parishId, params.itemId);
-  if (durationMs != null) {
-    if (reportedMax != null) storedMax = Math.min(Math.max(reportedMax, 0), durationMs);
-    const reachedEnd =
-      reportedMax != null &&
-      reportedMax >= durationMs - COMPLETION_GRACE_MS &&
-      reportedMax <= durationMs + OVERSHOOT_GRACE_MS;
-    completed = completed && reachedEnd;
-  }
+  // Clamp the stored furthest point to the clip so a forged report can't inflate the
+  // seek-enforcement ceiling beyond the real window.
+  const storedMax = durationMs != null ? Math.min(reportedMax, durationMs) : reportedMax;
+  // Completion is derived from the (clamped) furthest point — never from the client.
+  const completed = videoWatchSatisfied(storedMax, durationMs);
 
   await getDb(params.parishId).query(
     `INSERT INTO lesson_item_progress (parish_id, student_id, item_id, completed, max_reached_ms)
@@ -108,6 +94,22 @@ export async function getItemMaxReached(parishId: string, studentId: string, ite
     [studentId, itemId],
   );
   return rows[0]?.max_reached_ms ?? 0;
+}
+
+/**
+ * Server-side video-watch gate — the authoritative check behind the player's cosmetic
+ * `watched` button. True once the student's persisted furthest-reached point is within
+ * tolerance of the clip end (`videoWatchSatisfied`). `advanceAction` calls this before
+ * completing a video item so a tampered (unwatched) completion is bounced, not trusted.
+ */
+export async function isVideoItemWatched(params: {
+  parishId: string;
+  studentId: string;
+  itemId: string;
+}): Promise<boolean> {
+  const durationMs = await videoItemDurationMs(params.parishId, params.itemId);
+  const maxReachedMs = await getItemMaxReached(params.parishId, params.studentId, params.itemId);
+  return videoWatchSatisfied(maxReachedMs, durationMs);
 }
 
 /** The set of lesson_item ids a student has completed within a lesson version. */

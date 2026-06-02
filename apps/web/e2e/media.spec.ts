@@ -42,6 +42,76 @@ test("learner reaches the video step: seek-enforcing player + synced transcript 
   await expect(page.getByTestId("wizard-next")).toContainText("Watch to continue");
 });
 
+// Drive the seeded 8s clip's <video> to its end WITHOUT real-time playback: walk
+// currentTime forward in <=2s steps (so the player's no-skip clamp, rel > maxReached + 2,
+// never fires) and dispatch `timeupdate` so the player flips `watched` and persists the
+// furthest point. A clip-length of real playback is not needed (and would be flaky).
+async function simulateWatchToEnd(page: import("@playwright/test").Page, clipSec: number): Promise<void> {
+  await page.evaluate(async (endSec) => {
+    const video = document.querySelector<HTMLVideoElement>('[data-testid="video-player"] video');
+    if (!video) throw new Error("video element not found");
+    let t = 0;
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      get: () => t,
+      set: (v: number) => {
+        t = v;
+      },
+    });
+    for (let s = 0; s <= endSec; s += 1.5) {
+      t = s;
+      video.dispatchEvent(new Event("timeupdate"));
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    t = endSec;
+    video.dispatchEvent(new Event("timeupdate"));
+  }, clipSec);
+}
+
+test("learner who watches the video to the end can advance past it (server-gated completion)", async ({ page }) => {
+  await page.request.get("/dev/reset?email=e2e-media-student@parvaordo.test");
+  await page.goto("/dev/login?email=e2e-media-student@parvaordo.test");
+  await page.goto(`/ocia/lessons/${E2E_VIDEO_LESSON}`);
+
+  // reading → video step; Continue is locked until the clip is watched.
+  await page.getByTestId("wizard-next").click();
+  await expect(page.getByTestId("video-player")).toBeVisible();
+  await expect(page.getByTestId("wizard-next")).toBeDisabled();
+
+  await simulateWatchToEnd(page, 8);
+
+  // The cosmetic gate unlocks, and (crucially) the server gate now passes: advancing lands
+  // on the completion screen rather than bouncing back to the video step — the legitimate
+  // full-watch path, proof there's no silent lockout under server-derived completion.
+  await expect(page.getByTestId("wizard-next")).toBeEnabled();
+  await expect(page.getByTestId("wizard-next")).toContainText("Continue");
+  await page.waitForTimeout(1000); // let the progress save's round-trip land before advancing
+  await page.getByTestId("wizard-next").click();
+  // Use the heading role: getByText also matches Next's route-announcer live region.
+  await expect(page.getByRole("heading", { name: "Lesson complete" })).toBeVisible();
+});
+
+test("a tampered advance on an UNwatched video is refused server-side (bounces, does not complete)", async ({
+  page,
+}) => {
+  await page.request.get("/dev/reset?email=e2e-media-student@parvaordo.test");
+  await page.goto("/dev/login?email=e2e-media-student@parvaordo.test");
+  await page.goto(`/ocia/lessons/${E2E_VIDEO_LESSON}`);
+  await page.getByTestId("wizard-next").click();
+  await expect(page.getByTestId("video-player")).toBeVisible();
+  await expect(page.getByTestId("wizard-step-current")).toHaveText("2");
+
+  // Tamper: strip the client-side `disabled` guard and submit advanceAction without
+  // watching. The server gate (isVideoItemWatched) must refuse — the form bounces back to
+  // the same step and the lesson is NOT completed.
+  await page.evaluate(() => document.querySelector('[data-testid="wizard-next"]')?.removeAttribute("disabled"));
+  await page.getByTestId("wizard-next").click();
+
+  await expect(page.getByTestId("video-player")).toBeVisible(); // still on the video step
+  await expect(page.getByTestId("wizard-step-current")).toHaveText("2");
+  await expect(page.getByRole("heading", { name: "Lesson complete" })).toHaveCount(0);
+});
+
 test("learner completes a lesson → asks a question + feedback → reviews answers; catechist sees them", async ({
   page,
 }) => {

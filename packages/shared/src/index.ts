@@ -350,6 +350,60 @@ export function clipResumeSeconds(maxReachedMs: number): number {
   return Number.isFinite(maxReachedMs) && maxReachedMs > 0 ? maxReachedMs / 1000 : 0;
 }
 
+// ─── Server-side video-watch completion gate (pure) ───────────────────────────
+//
+// COMPLETION (not seek-enforcement) is what moved server-side: a video lesson item may
+// be completed only once the student's persisted furthest-reached point comes close
+// enough to the clip end. Seek-enforcement (clipSeek/clipTimeUpdate) stays client-side
+// per Architecture §9. This gate is best-effort against tampering — the furthest point
+// is reported by the player and trusted, so a forged report at the clip end still
+// satisfies it (residual tracked in po-4dyo) — but it does close the trivial forges: a
+// direct advanceAction POST or a saveVideoProgress with no/too-little progress can no
+// longer mark an unwatched video done.
+
+/**
+ * How close to the clip end the furthest-reached point must come to count as "watched"
+ * (ms). Mirrors the player, which flips its cosmetic `watched` state and seeds the
+ * completion save once within this window of the end, so a learner who reaches the
+ * unlock point is never wrongly rejected by the server.
+ */
+export const VIDEO_WATCH_TOLERANCE_MS = 5_000;
+
+/**
+ * Floor for clips at or under the tolerance window: a clip that short would have a
+ * `duration - tolerance` threshold of <= 0 and wave through zero watching, so it must
+ * instead reach this fraction of its length. Only the sub-tolerance regime uses it —
+ * clips longer than the tolerance keep the flat 5s end-grace, so this never makes a
+ * longer clip stricter (which would risk a silent lockout when the throttled progress
+ * save lands just inside the grace band).
+ */
+export const VIDEO_WATCH_MIN_FRACTION = 0.9;
+
+/**
+ * The furthest-reached point (ms) at which a video clip counts as watched. For a clip
+ * longer than the tolerance it's `duration - tolerance` (within 5s of the end); for a
+ * clip at or under the tolerance it's `duration * fraction` (the floor). Returns
+ * Infinity for an unknown / non-positive / non-finite length so nothing satisfies it.
+ */
+export function videoWatchThresholdMs(clipDurationMs: number): number {
+  if (!Number.isFinite(clipDurationMs) || clipDurationMs <= 0) return Infinity;
+  return clipDurationMs > VIDEO_WATCH_TOLERANCE_MS
+    ? clipDurationMs - VIDEO_WATCH_TOLERANCE_MS
+    : clipDurationMs * VIDEO_WATCH_MIN_FRACTION;
+}
+
+/**
+ * Authoritative gate behind the player's cosmetic `watched` button: true once the
+ * persisted furthest-reached point reaches `videoWatchThresholdMs`. No, partial, or
+ * non-finite/negative progress fails; an unknown or non-positive clip length fails
+ * closed (authoring always supplies a window or a probed source duration).
+ */
+export function videoWatchSatisfied(maxReachedMs: number, clipDurationMs: number | null): boolean {
+  if (clipDurationMs == null || clipDurationMs <= 0) return false;
+  if (!Number.isFinite(maxReachedMs) || maxReachedMs <= 0) return false;
+  return maxReachedMs >= videoWatchThresholdMs(clipDurationMs);
+}
+
 // ─── Recording upload policy (pure; server route + iOS client both validate) ──
 
 /** Max bytes for a Parvus Studio recording upload (~120MB, under the proxy's

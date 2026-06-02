@@ -12,6 +12,7 @@ import {
   getDb,
   getItemMaxReached,
   getLessonForEdit,
+  isVideoItemWatched,
   markVideoProgress,
   removeClip,
   requestClip,
@@ -88,11 +89,12 @@ describe("clips (stub processor)", () => {
 });
 
 describe("video watch progress", () => {
-  it("persists the furthest point (grows only) and sticky completion", async () => {
+  it("persists the furthest point (grows only); completion stays false when the clip length is unknown", async () => {
     const by = await userId("admin@parvaordo.test");
     const student = await userId("student@parvaordo.test");
     const lessonId = await createLesson({ parishId: HOLY_SPIRIT, createdBy: by, title: "Progress Test" });
     const versionId = (await getLessonForEdit(HOLY_SPIRIT, lessonId))!.selected.versionId;
+    // content:{} has no resolvable clip length, so the completion gate fails closed.
     const itemId = await addLessonItem({ parishId: HOLY_SPIRIT, versionId, kind: "video", content: {} });
 
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 4000 });
@@ -102,10 +104,10 @@ describe("video watch progress", () => {
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 1000 });
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(4000);
 
-    // completion sticks; max still grows
-    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 8000, completed: true });
+    // the furthest point still grows, but completion never flips for an unknown length
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 8000 });
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(8000);
-    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(true);
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
 
     await deleteLesson(HOLY_SPIRIT, lessonId);
   });
@@ -118,7 +120,7 @@ describe("video completion is earned, not client-trusted", () => {
 
   // A video lesson item wired to a real (stub) clip whose duration_ms is known, so
   // markVideoProgress has a trusted upper bound to validate client reports against.
-  async function videoItemOnClip(): Promise<{
+  async function videoItemOnClip(clipMs: number = CLIP_MS): Promise<{
     lessonId: string;
     versionId: string;
     itemId: string;
@@ -139,7 +141,7 @@ describe("video completion is earned, not client-trusted", () => {
       createdBy: by,
       sourceAssetId: sourceId,
       startMs: 0,
-      endMs: CLIP_MS,
+      endMs: clipMs,
     });
     const lessonId = await createLesson({ parishId: HOLY_SPIRIT, createdBy: by, title: "Earned Lesson" });
     const versionId = (await getLessonForEdit(HOLY_SPIRIT, lessonId))!.selected.versionId;
@@ -147,42 +149,37 @@ describe("video completion is earned, not client-trusted", () => {
       parishId: HOLY_SPIRIT,
       versionId,
       kind: "video",
-      content: { asset_id: sourceId, clip_asset_id: clipId, start_ms: 0, end_ms: CLIP_MS },
+      content: { asset_id: sourceId, clip_asset_id: clipId, start_ms: 0, end_ms: clipMs },
     });
     return { lessonId, versionId, itemId, sourceId };
   }
 
-  it("rejects an over-large forged maxReachedMs: no completion, stored max clamped to the clip", async () => {
+  it("clamps an over-large forged maxReachedMs to the clip (seek-ceiling integrity); end-of-clip completion is the best-effort residual (po-4dyo)", async () => {
     const student = await userId("student@parvaordo.test");
     const { lessonId, versionId, itemId, sourceId } = await videoItemOnClip();
 
-    // Client claims it watched 5,000,000ms of a 30,000ms clip and is "done".
-    await markVideoProgress({
-      parishId: HOLY_SPIRIT,
-      studentId: student,
-      itemId,
-      maxReachedMs: 5_000_000,
-      completed: true,
-    });
+    // Client claims it watched 5,000,000ms of a 30,000ms clip.
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 5_000_000 });
 
-    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
+    // The stored furthest point is clamped to the clip, so a forged report can't inflate
+    // the seek-enforcement ceiling beyond the real window.
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(CLIP_MS); // clamped, not 5,000,000
+    // Completion is derived server-side from that clamped point. Clamped to the clip end
+    // it satisfies the gate — the documented best-effort residual: the furthest point is
+    // client-reported, so a forge to the end still self-completes (po-4dyo). What this
+    // bead DID close are the trivial forges — the client `completed` boolean (now gone)
+    // and a direct advanceAction POST (now bounced by the video gate below).
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(true);
 
     await deleteLesson(HOLY_SPIRIT, lessonId);
     await deleteAsset(HOLY_SPIRIT, sourceId); // cascades the clip
   });
 
-  it("rejects completion claimed from the middle of the clip (honest progress still recorded)", async () => {
+  it("leaves an honest mid-clip furthest point incomplete (progress still recorded)", async () => {
     const student = await userId("student@parvaordo.test");
     const { lessonId, versionId, itemId, sourceId } = await videoItemOnClip();
 
-    await markVideoProgress({
-      parishId: HOLY_SPIRIT,
-      studentId: student,
-      itemId,
-      maxReachedMs: 1_000,
-      completed: true,
-    });
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 1_000 });
 
     expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(1_000);
@@ -196,16 +193,48 @@ describe("video completion is earned, not client-trusted", () => {
     const { lessonId, versionId, itemId, sourceId } = await videoItemOnClip();
 
     // Within the player's 5s end-grace of a 30s clip — a real finish.
-    await markVideoProgress({
-      parishId: HOLY_SPIRIT,
-      studentId: student,
-      itemId,
-      maxReachedMs: CLIP_MS - 1_000,
-      completed: true,
-    });
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: CLIP_MS - 1_000 });
 
     expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(true);
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(CLIP_MS - 1_000);
+
+    await deleteLesson(HOLY_SPIRIT, lessonId);
+    await deleteAsset(HOLY_SPIRIT, sourceId);
+  });
+
+  it("isVideoItemWatched (the advanceAction gate) is false until the persisted point reaches the end-grace", async () => {
+    const student = await userId("student@parvaordo.test");
+    const { lessonId, itemId, sourceId } = await videoItemOnClip();
+
+    // No progress persisted yet — a direct advanceAction POST would bounce, not complete.
+    expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(false);
+
+    // Honest mid-clip progress still does not count as watched.
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 1_000 });
+    expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(false);
+
+    // Reaching within the end-grace flips the gate true.
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: CLIP_MS - 1_000 });
+    expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(true);
+
+    await deleteLesson(HOLY_SPIRIT, lessonId);
+    await deleteAsset(HOLY_SPIRIT, sourceId);
+  });
+
+  it("a short (sub-tolerance) clip is NOT ungated: zero watching never completes it; a real watch does", async () => {
+    const student = await userId("student@parvaordo.test");
+    // A 3s clip: shorter than the 5s end-grace, so the pre-floor gate would have waved
+    // through zero progress (duration - tolerance <= 0). The fraction floor stops that.
+    const { lessonId, versionId, itemId, sourceId } = await videoItemOnClip(3_000);
+
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 0 });
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
+    expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(false);
+
+    // Genuinely watching the short clip (>= 90% of 3s) does complete it.
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 3_000 });
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(true);
+    expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(true);
 
     await deleteLesson(HOLY_SPIRIT, lessonId);
     await deleteAsset(HOLY_SPIRIT, sourceId);

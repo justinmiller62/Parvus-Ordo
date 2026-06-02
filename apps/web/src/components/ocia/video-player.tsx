@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Hls from "hls.js";
-import { clipResumeSeconds, clipSeek, clipTimeUpdate } from "@parvaordo/shared";
+import { clipResumeSeconds, clipSeek, clipTimeUpdate, videoWatchThresholdMs } from "@parvaordo/shared";
 import { findDictionaryTerms } from "@parvaordo/core/dictionary-text";
 import { saveVideoProgressAction } from "@/app/(app)/ocia/lessons/[id]/actions";
 import { useDictionary } from "@/src/components/ocia/dictionary/dictionary-provider";
@@ -135,19 +135,25 @@ export function VideoPlayer({
       // Persist progress, throttled to ~10s of new ground.
       if (persist && rel - lastSaveRef.current >= 10) {
         lastSaveRef.current = rel;
-        void saveVideoProgressAction(persistItemId!, Math.round(rel * 1000), false);
+        void saveVideoProgressAction(persistItemId!, Math.round(rel * 1000));
       }
 
       const dur = endSecRef.current - startSec;
-      if (Number.isFinite(dur) && rel >= dur - 5) {
+      // Same threshold the server completion gate uses (videoWatchThresholdMs), so the
+      // cosmetic unlock and the persisted "watched" point agree — a short clip unlocks at
+      // its floor, not at zero, instead of the old flat 5s end-grace.
+      const watchThresholdSec = videoWatchThresholdMs(dur * 1000) / 1000;
+      if (Number.isFinite(dur) && rel >= watchThresholdSec) {
         if (!watchedRef.current) {
           watchedRef.current = true;
           setWatched(true);
           onWatched?.();
         }
-        // In the last 5s, keep retrying the completion save until one lands (≈5 attempts).
+        // Persist the furthest point once within the threshold so the server gate is
+        // satisfied; retry on each tick until one save lands (savedCompleteRef flips only
+        // on success), covering a dropped request near the end.
         if (persist && !savedCompleteRef.current) {
-          void saveVideoProgressAction(persistItemId!, Math.round(rel * 1000), true)
+          void saveVideoProgressAction(persistItemId!, Math.round(rel * 1000))
             .then(() => {
               savedCompleteRef.current = true;
             })
@@ -173,8 +179,7 @@ export function VideoPlayer({
   // Persist progress on unmount and when the tab is hidden (catches navigation away).
   useEffect(() => {
     if (!persist) return;
-    const save = () =>
-      void saveVideoProgressAction(persistItemId!, Math.round(maxReachedRef.current * 1000), savedCompleteRef.current);
+    const save = () => void saveVideoProgressAction(persistItemId!, Math.round(maxReachedRef.current * 1000));
     const onHide = () => {
       if (document.visibilityState === "hidden") save();
     };
