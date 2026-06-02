@@ -5,7 +5,7 @@ import { authenticateApiRequest } from "@/src/lib/api-auth";
 // POST /api/v1/parvus-studio/projects/{id}/recording — multipart MP4 → Bunny.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await params;
-  const user = await authenticateApiRequest(req);
+  const user = await authenticateApiRequest(req, "studio");
   if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
   // The iOS app is the teen's own device; they may only submit a recording for
   // their OWN project. Gate before the (expensive) Bunny upload.

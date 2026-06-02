@@ -18,7 +18,10 @@ import { getViewer } from "@/src/lib/viewer";
 // Resolve the learner against their ACTIVE parish (multi-parish aware).
 async function studentContext(): Promise<{ parishId: string; userId: string } | null> {
   const v = await getViewer();
-  if (!v?.identity?.parishId) return null;
+  // OCIA must be ENABLED for the parish (RFC-001 §3.5 enforcement). A disabled module yields
+  // no context, so these actions touch no OCIA data — best-effort telemetry no-ops, the
+  // mutating advance bounces — rather than forcing a redirect on a fire-and-forget beacon.
+  if (!v?.identity?.parishId || !v.enabledModules.has("ocia")) return null;
   return { parishId: v.identity.parishId, userId: v.identity.userId };
 }
 

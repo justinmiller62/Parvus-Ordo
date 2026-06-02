@@ -16,9 +16,10 @@ import {
   updateScriptDraft,
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
-import { requireStaff } from "@/src/lib/require-role";
+import { requireModule, requireStaff } from "@/src/lib/require-role";
 
 async function ctx(): Promise<{ parishId: string; userId: string }> {
+  await requireModule("studio"); // disabled Studio → redirect home (RFC-001 §3.5)
   const v = await getViewer();
   if (!v?.identity?.parishId || !v.identity.userId) redirect("/login");
   return { parishId: v.identity.parishId, userId: v.identity.userId };
@@ -66,7 +67,7 @@ export async function deleteRecordingAction(projectId: string): Promise<void> {
 
 /** Catechist/admin review of a submitted recording: approve or reject. */
 export async function reviewProjectAction(projectId: string, decision: "approved" | "rejected"): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "studio");
   await (decision === "approved" ? approveProject : rejectProject)(parishId, projectId);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
