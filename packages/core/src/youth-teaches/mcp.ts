@@ -1,4 +1,5 @@
 import { getDb } from "../db/client";
+import { assertOwnsProject } from "./ownership";
 import { getProjectDetails, listMyProjects, saveCorpusPassage, updateScriptDraft } from "./projects";
 import { addProjectSlide } from "./slides";
 
@@ -120,6 +121,7 @@ export async function callYouthTool(
     }
     case "get_project_details": {
       const projectId = String(args.project_id);
+      await assertOwnsProject(parishId, teenUserId, projectId);
       await logMcpTool(parishId, projectId, name, args);
       const details = await getProjectDetails(parishId, projectId);
       if (!details) throw new Error("project not found");
@@ -127,6 +129,7 @@ export async function callYouthTool(
     }
     case "update_script_draft": {
       const projectId = String(args.project_id);
+      await assertOwnsProject(parishId, teenUserId, projectId);
       await logMcpTool(parishId, projectId, name, {
         project_id: projectId,
         new_text_length: String(args.new_text ?? "").length,
@@ -135,11 +138,13 @@ export async function callYouthTool(
     }
     case "save_corpus_passage": {
       const projectId = String(args.project_id);
+      await assertOwnsProject(parishId, teenUserId, projectId);
       await logMcpTool(parishId, projectId, name, args);
       return saveCorpusPassage(parishId, projectId, String(args.citation), args.notes ? String(args.notes) : undefined);
     }
     case "upload_slide": {
       const projectId = String(args.project_id);
+      await assertOwnsProject(parishId, teenUserId, projectId);
       const order = Number(args.slide_order);
       await logMcpTool(parishId, projectId, name, { project_id: projectId, slide_order: order });
       const bytes = new Uint8Array(Buffer.from(String(args.image_base64 ?? ""), "base64"));

@@ -1,4 +1,4 @@
-import { addProjectSlide, getProject, nextSlideOrder, presignSlideUrl } from "@parvaordo/core";
+import { addProjectSlide, getProject, isProjectOwner, nextSlideOrder, presignSlideUrl } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 
 // POST /parvus-studio/projects/{id}/slides — multipart slide upload (web). A route
@@ -12,6 +12,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const viewer = await getViewer();
   if (!viewer?.identity?.parishId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const parishId = viewer.identity.parishId;
+  // Teen may only upload slides to their OWN project (parish RLS isn't enough).
+  if (!(await isProjectOwner(parishId, viewer.identity.userId, id))) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
 
   // Confirm the project belongs to the viewer's parish before reading the upload.
   // Core's slide writes are tenant-scoped (getDb(parishId)/RLS) but don't verify

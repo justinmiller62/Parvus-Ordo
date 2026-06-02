@@ -1,4 +1,4 @@
-import { getProject, listProjectSlides, presignSlideUrl } from "@parvaordo/core";
+import { getProject, isProjectOwner, listProjectSlides, presignSlideUrl } from "@parvaordo/core";
 import { authenticateApiRequest } from "@/src/lib/api-auth";
 
 // GET /api/v1/parvus-studio/projects/{id}/package — script + presigned slide URLs +
@@ -7,6 +7,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const user = await authenticateApiRequest(req);
   if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
+  // The iOS app is the teen's own device; they may only package their OWN project.
+  if (!(await isProjectOwner(user.parishId, user.userId, id))) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
 
   const project = await getProject(user.parishId, id);
   if (!project) return Response.json({ error: "not found" }, { status: 404 });

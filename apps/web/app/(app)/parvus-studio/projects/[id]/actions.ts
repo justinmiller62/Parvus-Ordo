@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
   approveProject,
+  assertOwnsProject,
   deleteProjectSlide,
   deleteRecordings,
   getProject,
@@ -25,14 +26,16 @@ async function ctx(): Promise<{ parishId: string; userId: string }> {
 
 /** Persist the teen's manual script edit. */
 export async function saveScriptAction(projectId: string, text: string): Promise<void> {
-  const { parishId } = await ctx();
+  const { parishId, userId } = await ctx();
+  await assertOwnsProject(parishId, userId, projectId);
   await updateScriptDraft(parishId, projectId, text);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
 
 /** Poll target: current status + script (Claude writes via MCP; page reflects it live). */
 export async function getScriptAction(projectId: string): Promise<{ status: string; fullText: string }> {
-  const { parishId } = await ctx();
+  const { parishId, userId } = await ctx();
+  await assertOwnsProject(parishId, userId, projectId);
   const p = await getProject(parishId, projectId);
   return { status: p?.status ?? "drafting", fullText: p?.scriptDraft?.full_text ?? "" };
 }
@@ -45,7 +48,8 @@ export async function startAiSessionAction(): Promise<{ token: string; expiresAt
 
 /** Teen marks the project ready to record. */
 export async function markReadyAction(projectId: string): Promise<void> {
-  const { parishId } = await ctx();
+  const { parishId, userId } = await ctx();
+  await assertOwnsProject(parishId, userId, projectId);
   await markProjectReady(parishId, projectId);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
@@ -53,7 +57,8 @@ export async function markReadyAction(projectId: string): Promise<void> {
 /** Delete the project's recording (DB + Bunny) and reopen it for re-recording.
  * "Replace" = delete here, then record again from Parvus Studio. */
 export async function deleteRecordingAction(projectId: string): Promise<void> {
-  const { parishId } = await ctx();
+  const { parishId, userId } = await ctx();
+  await assertOwnsProject(parishId, userId, projectId);
   await deleteRecordings(parishId, projectId);
   await reopenProject(parishId, projectId);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
@@ -68,14 +73,16 @@ export async function reviewProjectAction(projectId: string, decision: "approved
 
 /** Remove a slide by id. */
 export async function deleteSlideAction(projectId: string, slideId: string): Promise<void> {
-  const { parishId } = await ctx();
+  const { parishId, userId } = await ctx();
+  await assertOwnsProject(parishId, userId, projectId);
   await deleteProjectSlide(parishId, projectId, slideId);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }
 
 /** Persist a new slide ordering (drag-and-drop). */
 export async function reorderSlidesAction(projectId: string, orderedIds: string[]): Promise<void> {
-  const { parishId } = await ctx();
+  const { parishId, userId } = await ctx();
+  await assertOwnsProject(parishId, userId, projectId);
   await reorderProjectSlides(parishId, projectId, orderedIds);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }

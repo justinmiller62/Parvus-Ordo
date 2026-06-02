@@ -1,4 +1,4 @@
-import { createRecording, uploadRecordingToBunny } from "@parvaordo/core";
+import { createRecording, isProjectOwner, uploadRecordingToBunny } from "@parvaordo/core";
 import { validateRecordingUpload } from "@parvaordo/shared";
 import { authenticateApiRequest } from "@/src/lib/api-auth";
 
@@ -7,6 +7,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const user = await authenticateApiRequest(req);
   if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
+  // The iOS app is the teen's own device; they may only submit a recording for
+  // their OWN project. Gate before the (expensive) Bunny upload.
+  if (!(await isProjectOwner(user.parishId, user.userId, id))) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
 
   const form = await req.formData();
   const file = form.get("file");

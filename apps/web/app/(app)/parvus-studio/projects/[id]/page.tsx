@@ -1,6 +1,13 @@
 import { isStaff } from "@parvaordo/shared";
 import { redirect } from "next/navigation";
-import { getLatestRecording, getProject, getProjectDetails, listProjectSlides, presignSlideUrl } from "@parvaordo/core";
+import {
+  getLatestRecording,
+  getProject,
+  getProjectDetails,
+  isProjectOwner,
+  listProjectSlides,
+  presignSlideUrl,
+} from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { YouthProjectClient } from "./youth-project-client";
 import { SlideManager } from "./slide-manager";
@@ -11,7 +18,14 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
   const viewer = await getViewer();
   if (!viewer?.identity?.parishId) redirect("/login");
   const parishId = viewer.identity.parishId;
+  const userId = viewer.identity.userId;
   const role = viewer.identity.role;
+
+  // Parish RLS lets any member load any project by id; a teen may only view their
+  // OWN project. Staff (catechist/admin) review across the parish, so they're exempt.
+  if (!isStaff(role) && !(await isProjectOwner(parishId, userId, id))) {
+    return <div className="mx-auto max-w-3xl p-2 text-sm text-gray-500">Project not found.</div>;
+  }
 
   const [project, details, recording, slides] = await Promise.all([
     getProject(parishId, id),

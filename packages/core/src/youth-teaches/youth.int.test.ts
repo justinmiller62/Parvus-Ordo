@@ -1,6 +1,9 @@
 import "dotenv/config";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  assertOwnsProject,
+  isProjectOwner,
+  ProjectAccessError,
   callYouthTool,
   closeDb,
   createRecording,
@@ -35,7 +38,9 @@ import {
 const HS = "11111111-1111-1111-1111-111111111111"; // Holy Spirit — this teen's parish
 const ST_PETER = "33333333-3333-3333-3333-333333333333"; // a different parish — for RLS isolation
 const EMAIL = "youth-int@inttest.local";
+const EMAIL_B = "youth-int-b@inttest.local";
 let teenId: string;
+let otherTeenId: string;
 let topicId: string;
 let projectId: string;
 
@@ -57,6 +62,20 @@ beforeAll(async () => {
     [HS, teenId, topicId],
   );
   projectId = p.rows[0]!.id;
+
+  // A SECOND teen in the same parish — the "attacker" for the ownership tests.
+  // Same parish (so parish RLS lets them through), different owner (so the
+  // ownership guard, and only the ownership guard, must stop them).
+  const u2 = await getDb(null).query<{ id: string }>(
+    "INSERT INTO users (email, display_name) VALUES ($1, 'Youth Int B') ON CONFLICT (email) DO UPDATE SET display_name = 'Youth Int B' RETURNING id",
+    [EMAIL_B],
+  );
+  otherTeenId = u2.rows[0]!.id;
+  await getDb(HS).query("DELETE FROM memberships WHERE user_id = $1 AND parish_id = $2", [otherTeenId, HS]);
+  await getDb(HS).query("INSERT INTO memberships (user_id, parish_id, role) VALUES ($1, $2, 'studio')", [
+    otherTeenId,
+    HS,
+  ]);
 });
 
 afterAll(async () => {
@@ -66,6 +85,7 @@ afterAll(async () => {
   await getDb(HS).query("DELETE FROM youth_projects WHERE id = $1", [projectId]);
   await getDb(HS).query("DELETE FROM youth_topics WHERE id = $1", [topicId]);
   await getDb(null).query("DELETE FROM users WHERE email = $1", [EMAIL]); // cascades membership
+  await getDb(null).query("DELETE FROM users WHERE email = $1", [EMAIL_B]); // cascades membership
   await closeDb();
 });
 
@@ -299,5 +319,46 @@ describe("youth-teaches (integration)", () => {
     // Clean up the rows seeded here (afterAll only knows the fixed fixtures).
     await deleteRecordings(HS, projectId);
     for (const s of await listProjectSlides(HS, projectId)) await deleteProjectSlide(HS, projectId, s.id);
+  });
+
+  // Regression: youth_projects is parish-scoped by RLS but owner-scoped by
+  // teen_user_id. Another parish member must not be able to read or mutate a
+  // project they don't own just by knowing its id.
+  describe("ownership guard (cross-user IDOR)", () => {
+    const MISSING = "00000000-0000-0000-0000-0000000000ff";
+
+    it("isProjectOwner: true for the owner; false for another teen or a missing project", async () => {
+      expect(await isProjectOwner(HS, teenId, projectId)).toBe(true);
+      expect(await isProjectOwner(HS, otherTeenId, projectId)).toBe(false);
+      expect(await isProjectOwner(HS, teenId, MISSING)).toBe(false);
+    });
+
+    it("assertOwnsProject: resolves for the owner; throws ProjectAccessError for a non-owner", async () => {
+      await expect(assertOwnsProject(HS, teenId, projectId)).resolves.toBeUndefined();
+      await expect(assertOwnsProject(HS, otherTeenId, projectId)).rejects.toBeInstanceOf(ProjectAccessError);
+    });
+
+    it("callYouthTool: a non-owner in the same parish cannot READ another teen's project", async () => {
+      const intruder = { parishId: HS, teenUserId: otherTeenId };
+      await expect(callYouthTool(intruder, "get_project_details", { project_id: projectId })).rejects.toThrow(
+        /not found/,
+      );
+    });
+
+    it("callYouthTool: a non-owner cannot MUTATE another teen's script (no write lands)", async () => {
+      await updateScriptDraft(HS, projectId, "the owner's words");
+      const intruder = { parishId: HS, teenUserId: otherTeenId };
+      await expect(
+        callYouthTool(intruder, "update_script_draft", { project_id: projectId, new_text: "hijacked" }),
+      ).rejects.toBeInstanceOf(ProjectAccessError);
+      // The hijack must not have overwritten the owner's draft.
+      expect((await getProjectDetails(HS, projectId))?.current_script_text).toBe("the owner's words");
+    });
+
+    it("callYouthTool: the owner can still operate on their own project", async () => {
+      const owner = { parishId: HS, teenUserId: teenId };
+      const details = (await callYouthTool(owner, "get_project_details", { project_id: projectId })) as { id: string };
+      expect(details.id).toBe(projectId);
+    });
   });
 });
