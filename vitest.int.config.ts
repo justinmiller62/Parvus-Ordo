@@ -9,6 +9,10 @@ export default defineConfig({
     include: ["packages/**/src/**/*.int.test.ts"],
     environment: "node",
     fileParallelism: false,
+    // Fail fast (and loudly) when the integration DB is unconfigured, unreachable,
+    // or unseeded — rather than a wall of per-test connection errors, or a green
+    // run against an empty DB (po-99f).
+    globalSetup: ["./vitest.int.setup.ts"],
   },
   resolve: {
     alias: {
