@@ -84,7 +84,6 @@ export function AssetGrid({ assets }: { assets: GridAsset[] }) {
       router.refresh();
     }, 4000);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending.map((a) => a.id).join(",")]);
 
   if (assets.length === 0) {

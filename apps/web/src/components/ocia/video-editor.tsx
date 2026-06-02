@@ -77,7 +77,6 @@ export function VideoEditor({
     setDuration(d);
     setStartSec(((content.start_ms as number) ?? 0) / 1000);
     setEndSec(content.end_ms == null ? d : (content.end_ms as number) / 1000);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetId]);
 
   const propagate = useCallback(
