@@ -168,7 +168,8 @@ export function VideoPlayer({
   // Persist progress on unmount and when the tab is hidden (catches navigation away).
   useEffect(() => {
     if (!persist) return;
-    const save = () => void saveVideoProgressAction(persistItemId!, Math.round(maxReachedRef.current * 1000), savedCompleteRef.current);
+    const save = () =>
+      void saveVideoProgressAction(persistItemId!, Math.round(maxReachedRef.current * 1000), savedCompleteRef.current);
     const onHide = () => {
       if (document.visibilityState === "hidden") save();
     };

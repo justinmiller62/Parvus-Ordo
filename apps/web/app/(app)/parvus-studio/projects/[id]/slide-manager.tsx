@@ -1,14 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import {
-  DndContext,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Maximize2, Trash2, UploadCloud, X } from "lucide-react";
@@ -109,7 +102,12 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
     const newIndex = slides.findIndex((s) => s.id === over.id);
     const next = arrayMove(slides, oldIndex, newIndex);
     setSlides(next);
-    startTransition(() => reorderSlidesAction(projectId, next.map((s) => s.id)));
+    startTransition(() =>
+      reorderSlidesAction(
+        projectId,
+        next.map((s) => s.id),
+      ),
+    );
   }
 
   function remove(slideId: string) {
@@ -124,7 +122,8 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `/parvus-studio/projects/${projectId}/slides`);
       xhr.upload.onprogress = (ev) => {
-        if (ev.lengthComputable) setStatus({ kind: "uploading", pct: Math.round((ev.loaded / ev.total) * 100), index, total });
+        if (ev.lengthComputable)
+          setStatus({ kind: "uploading", pct: Math.round((ev.loaded / ev.total) * 100), index, total });
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
@@ -168,15 +167,27 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
       {slides.length > 0 ? (
         <>
           <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
-            <span className="inline-flex items-center gap-1"><GripVertical className="h-3.5 w-3.5" /> drag to reorder</span>
-            <span className="inline-flex items-center gap-1"><Maximize2 className="h-3.5 w-3.5" /> click to enlarge</span>
-            <span className="inline-flex items-center gap-1"><Trash2 className="h-3.5 w-3.5" /> hover to remove</span>
+            <span className="inline-flex items-center gap-1">
+              <GripVertical className="h-3.5 w-3.5" /> drag to reorder
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Maximize2 className="h-3.5 w-3.5" /> click to enlarge
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Trash2 className="h-3.5 w-3.5" /> hover to remove
+            </span>
           </p>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={slides.map((s) => s.id)} strategy={rectSortingStrategy}>
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" data-testid="slide-grid">
                 {slides.map((s, i) => (
-                  <SortableSlide key={s.id} slide={s} index={i} onOpen={() => setLightbox(s)} onRemove={() => remove(s.id)} />
+                  <SortableSlide
+                    key={s.id}
+                    slide={s}
+                    index={i}
+                    onOpen={() => setLightbox(s)}
+                    onRemove={() => remove(s.id)}
+                  />
                 ))}
               </ul>
             </SortableContext>
@@ -204,7 +215,9 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
       >
         <UploadCloud className="h-7 w-7 text-navy/50" />
         {uploading ? (
-          <p className="text-sm font-medium text-navy">Uploading {status.index} of {status.total}… {status.pct}%</p>
+          <p className="text-sm font-medium text-navy">
+            Uploading {status.index} of {status.total}… {status.pct}%
+          </p>
         ) : (
           <>
             <p className="text-sm font-medium text-navy">Drop slides here, or click to browse</p>
@@ -229,7 +242,11 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
           <div className="h-full bg-gold transition-[width] duration-150" style={{ width: `${status.pct}%` }} />
         </div>
       ) : null}
-      {status.kind === "error" ? <p className="text-sm text-rose" data-testid="slide-error">{status.msg}</p> : null}
+      {status.kind === "error" ? (
+        <p className="text-sm text-rose" data-testid="slide-error">
+          {status.msg}
+        </p>
+      ) : null}
 
       {lightbox ? (
         <div
@@ -237,7 +254,9 @@ export function SlideManager({ projectId, initialSlides }: { projectId: string; 
           onClick={() => setLightbox(null)}
           data-testid="slide-lightbox"
         >
-          {lightbox.url ? <img src={lightbox.url} alt="Slide" className="max-h-full max-w-full rounded-lg shadow-2xl" /> : null}
+          {lightbox.url ? (
+            <img src={lightbox.url} alt="Slide" className="max-h-full max-w-full rounded-lg shadow-2xl" />
+          ) : null}
           <button
             type="button"
             className="absolute right-4 top-4 rounded-full bg-white/90 p-1.5 text-navy shadow transition hover:scale-110 hover:bg-white"

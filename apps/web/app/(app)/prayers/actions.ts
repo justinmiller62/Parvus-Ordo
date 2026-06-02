@@ -31,7 +31,10 @@ export async function editPrayerSubmissionAction(id: string, input: NewPrayerInp
   revalidatePath("/prayers");
 }
 
-export async function overridePrayerAction(entryId: string, o: { text?: string | null; context?: string | null; notes?: string | null }): Promise<void> {
+export async function overridePrayerAction(
+  entryId: string,
+  o: { text?: string | null; context?: string | null; notes?: string | null },
+): Promise<void> {
   const { parishId } = await staffCtx();
   await upsertPrayerOverride(parishId, entryId, o);
   revalidatePath("/prayers");

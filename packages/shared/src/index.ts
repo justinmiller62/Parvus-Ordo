@@ -82,9 +82,7 @@ export interface BrandTokens {
  * the client builder can use it without pulling the DB layer). Heuristics ported
  * from Narthex: video = clip length; reading = words / 200 wpm; question = 60s.
  */
-export function estimateItemsDurationSec(
-  items: Array<{ kind: string; content: Record<string, unknown> }>,
-): number {
+export function estimateItemsDurationSec(items: Array<{ kind: string; content: Record<string, unknown> }>): number {
   let sec = 0;
   for (const it of items) {
     if (it.kind === "video") {
@@ -92,7 +90,9 @@ export function estimateItemsDurationSec(
       const end = it.content.end_ms == null ? null : Number(it.content.end_ms);
       if (end != null && end > start) sec += (end - start) / 1000;
     } else if (it.kind === "reading") {
-      const text = String(it.content.html ?? "").replace(/<[^>]*>/g, " ").trim();
+      const text = String(it.content.html ?? "")
+        .replace(/<[^>]*>/g, " ")
+        .trim();
       const words = text ? text.split(/\s+/).length : 0;
       sec += (words / 200) * 60;
     } else if (it.kind === "question") {
@@ -103,9 +103,7 @@ export function estimateItemsDurationSec(
 }
 
 /** Estimated lesson duration rounded up to whole minutes. */
-export function estimateItemsDurationMin(
-  items: Array<{ kind: string; content: Record<string, unknown> }>,
-): number {
+export function estimateItemsDurationMin(items: Array<{ kind: string; content: Record<string, unknown> }>): number {
   return Math.ceil(estimateItemsDurationSec(items) / 60);
 }
 

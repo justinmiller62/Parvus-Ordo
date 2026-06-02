@@ -60,8 +60,10 @@ function topNav(role: Role | null): NavItem[] {
   const items: NavItem[] = moduleOnly ? [] : [{ href: "/", label: "Dashboard", Icon: LayoutDashboard, live: true }];
   if (role === "super_admin") items.push({ label: "Super Admin", Icon: Shield });
   if (ociaEligible(role)) items.push({ href: "/ocia", label: "OCIA", Icon: BookOpen, live: true });
-  if (youthEligible(role)) items.push({ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true });
-  if (role === "admin" || role === "super_admin") items.push({ href: "/people", label: "People", Icon: Users, live: true });
+  if (youthEligible(role))
+    items.push({ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true });
+  if (role === "admin" || role === "super_admin")
+    items.push({ href: "/people", label: "People", Icon: Users, live: true });
   return items;
 }
 
@@ -91,9 +93,7 @@ function ociaNav(role: Role | null): NavItem[] {
   const isLearner = role === "catechumen_candidate";
   const canReturnToDashboard = role === "admin" || role === "super_admin";
   return [
-    ...(canReturnToDashboard
-      ? [{ href: "/", label: "Dashboard", Icon: ArrowLeft, live: true } as NavItem]
-      : []),
+    ...(canReturnToDashboard ? [{ href: "/", label: "Dashboard", Icon: ArrowLeft, live: true } as NavItem] : []),
     { href: "/ocia", label: "OCIA Home", Icon: Home, live: true },
     { href: "/ocia/lessons", label: isLearner ? "My Lessons" : "Lesson Builder", Icon: BookOpen, live: true },
     ...(isLearner ? LEARNER_MODULES : CATECHIST_MODULES),
@@ -138,8 +138,7 @@ export function AppShell({
   const items = inStudio ? studioNav(role) : inOcia ? ociaNav(role) : topNav(role);
 
   // Exact match for the two landing routes; prefix match for deeper routes.
-  const isActive = (href: string) =>
-    href === "/" || href === "/ocia" ? pathname === href : pathname.startsWith(href);
+  const isActive = (href: string) => (href === "/" || href === "/ocia" ? pathname === href : pathname.startsWith(href));
 
   function renderItem(item: NavItem) {
     const base = "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors";

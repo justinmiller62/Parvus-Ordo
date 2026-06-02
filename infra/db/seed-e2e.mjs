@@ -66,10 +66,7 @@ await client.query("DELETE FROM parishes WHERE id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM dioceses WHERE id = $1", [E2E_DIOCESE]);
 
 // ── Diocese + parish ───────────────────────────────────────────────────────
-await client.query(
-  `INSERT INTO dioceses (id, name, short_code) VALUES ($1, 'E2E Test Diocese', 'E2E')`,
-  [E2E_DIOCESE],
-);
+await client.query(`INSERT INTO dioceses (id, name, short_code) VALUES ($1, 'E2E Test Diocese', 'E2E')`, [E2E_DIOCESE]);
 await client.query(
   // applications_enabled = true so the public /apply flow can be exercised on the
   // e2e-test.localhost subdomain.
@@ -77,10 +74,7 @@ await client.query(
    VALUES ($1, $2, 'E2E Test Parish', 'e2e-test', 'e2e-test.localhost', true)`,
   [E2E_PARISH, E2E_DIOCESE],
 );
-await client.query(
-  `INSERT INTO ministries (parish_id, name, kind) VALUES ($1, 'OCIA', 'formation')`,
-  [E2E_PARISH],
-);
+await client.query(`INSERT INTO ministries (parish_id, name, kind) VALUES ($1, 'OCIA', 'formation')`, [E2E_PARISH]);
 
 // ── Users + memberships (single-parish, so no chooser/switcher in the way) ───
 await client.query(
@@ -196,7 +190,7 @@ await seedLesson({
   title: "E2E: Who Do You Say That I Am",
   description: "E2E fixture — completable lesson with a question + MC.",
   items: [
-    { position: 0, kind: "reading", content: { html: "<p>Jesus asked, \"Who do you say that I am?\"</p>" } },
+    { position: 0, kind: "reading", content: { html: '<p>Jesus asked, "Who do you say that I am?"</p>' } },
     { position: 1, kind: "question", content: { prompt: "Who do you say that Jesus is?", format: "open_ended" } },
     {
       position: 2,
@@ -228,4 +222,6 @@ await client.query(
 );
 
 await client.end();
-console.log("e2e fixtures ready: E2E Test Parish (4 users, 1 video asset, 2 lessons, 1 youth project, 1 dictionary + 1 prayer entry)");
+console.log(
+  "e2e fixtures ready: E2E Test Parish (4 users, 1 video asset, 2 lessons, 1 youth project, 1 dictionary + 1 prayer entry)",
+);

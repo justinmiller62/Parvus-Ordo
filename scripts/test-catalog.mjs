@@ -12,9 +12,21 @@ const ROOT = join(fileURLToPath(import.meta.url), "../..");
 const OUT = join(ROOT, "docs", "TEST-CATALOG.md");
 
 const LAYERS = [
-  { name: "Unit", blurb: "Pure logic, no DB (Vitest). `pnpm test`", match: (f) => f.endsWith(".test.ts") && !f.endsWith(".int.test.ts") && !f.includes("/e2e/") },
-  { name: "Integration", blurb: "Real Postgres + RLS (Vitest). `pnpm test:int`", match: (f) => f.endsWith(".int.test.ts") },
-  { name: "End-to-end", blurb: "Playwright, desktop + mobile. `pnpm test:e2e`", match: (f) => f.includes("/e2e/") && f.endsWith(".spec.ts") },
+  {
+    name: "Unit",
+    blurb: "Pure logic, no DB (Vitest). `pnpm test`",
+    match: (f) => f.endsWith(".test.ts") && !f.endsWith(".int.test.ts") && !f.includes("/e2e/"),
+  },
+  {
+    name: "Integration",
+    blurb: "Real Postgres + RLS (Vitest). `pnpm test:int`",
+    match: (f) => f.endsWith(".int.test.ts"),
+  },
+  {
+    name: "End-to-end",
+    blurb: "Playwright, desktop + mobile. `pnpm test:e2e`",
+    match: (f) => f.includes("/e2e/") && f.endsWith(".spec.ts"),
+  },
 ];
 
 const SKIP_DIRS = new Set(["node_modules", ".next", ".turbo", "dist", ".git"]);
@@ -56,7 +68,8 @@ function header(src) {
   for (const raw of lines) {
     const l = raw.trim();
     if (l.startsWith("//")) buf.push(l.replace(/^\/\/\s?/, ""));
-    else if (l.startsWith("/*") || l.startsWith("*") || l.endsWith("*/")) buf.push(l.replace(/^\/\*+|\*+\/$|^\*\s?/g, "").trim());
+    else if (l.startsWith("/*") || l.startsWith("*") || l.endsWith("*/"))
+      buf.push(l.replace(/^\/\*+|\*+\/$|^\*\s?/g, "").trim());
     else if (l === "") {
       if (buf.length) break;
     } else break;

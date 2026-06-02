@@ -97,7 +97,17 @@ await client.query(
 
 // ─── Content: three-tier (global / diocese / parish), each a published v1 ───
 
-async function seedLesson({ id, scope, dioceseId = null, parishId = null, title, description = null, lessonOrder = 0, createdByEmail = null, items = [] }) {
+async function seedLesson({
+  id,
+  scope,
+  dioceseId = null,
+  parishId = null,
+  title,
+  description = null,
+  lessonOrder = 0,
+  createdByEmail = null,
+  items = [],
+}) {
   await client.query(
     `INSERT INTO lessons (id, scope, diocese_id, parish_id, lesson_order, created_by)
      VALUES ($1, $2, $3, $4, $5, (SELECT id FROM users WHERE email = $6))`,
@@ -126,7 +136,11 @@ await seedLesson({
   description: "An introduction to the person of Jesus Christ.",
   lessonOrder: 1,
   items: [
-    { position: 0, kind: "reading", content: { html: '<p>One day Jesus asked his disciples, "Who do you say that I am?"</p>' } },
+    {
+      position: 0,
+      kind: "reading",
+      content: { html: '<p>One day Jesus asked his disciples, "Who do you say that I am?"</p>' },
+    },
     { position: 1, kind: "question", content: { prompt: "Who do you say that Jesus is?", format: "open_ended" } },
     {
       position: 2,
@@ -151,7 +165,13 @@ await seedLesson({
   title: "Saints & History of Altoona-Johnstown",
   description: "Diocesan formation content.",
   lessonOrder: 1,
-  items: [{ position: 0, kind: "reading", content: { html: "<p>The diocese of Altoona-Johnstown was established in 1901.</p>" } }],
+  items: [
+    {
+      position: 0,
+      kind: "reading",
+      content: { html: "<p>The diocese of Altoona-Johnstown was established in 1901.</p>" },
+    },
+  ],
 });
 
 // A ready video asset (stub provider) with a completed transcript, so the player +
@@ -186,7 +206,11 @@ await seedLesson({
   description: "Parish-specific orientation.",
   createdByEmail: "justinmmiller62@gmail.com",
   items: [
-    { position: 0, kind: "reading", content: { html: "<p>Welcome to the Order of Christian Initiation of Adults at Holy Spirit Parish.</p>" } },
+    {
+      position: 0,
+      kind: "reading",
+      content: { html: "<p>Welcome to the Order of Christian Initiation of Adults at Holy Spirit Parish.</p>" },
+    },
     { position: 1, kind: "video", content: { asset_id: HS_VIDEO, start_ms: 0, end_ms: 8000 } },
   ],
 });

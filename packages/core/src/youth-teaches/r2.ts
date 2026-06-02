@@ -9,7 +9,9 @@ function r2() {
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
   const bucket = process.env.R2_SLIDES_BUCKET;
   if (!accountId || !accessKeyId || !secretAccessKey || !bucket) {
-    throw new Error("R2 is not configured (R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_SLIDES_BUCKET)");
+    throw new Error(
+      "R2 is not configured (R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_SLIDES_BUCKET)",
+    );
   }
   return {
     client: new AwsClient({ accessKeyId, secretAccessKey, region: "auto", service: "s3" }),

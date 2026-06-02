@@ -255,6 +255,12 @@ export function getTranscription(): TranscriptionProvider {
   const groq = process.env.GROQ_API_KEY;
   const openai = process.env.OPENAI_API_KEY;
   const stub = process.env.MEDIA_STUB === "1";
-  cached = stub ? new StubTranscription() : groq ? new GroqTranscription(groq) : openai ? new OpenAITranscription(openai) : new StubTranscription();
+  cached = stub
+    ? new StubTranscription()
+    : groq
+      ? new GroqTranscription(groq)
+      : openai
+        ? new OpenAITranscription(openai)
+        : new StubTranscription();
   return cached;
 }

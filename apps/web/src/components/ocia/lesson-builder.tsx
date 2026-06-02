@@ -20,18 +20,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  Eye,
-  FileText,
-  Film,
-  GripVertical,
-  HelpCircle,
-  ListChecks,
-  Pencil,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Eye, FileText, Film, GripVertical, HelpCircle, ListChecks, Pencil, Plus, Trash2, X } from "lucide-react";
 import type { LessonForEdit, LessonItem, LessonItemKind, VersionSummary } from "@parvaordo/core";
 import { estimateItemsDurationMin } from "@parvaordo/shared";
 import { ReadingEditor } from "./reading-editor";
@@ -68,7 +57,10 @@ function badgeFor(item: LessonItem): string {
 function preview(item: LessonItem): string {
   const raw =
     item.kind === "reading"
-      ? String(item.content.html ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+      ? String(item.content.html ?? "")
+          .replace(/<[^>]*>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
       : item.kind === "question"
         ? String(item.content.prompt ?? "")
         : "Video segment";
@@ -126,9 +118,18 @@ function ItemRow({
   const text = preview(item);
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2"
+    >
       {editable ? (
-        <button {...attributes} {...listeners} className="cursor-grab text-gray-400 hover:text-gray-600" aria-label="Drag to reorder">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab text-gray-400 hover:text-gray-600"
+          aria-label="Drag to reorder"
+        >
           <GripVertical className="h-4 w-4" />
         </button>
       ) : (
@@ -137,7 +138,9 @@ function ItemRow({
       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-500">
         {index + 1}
       </span>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badgeFor(item)}`}>{kindLabel(item)}</span>
+      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badgeFor(item)}`}>
+        {kindLabel(item)}
+      </span>
       {item.kind === "video" ? (
         <span
           title={`Clip: ${clipStatus ?? "none"}`}
@@ -150,10 +153,18 @@ function ItemRow({
       </span>
       {editable ? (
         <>
-          <button onClick={onEdit} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gold-dark" aria-label="Edit">
+          <button
+            onClick={onEdit}
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gold-dark"
+            aria-label="Edit"
+          >
             <Pencil className="h-4 w-4" />
           </button>
-          <button onClick={onDelete} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-rose" aria-label="Delete">
+          <button
+            onClick={onDelete}
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-rose"
+            aria-label="Delete"
+          >
             <Trash2 className="h-4 w-4" />
           </button>
         </>
@@ -264,7 +275,11 @@ export function LessonBuilder({
         prev.findIndex((i) => i.id === active.id),
         prev.findIndex((i) => i.id === over.id),
       );
-      void reorderAction(lessonId, versionId, next.map((i) => i.id));
+      void reorderAction(
+        lessonId,
+        versionId,
+        next.map((i) => i.id),
+      );
       return next;
     });
   };
@@ -316,7 +331,9 @@ export function LessonBuilder({
         editingItem.content.end_ms == null ? null : Number(editingItem.content.end_ms),
       );
       setItems((prev) =>
-        prev.map((it) => (it.id === editingItem.id ? { ...it, content: { ...it.content, clip_asset_id: clipAssetId } } : it)),
+        prev.map((it) =>
+          it.id === editingItem.id ? { ...it, content: { ...it.content, clip_asset_id: clipAssetId } } : it,
+        ),
       );
       router.refresh();
     } finally {
@@ -409,7 +426,11 @@ export function LessonBuilder({
 
           {isDraft ? (
             <button
-              onClick={() => confirmRun("Discard this draft? Unpublished edits will be lost.", () => deleteVersionAction(lessonId, versionId))}
+              onClick={() =>
+                confirmRun("Discard this draft? Unpublished edits will be lost.", () =>
+                  deleteVersionAction(lessonId, versionId),
+                )
+              }
               disabled={pending}
               data-testid="discard-draft-btn"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
@@ -418,7 +439,9 @@ export function LessonBuilder({
             </button>
           ) : !isLive ? (
             <button
-              onClick={() => confirmRun("Delete this version from history?", () => deleteVersionAction(lessonId, versionId))}
+              onClick={() =>
+                confirmRun("Delete this version from history?", () => deleteVersionAction(lessonId, versionId))
+              }
               disabled={pending}
               data-testid="delete-version-btn"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
@@ -428,7 +451,11 @@ export function LessonBuilder({
           ) : null}
 
           <button
-            onClick={() => confirmRun("Delete this lesson and all its versions? This cannot be undone.", () => deleteLessonAction(lessonId))}
+            onClick={() =>
+              confirmRun("Delete this lesson and all its versions? This cannot be undone.", () =>
+                deleteLessonAction(lessonId),
+              )
+            }
             disabled={pending}
             data-testid="delete-lesson-btn"
             className="rounded-md px-3 py-1.5 text-sm font-medium text-rose hover:bg-rose/5 disabled:opacity-50"
@@ -518,17 +545,24 @@ export function LessonBuilder({
 
       {editingItem ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-6">
-          <div className="absolute inset-0 bg-black/50 animate-[po-fade-in_150ms_ease-out]" onClick={() => {
+          <div
+            className="absolute inset-0 bg-black/50 animate-[po-fade-in_150ms_ease-out]"
+            onClick={() => {
               void flush();
               setEditingId(null);
-            }} />
+            }}
+          />
           <div className="relative flex h-full w-full flex-col bg-white animate-[po-slide-up_200ms_ease-out] md:h-[85vh] md:max-w-3xl md:rounded-xl md:shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3.5">
               <h2 className="font-heading text-lg text-navy">Edit {kindLabel(editingItem)}</h2>
-              <button onClick={() => {
-              void flush();
-              setEditingId(null);
-            }} aria-label="Close editor" className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-navy">
+              <button
+                onClick={() => {
+                  void flush();
+                  setEditingId(null);
+                }}
+                aria-label="Close editor"
+                className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-navy"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -546,7 +580,9 @@ export function LessonBuilder({
                   content={editingItem.content}
                   assets={videoAssets}
                   onChange={(c) => onItemChange(editingItem.id, c)}
-                  clipStatus={clipStatuses[editingItem.id] ?? (editingItem.content.clip_asset_id ? "processing" : "none")}
+                  clipStatus={
+                    clipStatuses[editingItem.id] ?? (editingItem.content.clip_asset_id ? "processing" : "none")
+                  }
                   onGenerateClip={generateClip}
                   generating={generatingClip}
                 />

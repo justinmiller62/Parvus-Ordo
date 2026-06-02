@@ -1,10 +1,5 @@
 import Link from "next/link";
-import {
-  getManageLessons,
-  getPublishedLessons,
-  type ContentScope,
-  type LessonStatus,
-} from "@parvaordo/core";
+import { getManageLessons, getPublishedLessons, type ContentScope, type LessonStatus } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { ManageRowActions } from "@/src/components/ocia/manage-row-actions";
 import { createLessonAction, forkLessonAction } from "./actions";
@@ -55,9 +50,14 @@ export default async function LessonsPage({
           <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
             {lessons.map((l) => (
               <li key={l.id}>
-                <Link href={`/ocia/lessons/${l.id}`} className="flex items-center justify-between px-4 py-3 text-sm transition hover:bg-parchment">
+                <Link
+                  href={`/ocia/lessons/${l.id}`}
+                  className="flex items-center justify-between px-4 py-3 text-sm transition hover:bg-parchment"
+                >
                   <span className="text-navy">{l.title}</span>
-                  <span className={`ml-3 rounded-full px-2 py-0.5 text-xs font-medium ${SCOPE_BADGE[l.scope]}`}>{l.scope}</span>
+                  <span className={`ml-3 rounded-full px-2 py-0.5 text-xs font-medium ${SCOPE_BADGE[l.scope]}`}>
+                    {l.scope}
+                  </span>
                 </Link>
               </li>
             ))}
@@ -92,7 +92,10 @@ export default async function LessonsPage({
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-heading text-2xl text-navy">Lessons</h1>
         <form action={createLessonAction}>
-          <button type="submit" className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-white hover:bg-gold-dark">
+          <button
+            type="submit"
+            className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-white hover:bg-gold-dark"
+          >
             New lesson
           </button>
         </form>
@@ -101,29 +104,52 @@ export default async function LessonsPage({
       <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
         <div className="flex items-center gap-1.5" data-testid="filter-type">
           <span className="text-gray-400">Type</span>
-          <FilterLink active={!scope} href={qs({ scope: undefined })}>All</FilterLink>
-          <FilterLink active={scope === "global"} href={qs({ scope: "global" })}>Global</FilterLink>
-          <FilterLink active={scope === "diocese"} href={qs({ scope: "diocese" })}>Diocese</FilterLink>
-          <FilterLink active={scope === "parish"} href={qs({ scope: "parish" })}>Parish</FilterLink>
+          <FilterLink active={!scope} href={qs({ scope: undefined })}>
+            All
+          </FilterLink>
+          <FilterLink active={scope === "global"} href={qs({ scope: "global" })}>
+            Global
+          </FilterLink>
+          <FilterLink active={scope === "diocese"} href={qs({ scope: "diocese" })}>
+            Diocese
+          </FilterLink>
+          <FilterLink active={scope === "parish"} href={qs({ scope: "parish" })}>
+            Parish
+          </FilterLink>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-gray-400">Status</span>
-          <FilterLink active={!status} href={qs({ status: undefined })}>All</FilterLink>
-          <FilterLink active={status === "published"} href={qs({ status: "published" })}>Published</FilterLink>
-          <FilterLink active={status === "draft"} href={qs({ status: "draft" })}>Draft</FilterLink>
-          <FilterLink active={status === "offline"} href={qs({ status: "offline" })}>Offline</FilterLink>
+          <FilterLink active={!status} href={qs({ status: undefined })}>
+            All
+          </FilterLink>
+          <FilterLink active={status === "published"} href={qs({ status: "published" })}>
+            Published
+          </FilterLink>
+          <FilterLink active={status === "draft"} href={qs({ status: "draft" })}>
+            Draft
+          </FilterLink>
+          <FilterLink active={status === "offline"} href={qs({ status: "offline" })}>
+            Offline
+          </FilterLink>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-gray-400">Sort</span>
-          <FilterLink active={sort === "title"} href={qs({ sort: "title" })}>Title</FilterLink>
-          <FilterLink active={sort === "updated"} href={qs({ sort: "updated" })}>Recent</FilterLink>
+          <FilterLink active={sort === "title"} href={qs({ sort: "title" })}>
+            Title
+          </FilterLink>
+          <FilterLink active={sort === "updated"} href={qs({ sort: "updated" })}>
+            Recent
+          </FilterLink>
         </div>
       </div>
 
       {lessons.length === 0 ? (
         <p className="text-sm text-gray-500">No lessons match these filters.</p>
       ) : (
-        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white" data-testid="lesson-list">
+        <ul
+          className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white"
+          data-testid="lesson-list"
+        >
           {lessons.map((l) => {
             const editable = l.scope === "parish";
             return (
@@ -147,8 +173,12 @@ export default async function LessonsPage({
                     })}
                   </span>
                 ) : null}
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${SCOPE_BADGE[l.scope]}`}>{l.scope}</span>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[l.status]}`}>{l.status}</span>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${SCOPE_BADGE[l.scope]}`}>
+                  {l.scope}
+                </span>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[l.status]}`}>
+                  {l.status}
+                </span>
                 <ManageRowActions lessonId={l.id} editable={editable} status={l.status} />
                 {!editable ? (
                   <form action={forkLessonAction.bind(null, l.id)}>

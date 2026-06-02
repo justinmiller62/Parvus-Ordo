@@ -19,9 +19,7 @@ export default async function OciaHomePage() {
       <p className="mt-1 text-gray-500">Order of Christian Initiation of Adults.</p>
 
       <section className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-gray-400">
-          Lessons available to you ({lessons.length})
-        </h2>
+        <h2 className="mb-2 text-sm font-semibold text-gray-400">Lessons available to you ({lessons.length})</h2>
         {lessons.length === 0 ? (
           <p className="text-sm text-gray-500">No lessons yet.</p>
         ) : (

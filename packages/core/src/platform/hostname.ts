@@ -2,10 +2,7 @@ import { getDb } from "../db/client";
 
 /** A request hostname resolves to one of: the apex (no parish), a parish slug
  * (subdomain), or a custom domain. */
-export type ParishRef =
-  | { kind: "apex" }
-  | { kind: "slug"; slug: string }
-  | { kind: "custom"; domain: string };
+export type ParishRef = { kind: "apex" } | { kind: "slug"; slug: string } | { kind: "custom"; domain: string };
 
 /** Leftmost labels that map to the apex (marketing/login), never a parish slug. */
 const RESERVED_LABELS = new Set(["www", "app"]);
@@ -52,9 +49,9 @@ export async function resolveParishIdForHost(host: string | null): Promise<strin
   if (ref.kind === "apex") return null;
   const slug = ref.kind === "slug" ? ref.slug : null;
   const domain = ref.kind === "custom" ? ref.domain : null;
-  const { rows } = await getDb(null).query<{ id: string | null }>(
-    "SELECT resolve_parish_id($1, $2) AS id",
-    [slug, domain],
-  );
+  const { rows } = await getDb(null).query<{ id: string | null }>("SELECT resolve_parish_id($1, $2) AS id", [
+    slug,
+    domain,
+  ]);
   return rows[0]?.id ?? null;
 }

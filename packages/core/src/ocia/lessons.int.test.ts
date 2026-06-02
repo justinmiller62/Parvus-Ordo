@@ -65,7 +65,11 @@ describe("three-tier visibility (published, live versions)", () => {
 
 describe("versioning lifecycle", () => {
   it("a new lesson is a draft — invisible to students until published", async () => {
-    const id = await createLesson({ parishId: HOLY_SPIRIT, createdBy: await userId("admin@parvaordo.test"), title: "Brand New" });
+    const id = await createLesson({
+      parishId: HOLY_SPIRIT,
+      createdBy: await userId("admin@parvaordo.test"),
+      title: "Brand New",
+    });
     expect((await getPublishedLessons(HOLY_SPIRIT)).map((l) => l.id)).not.toContain(id);
     expect((await getManageLessons(HOLY_SPIRIT, {})).find((l) => l.id === id)?.status).toBe("draft");
 
@@ -76,7 +80,11 @@ describe("versioning lifecycle", () => {
   });
 
   it("editing a published lesson makes a draft; students keep seeing the live version; publish/rollback/unpublish", async () => {
-    const id = await createLesson({ parishId: HOLY_SPIRIT, createdBy: await userId("admin@parvaordo.test"), title: "Lifecycle" });
+    const id = await createLesson({
+      parishId: HOLY_SPIRIT,
+      createdBy: await userId("admin@parvaordo.test"),
+      title: "Lifecycle",
+    });
     const e1 = await getLessonForEdit(HOLY_SPIRIT, id);
     const v1 = e1!.selected.versionId;
     await addLessonItem({ parishId: HOLY_SPIRIT, versionId: v1, kind: "reading", content: { html: "<p>v1</p>" } });
@@ -104,7 +112,11 @@ describe("versioning lifecycle", () => {
   });
 
   it("enforces a single draft per lesson (partial unique index)", async () => {
-    const id = await createLesson({ parishId: HOLY_SPIRIT, createdBy: await userId("admin@parvaordo.test"), title: "One Draft" });
+    const id = await createLesson({
+      parishId: HOLY_SPIRIT,
+      createdBy: await userId("admin@parvaordo.test"),
+      title: "One Draft",
+    });
     // createLesson made the draft; a second raw draft insert must fail.
     await expect(
       getDb(HOLY_SPIRIT).query(
@@ -144,7 +156,11 @@ describe("fork", () => {
 
 describe("delete", () => {
   it("deletes a whole lesson (cascade)", async () => {
-    const id = await createLesson({ parishId: HOLY_SPIRIT, createdBy: await userId("admin@parvaordo.test"), title: "To Delete" });
+    const id = await createLesson({
+      parishId: HOLY_SPIRIT,
+      createdBy: await userId("admin@parvaordo.test"),
+      title: "To Delete",
+    });
     await publishVersion({
       parishId: HOLY_SPIRIT,
       lessonId: id,
@@ -156,7 +172,11 @@ describe("delete", () => {
   });
 
   it("discards a draft, but refuses to delete the only version or the live version", async () => {
-    const id = await createLesson({ parishId: HOLY_SPIRIT, createdBy: await userId("admin@parvaordo.test"), title: "Del Version" });
+    const id = await createLesson({
+      parishId: HOLY_SPIRIT,
+      createdBy: await userId("admin@parvaordo.test"),
+      title: "Del Version",
+    });
     const v1 = (await getLessonForEdit(HOLY_SPIRIT, id))!.selected.versionId;
 
     // only version -> refuse

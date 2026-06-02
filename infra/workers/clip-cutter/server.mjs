@@ -33,13 +33,23 @@ function ffmpegCut(srcUrl, startSec, durSec, outPath) {
   return new Promise((resolve, reject) => {
     const args = [
       "-y",
-      "-referer", REFERER,
-      "-ss", String(startSec),
-      "-i", srcUrl,
+      "-referer",
+      REFERER,
+      "-ss",
+      String(startSec),
+      "-i",
+      srcUrl,
       ...(durSec != null ? ["-t", String(durSec)] : []),
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-      "-c:a", "aac",
-      "-movflags", "+faststart",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "20",
+      "-c:a",
+      "aac",
+      "-movflags",
+      "+faststart",
       outPath,
     ];
     const p = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] });
@@ -61,7 +71,11 @@ async function bunnyCreate(title) {
 }
 
 async function bunnyUpload(guid, bytes) {
-  const res = await fetch(`${BUNNY}/${guid}`, { method: "PUT", headers: { AccessKey: KEY, "Content-Type": "video/mp4" }, body: bytes });
+  const res = await fetch(`${BUNNY}/${guid}`, {
+    method: "PUT",
+    headers: { AccessKey: KEY, "Content-Type": "video/mp4" },
+    body: bytes,
+  });
   if (!res.ok) throw new Error(`bunny upload failed: ${res.status}`);
 }
 

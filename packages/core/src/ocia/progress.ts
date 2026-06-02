@@ -1,11 +1,7 @@
 import { getDb } from "../db/client";
 
 /** Mark a lesson item complete for a student (idempotent). */
-export async function markItemComplete(params: {
-  parishId: string;
-  studentId: string;
-  itemId: string;
-}): Promise<void> {
+export async function markItemComplete(params: { parishId: string; studentId: string; itemId: string }): Promise<void> {
   await getDb(params.parishId).query(
     `INSERT INTO lesson_item_progress (parish_id, student_id, item_id, completed)
      VALUES ($1, $2, $3, true)

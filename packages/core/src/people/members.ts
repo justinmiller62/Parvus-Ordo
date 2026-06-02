@@ -14,7 +14,11 @@ export interface ParishMember {
 /** Every membership in the parish (one row per membership). */
 export async function listParishMembers(parishId: string): Promise<ParishMember[]> {
   const { rows } = await getDb(parishId).query<{
-    user_id: string; display_name: string; email: string; role: Role; ministry_name: string | null;
+    user_id: string;
+    display_name: string;
+    email: string;
+    role: Role;
+    ministry_name: string | null;
   }>(
     `SELECT m.user_id, u.display_name, u.email, m.role, mn.name AS ministry_name
        FROM memberships m

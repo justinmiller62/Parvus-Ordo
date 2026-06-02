@@ -64,12 +64,20 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
             <div className="flex flex-wrap items-center gap-2">
               <span className="mr-1 text-sm text-gray-500">A recording was submitted.</span>
               <form action={reviewProjectAction.bind(null, id, "approved")}>
-                <button type="submit" data-testid="yt-approve" className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
+                <button
+                  type="submit"
+                  data-testid="yt-approve"
+                  className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
+                >
                   Approve
                 </button>
               </form>
               <form action={reviewProjectAction.bind(null, id, "rejected")}>
-                <button type="submit" data-testid="yt-reject" className="rounded-md border border-rose px-3 py-1.5 text-sm font-medium text-rose hover:bg-rose/10">
+                <button
+                  type="submit"
+                  data-testid="yt-reject"
+                  className="rounded-md border border-rose px-3 py-1.5 text-sm font-medium text-rose hover:bg-rose/10"
+                >
                   Reject
                 </button>
               </form>
@@ -78,14 +86,18 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
             <div className="flex flex-wrap items-center gap-3" data-testid="yt-review-approved">
               <span className="text-sm font-medium text-green-700">✓ Approved</span>
               <form action={reviewProjectAction.bind(null, id, "rejected")}>
-                <button type="submit" className="text-xs text-rose hover:underline">Reject instead</button>
+                <button type="submit" className="text-xs text-rose hover:underline">
+                  Reject instead
+                </button>
               </form>
             </div>
           ) : project.status === "rejected" ? (
             <div className="flex flex-wrap items-center gap-3" data-testid="yt-review-rejected">
               <span className="text-sm font-medium text-rose">✗ Rejected</span>
               <form action={reviewProjectAction.bind(null, id, "approved")}>
-                <button type="submit" className="text-xs text-green-700 hover:underline">Approve instead</button>
+                <button type="submit" className="text-xs text-green-700 hover:underline">
+                  Approve instead
+                </button>
               </form>
             </div>
           ) : null}

@@ -13,7 +13,10 @@ beforeAll(async () => {
   );
   userId = u.rows[0]!.id;
   await getDb(HS).query("DELETE FROM memberships WHERE user_id = $1 AND parish_id = $2", [userId, HS]);
-  await getDb(HS).query("INSERT INTO memberships (user_id, parish_id, role) VALUES ($1, $2, 'parish_member')", [userId, HS]);
+  await getDb(HS).query("INSERT INTO memberships (user_id, parish_id, role) VALUES ($1, $2, 'parish_member')", [
+    userId,
+    HS,
+  ]);
 });
 
 afterAll(async () => {

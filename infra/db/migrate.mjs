@@ -34,9 +34,7 @@ const client = await connect();
 await client.query(
   "CREATE TABLE IF NOT EXISTS _migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())",
 );
-const applied = new Set(
-  (await client.query("SELECT name FROM _migrations")).rows.map((r) => r.name),
-);
+const applied = new Set((await client.query("SELECT name FROM _migrations")).rows.map((r) => r.name));
 const files = (await readdir(MIGRATIONS_DIR)).filter((f) => f.endsWith(".sql")).sort();
 
 for (const file of files) {

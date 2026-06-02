@@ -39,8 +39,7 @@ function StatusBadge({ status }: { status: AssetStatus }) {
 
 function TranscriptBadge({ status }: { status: TranscriptionStatus }) {
   if (status === "none") return null;
-  const text =
-    status === "completed" ? "Transcript ✓" : status === "failed" ? "Transcript failed" : "Transcribing…";
+  const text = status === "completed" ? "Transcript ✓" : status === "failed" ? "Transcript failed" : "Transcribing…";
   const cls = status === "completed" ? "text-green-700" : status === "failed" ? "text-rose" : "text-gray-400";
   return <span className={`text-xs ${cls}`}>{text}</span>;
 }
@@ -65,7 +64,11 @@ export function AssetGrid({ assets }: { assets: GridAsset[] }) {
     setRetrying(id);
     try {
       const wav = await extractAudioWav(file);
-      await fetch(`/api/ocia/transcribe/${id}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: wav });
+      await fetch(`/api/ocia/transcribe/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "audio/wav" },
+        body: wav,
+      });
       router.refresh();
     } finally {
       setRetrying(null);
@@ -92,85 +95,87 @@ export function AssetGrid({ assets }: { assets: GridAsset[] }) {
     <>
       <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={onRetryFile} />
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="asset-grid">
-      {assets.map((a) => {
-        const Icon = KIND_ICON[a.kind];
-        return (
-          <div key={a.id} className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
-            <div className="relative flex aspect-video items-center justify-center bg-navy/5">
-              {a.posterUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={a.posterUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <Icon className="h-8 w-8 text-navy/30" />
-              )}
-              {a.durationMs ? (
-                <span className="absolute bottom-1.5 right-1.5 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
-                  {fmtDuration(a.durationMs)}
-                </span>
-              ) : null}
-            </div>
-            <div className="flex flex-1 flex-col gap-2 p-3">
-              <span className="truncate text-sm font-medium text-navy" title={a.title}>
-                {a.title}
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge status={a.status} />
-                {retrying === a.id ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-gray-400">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Transcribing…
-                  </span>
+        {assets.map((a) => {
+          const Icon = KIND_ICON[a.kind];
+          return (
+            <div key={a.id} className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
+              <div className="relative flex aspect-video items-center justify-center bg-navy/5">
+                {a.posterUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={a.posterUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <TranscriptBadge status={a.transcriptionStatus} />
+                  <Icon className="h-8 w-8 text-navy/30" />
                 )}
+                {a.durationMs ? (
+                  <span className="absolute bottom-1.5 right-1.5 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
+                    {fmtDuration(a.durationMs)}
+                  </span>
+                ) : null}
               </div>
-              <div className="mt-auto flex justify-end gap-1">
-                {a.transcriptionStatus === "completed" ? (
-                  <a
-                    href={`/api/ocia/assets/${a.id}/transcript`}
-                    title="Download transcript"
-                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-navy"
-                  >
-                    <Download className="h-4 w-4" />
-                  </a>
-                ) : null}
-                {a.kind === "video" && a.transcriptionStatus !== "pending" && a.transcriptionStatus !== "processing" ? (
+              <div className="flex flex-1 flex-col gap-2 p-3">
+                <span className="truncate text-sm font-medium text-navy" title={a.title}>
+                  {a.title}
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={a.status} />
+                  {retrying === a.id ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Transcribing…
+                    </span>
+                  ) : (
+                    <TranscriptBadge status={a.transcriptionStatus} />
+                  )}
+                </div>
+                <div className="mt-auto flex justify-end gap-1">
+                  {a.transcriptionStatus === "completed" ? (
+                    <a
+                      href={`/api/ocia/assets/${a.id}/transcript`}
+                      title="Download transcript"
+                      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-navy"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  ) : null}
+                  {a.kind === "video" &&
+                  a.transcriptionStatus !== "pending" &&
+                  a.transcriptionStatus !== "processing" ? (
+                    <button
+                      onClick={() => startRetry(a.id)}
+                      disabled={retrying === a.id}
+                      title={
+                        a.transcriptionStatus === "completed"
+                          ? "Re-transcribe (re-select the video file)"
+                          : a.transcriptionStatus === "failed"
+                            ? "Retry transcription (re-select the video file)"
+                            : "Generate transcript (re-select the video file)"
+                      }
+                      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gold-dark disabled:opacity-50"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </button>
+                  ) : null}
                   <button
-                    onClick={() => startRetry(a.id)}
-                    disabled={retrying === a.id}
-                    title={
-                      a.transcriptionStatus === "completed"
-                        ? "Re-transcribe (re-select the video file)"
-                        : a.transcriptionStatus === "failed"
-                          ? "Retry transcription (re-select the video file)"
-                          : "Generate transcript (re-select the video file)"
-                    }
-                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gold-dark disabled:opacity-50"
+                    onClick={() => {
+                      if (!window.confirm(`Delete "${a.title}"?`)) return;
+                      setDeleting(a.id);
+                      startTransition(async () => {
+                        await deleteAssetAction(a.id);
+                        setDeleting(null);
+                        router.refresh();
+                      });
+                    }}
+                    disabled={deleting === a.id}
+                    aria-label="Delete"
+                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-rose disabled:opacity-50"
                   >
-                    <RotateCcw className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
-                ) : null}
-                <button
-                  onClick={() => {
-                    if (!window.confirm(`Delete "${a.title}"?`)) return;
-                    setDeleting(a.id);
-                    startTransition(async () => {
-                      await deleteAssetAction(a.id);
-                      setDeleting(null);
-                      router.refresh();
-                    });
-                  }}
-                  disabled={deleting === a.id}
-                  aria-label="Delete"
-                  className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-rose disabled:opacity-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
       </div>
     </>
   );

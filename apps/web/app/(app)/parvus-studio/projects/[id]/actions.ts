@@ -2,7 +2,15 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { deleteProjectSlide, deleteRecordings, getProject, mintMcpToken, reorderProjectSlides, setProjectStatus, updateScriptDraft } from "@parvaordo/core";
+import {
+  deleteProjectSlide,
+  deleteRecordings,
+  getProject,
+  mintMcpToken,
+  reorderProjectSlides,
+  setProjectStatus,
+  updateScriptDraft,
+} from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 
 async function ctx(): Promise<{ parishId: string; userId: string }> {

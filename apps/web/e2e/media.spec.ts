@@ -35,7 +35,9 @@ test("learner reaches the video step: seek-enforcing player + synced transcript 
   await expect(page.getByTestId("wizard-next")).toContainText("Watch to continue");
 });
 
-test("learner completes a lesson → asks a question + feedback → reviews answers; catechist sees them", async ({ page }) => {
+test("learner completes a lesson → asks a question + feedback → reviews answers; catechist sees them", async ({
+  page,
+}) => {
   await page.request.get("/dev/reset?email=e2e-student@parvaordo.test");
   await page.goto("/dev/login?email=e2e-student@parvaordo.test");
   await page.goto("/ocia/lessons");
@@ -86,7 +88,10 @@ test("teacher preview starts at the beginning, ungated, with a jump-to dropdown"
   await expect(page.getByTestId("wizard-step-current")).toHaveText("2");
 
   // Back to the editor and clean up.
-  await page.getByRole("link", { name: /Editor/ }).first().click();
+  await page
+    .getByRole("link", { name: /Editor/ })
+    .first()
+    .click();
   await page.waitForURL(/\/edit/);
   await page.getByTestId("delete-lesson-btn").click();
   await page.waitForURL(/\/ocia\/lessons$/);

@@ -114,7 +114,10 @@ test("teen drafts a script with AI (via MCP) then marks it ready to record", asy
   // Claude writes the script via the MCP endpoint; the page's 3s poll picks it up live.
   const draft = "Hi, I'm Sarah, and the Eucharist is truly the Body and Blood of Christ.";
   await request.post(`/api/mcp/studio?token=${E2E_MCP_TOKEN}`, {
-    data: rpc("tools/call", { name: "update_script_draft", arguments: { project_id: E2E_YOUTH_PROJECT, new_text: draft } }),
+    data: rpc("tools/call", {
+      name: "update_script_draft",
+      arguments: { project_id: E2E_YOUTH_PROJECT, new_text: draft },
+    }),
   });
   await expect(page.getByTestId("yt-script")).toHaveValue(draft, { timeout: 8000 });
 

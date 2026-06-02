@@ -49,7 +49,12 @@ export async function lookupAppUser(email: string): Promise<AppIdentity | null> 
   for (const r of rows) {
     if (r.parish_id && r.role && !seen.has(r.parish_id)) {
       seen.add(r.parish_id);
-      memberships.push({ parishId: r.parish_id, parishName: r.parish_name ?? "", parishHostname: r.parish_hostname, role: r.role });
+      memberships.push({
+        parishId: r.parish_id,
+        parishName: r.parish_name ?? "",
+        parishHostname: r.parish_hostname,
+        role: r.role,
+      });
     }
   }
   const primary = memberships[0] ?? null;

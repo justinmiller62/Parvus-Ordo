@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { deleteRecordingAction, getScriptAction, markReadyAction, saveScriptAction, startAiSessionAction } from "./actions";
+import {
+  deleteRecordingAction,
+  getScriptAction,
+  markReadyAction,
+  saveScriptAction,
+  startAiSessionAction,
+} from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
   drafting: "Drafting",

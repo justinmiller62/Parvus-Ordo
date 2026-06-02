@@ -16,11 +16,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const form = await req.formData();
   const file = form.get("file");
 
-  if (!(file instanceof File) || file.size === 0) return Response.json({ error: "Choose an image to upload." }, { status: 400 });
-  if (!file.type.startsWith("image/")) return Response.json({ error: "Slide must be an image (PNG or JPG)." }, { status: 415 });
+  if (!(file instanceof File) || file.size === 0)
+    return Response.json({ error: "Choose an image to upload." }, { status: 400 });
+  if (!file.type.startsWith("image/"))
+    return Response.json({ error: "Slide must be an image (PNG or JPG)." }, { status: 415 });
   if (file.size > SLIDE_MAX_BYTES) {
     return Response.json(
-      { error: `Slide is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max ${SLIDE_MAX_BYTES / 1024 / 1024} MB.` },
+      {
+        error: `Slide is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max ${SLIDE_MAX_BYTES / 1024 / 1024} MB.`,
+      },
       { status: 413 },
     );
   }

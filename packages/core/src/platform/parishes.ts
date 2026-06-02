@@ -20,8 +20,6 @@ export async function getParishById(parishId: string): Promise<ParishRow | null>
 
 /** Ministries within the active parish. */
 export async function getMinistries(parishId: string): Promise<MinistryRow[]> {
-  const { rows } = await getDb(parishId).query<MinistryRow>(
-    "SELECT id, name, kind FROM ministries ORDER BY name",
-  );
+  const { rows } = await getDb(parishId).query<MinistryRow>("SELECT id, name, kind FROM ministries ORDER BY name");
   return rows;
 }

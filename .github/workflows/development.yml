@@ -28,6 +28,8 @@ jobs:
 
       # Fast gates (DB-backed int/e2e run locally for now; add to CI with a
       # Postgres service container + migrate/seed as a follow-up).
+      - name: Format check
+        run: pnpm format:check
       - name: Typecheck
         run: pnpm typecheck
       - name: Unit tests
