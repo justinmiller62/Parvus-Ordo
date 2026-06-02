@@ -60,9 +60,10 @@ jobs:
           import json, os
           keys = [
             "DATABASE_URL", "WORKOS_CLIENT_ID", "WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD",
-            "PARISH_BASE_DOMAIN", "BUNNY_STREAM_LIBRARY_ID", "BUNNY_STREAM_LIBRARY_KEY",
-            "BUNNY_STREAM_CDN_HOSTNAME", "GROQ_API_KEY", "CLIP_CALLBACK_SECRET",
-            "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_SLIDES_BUCKET",
+            "API_TOKEN_SECRET", "PARISH_BASE_DOMAIN", "BUNNY_STREAM_LIBRARY_ID",
+            "BUNNY_STREAM_LIBRARY_KEY", "BUNNY_STREAM_CDN_HOSTNAME", "GROQ_API_KEY",
+            "CLIP_CALLBACK_SECRET", "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID",
+            "R2_SECRET_ACCESS_KEY", "R2_SLIDES_BUCKET",
           ]
           print(json.dumps({k: os.environ[k] for k in keys if os.environ.get(k)}))
           PY
@@ -72,6 +73,9 @@ jobs:
           WORKOS_CLIENT_ID: ${{ secrets.WORKOS_CLIENT_ID }}
           WORKOS_API_KEY: ${{ secrets.WORKOS_API_KEY }}
           WORKOS_COOKIE_PASSWORD: ${{ secrets.WORKOS_COOKIE_PASSWORD }}
+          # Optional: omitted from the upload when unset (core falls back to the cookie
+          # password). Set the GitHub env secret to rotate to a dedicated key (po-u79).
+          API_TOKEN_SECRET: ${{ secrets.API_TOKEN_SECRET }}
           PARISH_BASE_DOMAIN: ${{ secrets.PARISH_BASE_DOMAIN }}
           BUNNY_STREAM_LIBRARY_ID: ${{ secrets.BUNNY_STREAM_LIBRARY_ID }}
           BUNNY_STREAM_LIBRARY_KEY: ${{ secrets.BUNNY_STREAM_LIBRARY_KEY }}
