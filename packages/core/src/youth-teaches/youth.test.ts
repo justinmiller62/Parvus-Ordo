@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { canTransitionProject, scriptStats } from "./projects";
-import { YOUTH_MCP_TOOLS } from "./mcp";
+import { YOUTH_MCP_TOOLS, validateMcpToken, type McpSession } from "./mcp";
 import { uploadRecordingToBunny } from "./recordings";
 import { presignSlideUrl, putSlide } from "./r2";
 
@@ -78,6 +78,67 @@ describe("YOUTH_MCP_TOOLS", () => {
       const tool = YOUTH_MCP_TOOLS.find((t) => t.name === name)!;
       expect((tool.inputSchema as { required?: string[] }).required).toContain("project_id");
     }
+  });
+});
+
+describe("validateMcpToken in-process cache", () => {
+  // Each case uses a distinct token so the process-global cache can't cross-pollinate.
+  const SESSION: McpSession = { parishId: "p-1", teenUserId: "t-1" };
+
+  it("validates once per token within the TTL, then serves from cache (DB out of the hot path)", async () => {
+    let calls = 0;
+    const load = async (_t: string): Promise<McpSession | null> => ((calls += 1), SESSION);
+    const clock = () => 1_000_000;
+
+    expect(await validateMcpToken("mcp_hit", load, clock)).toEqual(SESSION);
+    expect(await validateMcpToken("mcp_hit", load, clock)).toEqual(SESSION);
+    expect(await validateMcpToken("mcp_hit", load, clock)).toEqual(SESSION);
+    expect(calls).toBe(1); // burst of tool calls → one validation
+  });
+
+  it("re-validates once the TTL has elapsed", async () => {
+    let calls = 0;
+    const load = async (_t: string): Promise<McpSession | null> => ((calls += 1), SESSION);
+    let nowMs = 2_000_000;
+    const clock = () => nowMs;
+
+    expect(await validateMcpToken("mcp_ttl", load, clock)).toEqual(SESSION);
+    expect(calls).toBe(1);
+    nowMs += 60_001; // just past the 60s TTL
+    expect(await validateMcpToken("mcp_ttl", load, clock)).toEqual(SESSION);
+    expect(calls).toBe(2);
+  });
+
+  it("never caches an invalid token, so a flood of bad tokens can't bloat the cache", async () => {
+    let calls = 0;
+    const load = async (_t: string): Promise<McpSession | null> => ((calls += 1), null);
+    const clock = () => 3_000_000;
+
+    expect(await validateMcpToken("mcp_bad", load, clock)).toBeNull();
+    expect(await validateMcpToken("mcp_bad", load, clock)).toBeNull();
+    expect(calls).toBe(2); // re-checked every time; nothing stored
+  });
+
+  it("keys strictly by token — one token's session is never served for another", async () => {
+    const byToken: Record<string, McpSession> = {
+      mcp_parishA: { parishId: "A", teenUserId: "ta" },
+      mcp_parishB: { parishId: "B", teenUserId: "tb" },
+    };
+    const load = async (t: string): Promise<McpSession | null> => byToken[t] ?? null;
+    const clock = () => 4_000_000;
+
+    expect(await validateMcpToken("mcp_parishA", load, clock)).toEqual(byToken.mcp_parishA);
+    expect(await validateMcpToken("mcp_parishB", load, clock)).toEqual(byToken.mcp_parishB);
+    // Both now cached; each token still resolves to its own session (no cross-tenant bleed).
+    expect(await validateMcpToken("mcp_parishA", load, clock)).toEqual(byToken.mcp_parishA);
+    expect(await validateMcpToken("mcp_parishB", load, clock)).toEqual(byToken.mcp_parishB);
+  });
+
+  it("returns null for an empty token without consulting the validator", async () => {
+    let calls = 0;
+    const load = async (_t: string): Promise<McpSession | null> => ((calls += 1), SESSION);
+    expect(await validateMcpToken("", load, () => 5_000_000)).toBeNull();
+    expect(calls).toBe(0);
   });
 });
 
