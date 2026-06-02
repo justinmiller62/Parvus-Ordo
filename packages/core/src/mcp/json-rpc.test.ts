@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createMcpPostHandler } from "./json-rpc";
 
 // Unit coverage for the generic MCP JSON-RPC transport framing. Uses a stub
@@ -139,17 +139,28 @@ describe("createMcpPostHandler", () => {
     });
   });
 
-  it("returns a thrown tool error as an isError result (not a JSON-RPC error)", async () => {
-    const res = await post(
-      handlerWith(),
-      { id: 6, method: "tools/call", params: { name: "boom" } },
-      { headers: { authorization: "Bearer good" } },
-    );
-    expect(res.status).toBe(200);
-    const json = await rpc(res);
-    expect(json.error).toBeUndefined();
-    expect(json.result?.isError).toBe(true);
-    expect(json.result?.content?.[0]?.text).toBe("Error: kaboom");
+  it("returns a thrown tool error as an isError result, never leaking the message (po-bt1)", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const res = await post(
+        handlerWith(),
+        { id: 6, method: "tools/call", params: { name: "boom" } },
+        { headers: { authorization: "Bearer good" } },
+      );
+      expect(res.status).toBe(200);
+      const json = await rpc(res);
+      expect(json.error).toBeUndefined();
+      expect(json.result?.isError).toBe(true);
+      // The client gets a generic message — never the raw 'kaboom', which stands in for
+      // config/infra-revealing text (missing secrets, backend status codes).
+      expect(json.result?.content?.[0]?.text).toBe("The tool failed to run.");
+      expect(json.result?.content?.[0]?.text).not.toContain("kaboom");
+      // The real error is logged server-side for operators.
+      expect(logged).toHaveBeenCalled();
+      expect(logged.mock.calls[0]?.[1]).toBeInstanceOf(Error);
+    } finally {
+      logged.mockRestore();
+    }
   });
 
   it("reports unknown methods with code -32601", async () => {
