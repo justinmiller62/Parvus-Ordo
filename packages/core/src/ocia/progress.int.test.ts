@@ -5,7 +5,9 @@ import {
   getAnswersForVersion,
   getCompletedItemsForVersion,
   getDb,
+  getItemMaxReached,
   markItemComplete,
+  markVideoProgress,
   submitAnswer,
 } from "@parvaordo/core";
 
@@ -65,5 +67,45 @@ describe("answers + progress (integration)", () => {
     expect(answers[questionItemId]).toBeUndefined();
     const done = await getCompletedItemsForVersion(ST_PETER, studentId, versionId);
     expect(done.has(readingItemId)).toBe(false);
+  });
+});
+
+describe("lesson_item_progress is student-owned at the app/core layer (po-s6vb)", () => {
+  // Two learners in the SAME parish. RLS on lesson_item_progress is a bare parish fence,
+  // so this proves the per-student OWNERSHIP fence lives in core: every read filters by
+  // the caller's studentId, so student A's queries never return a same-parish peer's rows
+  // (per-user-GUC RLS is a deferred cross-cutting RFC — see CLAUDE.md "Student-owned tables").
+  let peerId: string;
+
+  beforeAll(async () => {
+    const ins = await getDb(HOLY_SPIRIT).query<{ id: string }>(
+      `INSERT INTO users (email, display_name, is_super_admin)
+       VALUES ('po-s6vb-peer@parvaordo.test', 'Peer Catechumen', false)
+       ON CONFLICT (email) DO UPDATE SET display_name = EXCLUDED.display_name
+       RETURNING id`,
+    );
+    peerId = ins.rows[0]!.id;
+  });
+
+  afterAll(async () => {
+    await getDb(HOLY_SPIRIT).query("DELETE FROM lesson_item_progress WHERE student_id = $1", [peerId]);
+    await getDb(HOLY_SPIRIT).query("DELETE FROM users WHERE id = $1", [peerId]);
+  });
+
+  it("a student's completed-items read returns only their own rows, not a same-parish peer's", async () => {
+    // The peer completes the question item; student A has not.
+    await markItemComplete({ parishId: HOLY_SPIRIT, studentId: peerId, itemId: questionItemId });
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, peerId, versionId)).has(questionItemId)).toBe(true);
+
+    // Student A must NOT see the peer's completion (same parish, different student).
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, studentId, versionId)).has(questionItemId)).toBe(false);
+  });
+
+  it("a student's furthest-watched read returns only their own value, not a same-parish peer's", async () => {
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: peerId, itemId: readingItemId, maxReachedMs: 4321 });
+    expect(await getItemMaxReached(HOLY_SPIRIT, peerId, readingItemId)).toBe(4321);
+
+    // Student A has no watch progress on that item → reads 0, never the peer's 4321.
+    expect(await getItemMaxReached(HOLY_SPIRIT, studentId, readingItemId)).toBe(0);
   });
 });

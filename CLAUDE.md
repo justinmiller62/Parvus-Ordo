@@ -101,6 +101,15 @@ Node `proxy.ts` isn't buildable on OpenNext). Cloudflare's edge **caches** in fr
     only through an RLS-scoped parent (e.g. a `memberships` join) and carry an **explicit `parish_id`
     guard** — never select/mutate `users` unscoped (outside the pre-tenant lookup). Note `users.display_name`
     is global: editing it is visible in every parish the user belongs to (no per-parish override yet).
+  - **Student-owned tables** (`lesson_item_progress`, `answers`, `student_questions`, `student_feedback`)
+    are RLS-isolated at the **parish** level only — the house model has no per-user GUC (`getDb(parishId)`
+    sets parish/diocese, not the user). Per-student **row-ownership is enforced in `packages/core`**: every
+    read/write filters by `student_id`, and every entry point passes the **session** user id
+    (`getViewer`/`studentContext`), never a client param — so a learner reaches only their own rows (staff
+    parish-wide reads, when added, stay parish-scoped). This matches the app-level-ownership precedent
+    (po-j7t's `assertOwnsProject`). DB-layer per-user ownership would mean threading an `app.user_id` GUC
+    through the multi-tenant chokepoint and redesigning RLS across all these tables — a cross-cutting **RFC**,
+    deliberately deferred (po-s6vb).
 - **Tenancy hierarchy:** diocese → parish → ministry/council → member. Parishes resolve by **slug +
   `PARISH_BASE_DOMAIN`** (per env), with `custom_domains` overrides.
 - **Roles** (`membership_role`): `super_admin, admin, catechist, catechumen_candidate, parish_member,
