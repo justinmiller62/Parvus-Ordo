@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BookOpen, Clapperboard, Users } from "lucide-react";
 import { getMinistries, getParishById } from "@parvaordo/core";
-import { ROLE_LABELS } from "@parvaordo/shared";
+import { ociaEligible, peopleEligible, ROLE_LABELS, studioEligible } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 
 export default async function HomePage() {
@@ -18,9 +18,11 @@ export default async function HomePage() {
   if (role === "studio") redirect("/parvus-studio");
 
   const parishId = identity?.parishId ?? null;
-  const ociaEligible = role === "admin" || role === "super_admin";
-  const youthEligible = role === "admin" || role === "super_admin";
-  const peopleEligible = role === "admin" || role === "super_admin";
+  // Single-module roles (catechist/learner, studio) are redirected away above, so
+  // these shared predicates resolve to "admins only" here — see @parvaordo/shared.
+  const showOcia = ociaEligible(role);
+  const showStudio = studioEligible(role);
+  const showPeople = peopleEligible(role);
 
   const [parish, ministries] = await Promise.all([
     parishId ? getParishById(parishId) : Promise.resolve(null),
@@ -66,10 +68,10 @@ export default async function HomePage() {
             </ul>
           </section>
 
-          {ociaEligible || youthEligible || peopleEligible ? (
+          {showOcia || showStudio || showPeople ? (
             <section className="mt-6 space-y-3">
               <h2 className="text-sm font-semibold text-gray-400">Modules</h2>
-              {ociaEligible ? (
+              {showOcia ? (
                 <Link
                   href="/ocia"
                   data-testid="module-ocia"
@@ -84,7 +86,7 @@ export default async function HomePage() {
                   </span>
                 </Link>
               ) : null}
-              {youthEligible ? (
+              {showStudio ? (
                 <Link
                   href="/parvus-studio"
                   data-testid="module-parvus-studio"
@@ -101,7 +103,7 @@ export default async function HomePage() {
                   </span>
                 </Link>
               ) : null}
-              {peopleEligible ? (
+              {showPeople ? (
                 <Link
                   href="/people"
                   data-testid="module-people"

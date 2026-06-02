@@ -19,6 +19,30 @@ export const ROLE_LABELS: Record<Role, string> = {
   studio: "Studio",
 };
 
+// ─── Module → role eligibility ────────────────────────────────────────────────
+// Defined once and consumed by BOTH the parish dashboard (which module launcher
+// cards to render) and the app shell (which module nav links to show), so the two
+// can never drift. The dashboard redirects single-module roles away before these
+// run (catechist/learner → OCIA, studio → Parvus Studio), so the broader OCIA/
+// Studio predicates resolve to "admins only" there while staying correct for the
+// shell, which serves every role. This is also the single seam a future per-parish
+// module-enable toggle should gate on.
+
+/** OCIA: parish staff (admins, catechists) + OCIA learners. */
+export function ociaEligible(role: Role | null): boolean {
+  return role === "super_admin" || role === "admin" || role === "catechist" || role === "catechumen_candidate";
+}
+
+/** Parvus Studio (formerly "Youth Teaches"): studio creators + catechists + admins. */
+export function studioEligible(role: Role | null): boolean {
+  return role === "super_admin" || role === "admin" || role === "catechist" || role === "studio";
+}
+
+/** People (invite members, manage roles): parish + diocese admins only. */
+export function peopleEligible(role: Role | null): boolean {
+  return role === "super_admin" || role === "admin";
+}
+
 // Sacred-text display capitalization (used server + client). Ordered [pattern,
 // replacement]; multi-word phrases BEFORE singles so "Holy Spirit" is fixed first.
 const SACRED_TEXT: ReadonlyArray<readonly [RegExp, string]> = [

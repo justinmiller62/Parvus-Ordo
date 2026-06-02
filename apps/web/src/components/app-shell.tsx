@@ -25,7 +25,14 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { IMPERSONATABLE_ROLES, ROLE_LABELS, type Role } from "@parvaordo/shared";
+import {
+  IMPERSONATABLE_ROLES,
+  ociaEligible,
+  peopleEligible,
+  ROLE_LABELS,
+  studioEligible,
+  type Role,
+} from "@parvaordo/shared";
 import { exitImpersonationAction, impersonateAction, setActiveParishAction, signOutAction } from "@/app/(app)/actions";
 
 export interface ShellMembership {
@@ -41,14 +48,6 @@ interface NavItem {
   live?: boolean;
 }
 
-function ociaEligible(role: Role | null): boolean {
-  return role === "admin" || role === "catechist" || role === "catechumen_candidate" || role === "super_admin";
-}
-
-function youthEligible(role: Role | null): boolean {
-  return role === "studio" || role === "catechist" || role === "admin" || role === "super_admin";
-}
-
 // Top-level nav (parish home): Dashboard + module launchers. Teens are
 // Youth-Teaches-only (no parish dashboard), like catechists/learners are OCIA-only.
 function topNav(role: Role | null): NavItem[] {
@@ -60,10 +59,9 @@ function topNav(role: Role | null): NavItem[] {
   const items: NavItem[] = moduleOnly ? [] : [{ href: "/", label: "Dashboard", Icon: LayoutDashboard, live: true }];
   if (role === "super_admin") items.push({ label: "Super Admin", Icon: Shield });
   if (ociaEligible(role)) items.push({ href: "/ocia", label: "OCIA", Icon: BookOpen, live: true });
-  if (youthEligible(role))
+  if (studioEligible(role))
     items.push({ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true });
-  if (role === "admin" || role === "super_admin")
-    items.push({ href: "/people", label: "People", Icon: Users, live: true });
+  if (peopleEligible(role)) items.push({ href: "/people", label: "People", Icon: Users, live: true });
   return items;
 }
 
