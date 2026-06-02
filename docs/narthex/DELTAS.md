@@ -15,7 +15,7 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | MED | ☑ Engagement telemetry absent | now emitted from the player (see engagement-dashboard below): `lesson_start` (beacon) + `step_complete`/`answer_submit`(+correct)/`lesson_complete` (server actions, via `after()`) |
 | MED | ☑ Student question + feedback forms on completion step | `student_questions`/`student_feedback` mutations + UI absent |
 | MED | ☑ Review mode (`?review=true`) | read-only answers list; not built |
-| MED | ☐ Sequential cohort lock | blocks lessons w/o prior `lesson_complete`; depends on cohorts slice |
+| MED | ☑ Sequential cohort lock (server enforcement, po-exda) | the lesson view loader + `advanceAction` refuse a sequentially-locked lesson (prior not complete) via `isStudentLessonLocked` (reuses `getStudentLessons`; honors `skip_sequence`/`cohort.sequential`); preview + review exempt. Deep-link safe, polished blocked state (`lesson-view-locked`) |
 | MED | ☐ Dictionary term highlighting + modal (reading + transcript) | no dictionary subsystem |
 | LOW | ☐ Step count N vs N+1 (feedback step) | cosmetic |
 
@@ -55,7 +55,7 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | HIGH | ☑ Cohort/schedule/release gating | learner branch now calls `getStudentLessons` instead of `getPublishedLessons` (which listed every published parish lesson — the over-exposure leak); only schedule-released lessons appear |
 | HIGH | ☑ Progress status + Due/Completed split + "All caught up!" | `partitionStudentLessons` buckets by status; per-lesson badge (Not started / In progress / Completed); empty `due` on a non-empty list → `lesson-all-caught-up`; collapsed-by-default Completed section |
 | HIGH | ☑ Sequential locking (list side) + skip_sequence | locked rows render visibly locked (`lesson-locked`: lock icon, non-link). The read model already resolves `locked` incl. skip_sequence. The lock card uses a GENERIC "Complete the previous lesson first" message — the blocking lesson's title isn't surfaced by the read model and re-deriving it would re-implement gating, so it's intentionally omitted (vs Narthex's titled message) |
-| HIGH | ☐ Sequential-lock SERVER enforcement (deep-link) | NOT this surface — lives on the lesson VIEW page (sibling bead student-lesson-view) |
+| HIGH | ☑ Sequential-lock SERVER enforcement (deep-link) (po-exda) | enforced at the lesson view loader + `advanceAction` via `isStudentLessonLocked` (reuses `getStudentLessons`): a locked deep-link renders the blocked state and advance is refused. See student-lesson-view above |
 | MED | ☐ "My Answers"/review affordances + "My Schedule" calendar | review-mode links + the react-big-calendar "My Schedule" view deferred to a follow-up; completed lessons link to the player |
 | _Tests_ | unit (`partitionStudentLessons` split/order/all-caught-up) + int (`cohorts.int` over-exposure contrast: a `getPublishedLessons` lesson is absent from `getStudentLessons` for a not-enrolled / pre-release student) + e2e (`student-lessons.spec`: learner sees the empty state, the two published e2e lessons don't leak). Populated Due/Completed/locked RENDERING is covered by the unit/int layer rather than e2e to avoid mutating the shared e2e seed (its student has no cohort_members/schedule). | |
 

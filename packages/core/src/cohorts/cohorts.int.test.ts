@@ -13,6 +13,7 @@ import {
   getPathDetail,
   getPublishedLessons,
   getStudentLessons,
+  isStudentLessonLocked,
   listCohortCards,
   listParishStudents,
   markItemComplete,
@@ -350,5 +351,67 @@ describe("cohorts — student list closes the over-exposure leak (integration)",
 
     const gated = await getStudentLessons(HS, student);
     expect(gated.map((l) => l.lessonId)).not.toContain(lessonId); // hidden until its release date passes
+  });
+});
+
+describe("cohorts — isStudentLessonLocked server-enforcement guard (integration)", () => {
+  // The guard the lesson view + advanceAction call to refuse a locked deep-link. It must
+  // mirror the list's lock state exactly (it reuses getStudentLessons), honor skip_sequence
+  // and cohort.sequential, and never over-refuse a lesson outside the student's gated list.
+  it("locks a sequenced lesson until the prior is complete, honors skip_sequence, never locks an out-of-list lesson", async () => {
+    const cohort = (await createCohort(HS, NAME + "LockGuard"))!;
+    const student = await makeStudent(HS, "cohort-int-lockguard@test.local");
+    await toggleMember(HS, cohort, student, true);
+    await setSequential(HS, cohort, true);
+    const a = await seedLesson(HS, "LG1", [{ kind: "reading", content: { html: "1" } }]);
+    const b = await seedLesson(HS, "LG2", [{ kind: "reading", content: { html: "2" } }]);
+    await owner.query(
+      `INSERT INTO cohort_schedule (parish_id, cohort_id, lesson_id, discussion_date, week_number)
+       VALUES ($1, $2, $3, '2026-01-06', 1), ($1, $2, $4, '2026-01-13', 2)`,
+      [HS, cohort, a.lessonId, b.lessonId],
+    );
+
+    // First sequenced lesson is open; the next is locked while the prior is incomplete.
+    expect(await isStudentLessonLocked(HS, student, a.lessonId)).toBe(false);
+    expect(await isStudentLessonLocked(HS, student, b.lessonId)).toBe(true);
+
+    // A lesson absent from the student's gated list is never "locked" (hidden/out-of-cohort
+    // is a separate concern — the guard must not over-refuse legitimate access).
+    expect(await isStudentLessonLocked(HS, student, "00000000-0000-0000-0000-000000000000")).toBe(false);
+
+    // skip_sequence exempts the lesson from the chain → no longer locked.
+    await owner.query("UPDATE cohort_schedule SET skip_sequence = true WHERE cohort_id = $1 AND lesson_id = $2", [
+      cohort,
+      b.lessonId,
+    ]);
+    expect(await isStudentLessonLocked(HS, student, b.lessonId)).toBe(false);
+    await owner.query("UPDATE cohort_schedule SET skip_sequence = false WHERE cohort_id = $1 AND lesson_id = $2", [
+      cohort,
+      b.lessonId,
+    ]);
+    expect(await isStudentLessonLocked(HS, student, b.lessonId)).toBe(true); // restored
+
+    // Completing the prerequisite unlocks it.
+    const items = await getDb(HS).query<{ id: string }>(
+      "SELECT li.id FROM lesson_items li JOIN lessons l ON l.live_version_id = li.version_id WHERE l.id = $1",
+      [a.lessonId],
+    );
+    await markItemComplete({ parishId: HS, studentId: student, itemId: items.rows[0]!.id });
+    expect(await isStudentLessonLocked(HS, student, b.lessonId)).toBe(false);
+  });
+
+  it("never locks in a non-sequential cohort", async () => {
+    const cohort = (await createCohort(HS, NAME + "NonSeq"))!;
+    const student = await makeStudent(HS, "cohort-int-nonseq@test.local");
+    await toggleMember(HS, cohort, student, true);
+    await setSequential(HS, cohort, false);
+    const a = await seedLesson(HS, "NS1", [{ kind: "reading", content: { html: "1" } }]);
+    const b = await seedLesson(HS, "NS2", [{ kind: "reading", content: { html: "2" } }]);
+    await owner.query(
+      `INSERT INTO cohort_schedule (parish_id, cohort_id, lesson_id, discussion_date, week_number)
+       VALUES ($1, $2, $3, '2026-01-06', 1), ($1, $2, $4, '2026-01-13', 2)`,
+      [HS, cohort, a.lessonId, b.lessonId],
+    );
+    expect(await isStudentLessonLocked(HS, student, b.lessonId)).toBe(false);
   });
 });

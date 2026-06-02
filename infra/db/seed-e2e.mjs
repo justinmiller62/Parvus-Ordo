@@ -27,6 +27,7 @@ const E2E_VIDEO_LESSON = "0e2e0000-0000-0000-0000-0000000000c1";
 const E2E_QUIZ_LESSON = "0e2e0000-0000-0000-0000-0000000000c2";
 const E2E_COHORT = "0e2e0000-0000-0000-0000-0000000000e1";
 const E2E_PATH = "0e2e0000-0000-0000-0000-0000000000e2";
+const E2E_LOCK_COHORT = "0e2e0000-0000-0000-0000-0000000000e3";
 const E2E_YOUTH_TOPIC = "0e2e0000-0000-0000-0000-0000000000d1";
 const E2E_YOUTH_PROJECT = "0e2e0000-0000-0000-0000-0000000000d2";
 const E2E_MCP_TOKEN = "mcp_e2e_youth_token"; // long-lived; the youth-teaches spec drives MCP with it
@@ -82,10 +83,11 @@ await client.query(`INSERT INTO ministries (parish_id, name, kind) VALUES ($1, '
 // ── Users + memberships (single-parish, so no chooser/switcher in the way) ───
 await client.query(
   `INSERT INTO users (email, display_name, is_super_admin) VALUES
-     ('e2e-admin@parvaordo.test',     'E2E Admin',     false),
-     ('e2e-catechist@parvaordo.test', 'E2E Catechist', false),
-     ('e2e-student@parvaordo.test',   'E2E Student',   false),
-     ('e2e-teen@parvaordo.test',      'E2E Teen',      false)`,
+     ('e2e-admin@parvaordo.test',          'E2E Admin',          false),
+     ('e2e-catechist@parvaordo.test',      'E2E Catechist',      false),
+     ('e2e-student@parvaordo.test',        'E2E Student',        false),
+     ('e2e-locked-student@parvaordo.test', 'E2E Locked Student', false),
+     ('e2e-teen@parvaordo.test',           'E2E Teen',           false)`,
 );
 await client.query(
   `INSERT INTO memberships (user_id, parish_id, ministry_id, role)
@@ -258,6 +260,29 @@ await client.query(
   [E2E_PARISH, E2E_QUIZ_LESSON, studentId],
 );
 
+// ── Sequential-lock fixture (po-exda) ────────────────────────────────────────
+// A dedicated learner in a SEQUENTIAL cohort whose schedule puts the quiz lesson
+// (week 1, the open first lesson) before the video lesson (week 2). The learner has no
+// progress, so the video lesson is sequentially LOCKED — the student-lesson-lock e2e
+// proves the view + advance refuse it server-side. Isolated from the e2e-student (its
+// own user + cohort), so the other specs are unaffected.
+const lockedStudentId = (await client.query(`SELECT id FROM users WHERE email = 'e2e-locked-student@parvaordo.test'`))
+  .rows[0].id;
+await client.query(
+  `INSERT INTO cohorts (id, parish_id, name, sequential) VALUES ($1, $2, 'E2E Sequential Lock Cohort', true)`,
+  [E2E_LOCK_COHORT, E2E_PARISH],
+);
+await client.query(`INSERT INTO cohort_members (parish_id, cohort_id, student_id) VALUES ($1, $2, $3)`, [
+  E2E_PARISH,
+  E2E_LOCK_COHORT,
+  lockedStudentId,
+]);
+await client.query(
+  `INSERT INTO cohort_schedule (parish_id, cohort_id, lesson_id, discussion_date, week_number) VALUES
+     ($1, $2, $3, '2026-01-06', 1), ($1, $2, $4, '2026-01-13', 2)`,
+  [E2E_PARISH, E2E_LOCK_COHORT, E2E_QUIZ_LESSON, E2E_VIDEO_LESSON],
+);
+
 // Global dictionary entry (no parish_id — universal). Owner conn bypasses RLS.
 await client.query(
   `INSERT INTO dictionary_entries (headword, definition, category, status)
@@ -273,5 +298,5 @@ await client.query(
 
 await client.end();
 console.log(
-  "e2e fixtures ready: E2E Test Parish (4 users, 1 video asset, 2 lessons, 1 cohort + learning path, 1 youth project, 1 dictionary + 1 prayer entry)",
+  "e2e fixtures ready: E2E Test Parish (5 users, 1 video asset, 2 lessons, 2 cohorts incl. a sequential-lock fixture + 1 learning path, 1 youth project, 1 dictionary + 1 prayer entry)",
 );

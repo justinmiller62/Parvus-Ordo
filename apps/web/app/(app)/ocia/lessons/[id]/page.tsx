@@ -2,7 +2,7 @@ import { isStaff } from "@parvaordo/shared";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Lock } from "lucide-react";
 import {
   clipTranscript,
   getAnswersForVersion,
@@ -10,6 +10,7 @@ import {
   getCompletedItemsForVersion,
   getItemMaxReached,
   getLessonDetail,
+  isStudentLessonLocked,
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { VideoPlayer, type PlayerWord } from "@/src/components/ocia/video-player";
@@ -58,6 +59,30 @@ export default async function LessonPage({
   const isReview = !isPreview && sp.review === "1"; // student's read-only "My Answers"
   const lesson = await getLessonDetail(identity.parishId, id, isBuilder ? sp.v : undefined);
   if (!lesson) notFound();
+
+  // ── Cohort sequential lock — server-side enforcement (deep-link safe) ──
+  // A real student (a builder's preview and review mode are both exempt) cannot OPEN a
+  // sequentially-locked lesson: its prior scheduled lesson isn't complete. skip_sequence and
+  // cohort.sequential are honored by the shared gating read model (no gating re-derived here).
+  if (!isBuilder && !isReview && (await isStudentLessonLocked(identity.parishId, identity.userId, id))) {
+    return (
+      <main className="mx-auto max-w-3xl px-5 py-8">
+        <Link href="/ocia/lessons" className="text-sm text-gray-400 hover:text-navy">
+          ← Lessons
+        </Link>
+        <div className={`${CARD} mt-10 text-center`} data-testid="lesson-view-locked">
+          <Lock className="mx-auto h-10 w-10 text-gray-400" aria-hidden="true" />
+          <h1 className="mt-3 font-heading text-2xl text-navy">Locked</h1>
+          <p className="mt-1 text-gray-500">Complete the previous lesson first to unlock this one.</p>
+          <div className="mt-6 flex justify-center">
+            <Link href="/ocia/lessons" className={PRIMARY_BTN}>
+              Back to My Lessons
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   const items = lesson.items;
   const total = items.length;

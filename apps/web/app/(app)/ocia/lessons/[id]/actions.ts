@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import {
+  isStudentLessonLocked,
   markItemComplete,
   markVideoProgress,
   recordEngagementEvent,
@@ -88,6 +89,13 @@ export async function advanceAction(formData: FormData): Promise<void> {
   if (!ctx) redirect("/login");
 
   const lessonId = String(formData.get("lessonId") ?? "");
+
+  // Server-side sequential-lock guard: refuse to advance within a locked lesson (a forged
+  // or stale POST). Bounce to the lesson view, which renders the locked state.
+  if (await isStudentLessonLocked(ctx.parishId, ctx.userId, lessonId)) {
+    redirect(`/ocia/lessons/${lessonId}`);
+  }
+
   const itemId = String(formData.get("itemId") ?? "");
   const kind = String(formData.get("kind") ?? "");
   const step = Number(formData.get("step") ?? 0);

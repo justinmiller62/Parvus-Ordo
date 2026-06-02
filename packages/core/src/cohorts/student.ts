@@ -177,6 +177,21 @@ export async function getStudentLessons(parishId: string, studentId: string): Pr
   return out;
 }
 
+/**
+ * Whether a lesson is sequentially locked for a student right now — the server-side
+ * guard the lesson view + advanceAction use to refuse a locked deep-link. It reuses
+ * getStudentLessons (cohort.sequential, skip_sequence, completion, release and path
+ * are all already resolved there), so the enforcement can never drift from the list
+ * UI. A lesson that is absent from the student's gated list is treated as NOT locked
+ * (it is hidden/out-of-cohort — a separate concern, and over-refusing would break
+ * legitimate non-cohort access); only a released lesson whose prerequisite is
+ * incomplete returns true.
+ */
+export async function isStudentLessonLocked(parishId: string, studentId: string, lessonId: string): Promise<boolean> {
+  const lessons = await getStudentLessons(parishId, studentId);
+  return lessons.find((l) => l.lessonId === lessonId)?.locked ?? false;
+}
+
 export interface StudentLessonSections {
   /** Still to do — anything not yet completed (not_started or started), locked
    *  lessons included. Input order (schedule order) is preserved. */
