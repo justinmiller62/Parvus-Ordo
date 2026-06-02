@@ -13,6 +13,7 @@ import type {
 } from "@parvaordo/core";
 import {
   ArrowLeft,
+  BarChart3,
   CalendarPlus,
   GraduationCap,
   ListChecks,
@@ -79,6 +80,13 @@ export function CohortDetailClient(props: {
           ) : (
             <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold-dark">Open order</span>
           )}
+          <Link
+            href={`/ocia/cohorts/${cohortId}/engagement`}
+            data-testid="cohort-engagement-link"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 transition hover:bg-parchment"
+          >
+            <BarChart3 className="h-3.5 w-3.5" /> Engagement
+          </Link>
         </div>
       </div>
 
@@ -159,6 +167,13 @@ function LessonsTab({ cohortId, schedule }: { cohortId: string; schedule: Schedu
               className="rounded-md border border-gray-300 px-2.5 py-1 font-medium text-gray-700 transition hover:bg-parchment"
             >
               Responses
+            </Link>
+            <Link
+              href={`/ocia/cohorts/${cohortId}/lessons/${e.lessonId}/engagement`}
+              className="rounded-md border border-gray-300 px-2.5 py-1 font-medium text-gray-700 transition hover:bg-parchment"
+              data-testid="lesson-engagement-link"
+            >
+              Engagement
             </Link>
             {e.weekNumber != null ? (
               <Link

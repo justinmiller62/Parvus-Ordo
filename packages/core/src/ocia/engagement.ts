@@ -388,3 +388,99 @@ export async function getEngagementSummary(params: {
     };
   });
 }
+
+/** One cohort member's engagement rolled up across all the cohort's scheduled lessons. */
+export interface CohortStudentEngagement {
+  studentId: string;
+  displayName: string;
+  /** distinct cohort lessons this student has a lesson_start for. */
+  lessonsStarted: number;
+  /** distinct cohort lessons this student has a lesson_complete for. */
+  lessonsCompleted: number;
+}
+
+/** Cohort-wide engagement (the "all lessons" reduced view: summary cards + per-student). */
+export interface CohortEngagementSummary {
+  cohortId: string;
+  /** scheduled lessons that have a live version — the completion denominator. */
+  lessonCount: number;
+  /** distinct cohort members who started at least one lesson. */
+  studentsStarted: number;
+  /** cohort members who completed EVERY scheduled lesson. */
+  studentsCompletedAll: number;
+  totalEvents: number;
+  perStudent: CohortStudentEngagement[];
+}
+
+/**
+ * Engagement across ALL of a cohort's scheduled lessons — the cohort-level dashboard
+ * (engagement-dashboard.md "reduced view"). Per-step / per-question detail is deliberately
+ * omitted; this rolls each member's started/completed lesson counts up across the cohort's
+ * lessons. Events are scoped to the LIVE version of each scheduled lesson (matching the
+ * per-lesson page) and to the cohort roster, all inside the parish RLS fence via getDb.
+ */
+export async function getCohortEngagement(parishId: string, cohortId: string): Promise<CohortEngagementSummary> {
+  const db = getDb(parishId);
+
+  const lessonCount =
+    (
+      await db.query<{ n: number }>(
+        `SELECT count(*)::int AS n
+           FROM cohort_schedule s JOIN lessons l ON l.id = s.lesson_id
+          WHERE s.cohort_id = $1 AND l.live_version_id IS NOT NULL`,
+        [cohortId],
+      )
+    ).rows[0]?.n ?? 0;
+
+  const rows = (
+    await db.query<{
+      student_id: string;
+      display_name: string;
+      lessons_started: number;
+      lessons_completed: number;
+      events: number;
+    }>(
+      `WITH cohort_versions AS (
+         SELECT l.live_version_id AS vid
+           FROM cohort_schedule s JOIN lessons l ON l.id = s.lesson_id
+          WHERE s.cohort_id = $1 AND l.live_version_id IS NOT NULL
+       ),
+       roster AS (
+         SELECT u.id, u.display_name
+           FROM cohort_members m JOIN users u ON u.id = m.student_id
+          WHERE m.cohort_id = $1
+       ),
+       per_student AS (
+         SELECT e.student_id,
+                count(DISTINCT e.lesson_id) FILTER (WHERE e.event_type = 'lesson_start')    AS started,
+                count(DISTINCT e.lesson_id) FILTER (WHERE e.event_type = 'lesson_complete') AS completed,
+                count(*) AS events
+           FROM engagement_events e
+          WHERE e.version_id IN (SELECT vid FROM cohort_versions)
+            AND e.student_id IN (SELECT id FROM roster)
+          GROUP BY e.student_id
+       )
+       SELECT r.id AS student_id, r.display_name,
+              COALESCE(ps.started, 0)::int   AS lessons_started,
+              COALESCE(ps.completed, 0)::int AS lessons_completed,
+              COALESCE(ps.events, 0)::int    AS events
+         FROM roster r LEFT JOIN per_student ps ON ps.student_id = r.id
+        ORDER BY r.display_name`,
+      [cohortId],
+    )
+  ).rows;
+
+  return {
+    cohortId,
+    lessonCount,
+    studentsStarted: rows.filter((r) => r.lessons_started > 0).length,
+    studentsCompletedAll: lessonCount > 0 ? rows.filter((r) => r.lessons_completed >= lessonCount).length : 0,
+    totalEvents: rows.reduce((sum, r) => sum + r.events, 0),
+    perStudent: rows.map((r) => ({
+      studentId: r.student_id,
+      displayName: r.display_name,
+      lessonsStarted: r.lessons_started,
+      lessonsCompleted: r.lessons_completed,
+    })),
+  };
+}
