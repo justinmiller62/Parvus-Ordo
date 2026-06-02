@@ -1,4 +1,4 @@
-import { Pool, type PoolClient } from "pg";
+import { Pool, type PoolClient, type PoolConfig } from "pg";
 
 /**
  * getDb(parishId) — the single connection chokepoint (Architecture §7).
@@ -15,11 +15,52 @@ import { Pool, type PoolClient } from "pg";
 
 let pool: Pool | undefined;
 
+// Connection-budget knobs (RFC-002 §2C/§2D, po-4a29). All three are env-overridable so ops
+// can tune the budget without a redeploy; the defaults are safe for the dev guard.
+const DEFAULT_POOL_MAX = 10;
+const DEFAULT_CONNECTION_TIMEOUT_MS = 5_000; // wait for a free pooled connection, then fail fast
+const DEFAULT_STATEMENT_TIMEOUT_MS = 30_000; // abort a runaway query server-side
+
+/** A positive-integer env override, falling back to `fallback` when unset or invalid. */
+function intFromEnv(raw: string | undefined, fallback: number): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
+/**
+ * Build the pg Pool config (RFC-002 §2A/§2C/§2D). In deployed envs DATABASE_URL MUST point
+ * at Neon's POOLED (`-pooler`) endpoint: PgBouncer transaction-mode pooling multiplexes many
+ * client connections onto few Postgres backends, so a modest per-container `max` keeps the
+ * Postgres-side backend count bounded instead of `max × max_instances` being the first wall.
+ * Our access is transaction-local `set_config(..., true)` (= SET LOCAL) inside an explicit
+ * BEGIN/COMMIT, which transaction-mode pooling supports (no session state; `pg` issues
+ * unnamed parse/bind per query, so no persistent prepared statements).
+ *
+ * CONNECTION BUDGET: `max` × wrangler `max_instances` must stay under the Neon endpoint's
+ * connection limit — raise `max_instances` only against the `-pooler` endpoint (see the
+ * matching note in wrangler.jsonc). `connectionTimeoutMillis` + `statement_timeout` make a
+ * saturated/overloaded container fail fast (→ 503) instead of hanging and cascading latency.
+ */
+export function buildPoolConfig(env: NodeJS.ProcessEnv): PoolConfig {
+  const connectionString = env.DATABASE_URL;
+  if (!connectionString) throw new Error("DATABASE_URL is not set");
+  return {
+    connectionString,
+    max: intFromEnv(env.DB_POOL_MAX, DEFAULT_POOL_MAX),
+    connectionTimeoutMillis: intFromEnv(env.DB_CONNECTION_TIMEOUT_MS, DEFAULT_CONNECTION_TIMEOUT_MS),
+    statement_timeout: intFromEnv(env.DB_STATEMENT_TIMEOUT_MS, DEFAULT_STATEMENT_TIMEOUT_MS),
+  };
+}
+
 function getPool(): Pool {
   if (!pool) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) throw new Error("DATABASE_URL is not set");
-    pool = new Pool({ connectionString, max: 10 });
+    const config = buildPoolConfig(process.env);
+    pool = new Pool(config);
+    // Surface the effective per-container ceiling at startup (RFC-002 §2C): the budget
+    // footgun is silent drift between this `max` and wrangler `max_instances`.
+    console.info(
+      `[db] pg pool ready: max=${config.max} connectionTimeoutMillis=${config.connectionTimeoutMillis}ms statement_timeout=${config.statement_timeout}ms`,
+    );
   }
   return pool;
 }

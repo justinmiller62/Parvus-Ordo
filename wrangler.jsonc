@@ -12,6 +12,9 @@
       "image": "./Dockerfile",
       "instance_type": "standard-1",
       // Dev cost guard: never run more than one container instance. Raise for prod.
+      // CONNECTION BUDGET (RFC-002 §2C): pg pool.max (packages/core/src/db/client.ts,
+      // default 10) × max_instances must stay under the Neon endpoint's connection limit.
+      // Raise max_instances only against the pooled (-pooler) DATABASE_URL endpoint.
       "max_instances": 1,
     },
   ],
