@@ -73,4 +73,26 @@ describe("prayers (integration)", () => {
     expect(matches.length).toBe(1);
     expect(matches[0]!.isLocal).toBe(false);
   });
+
+  it("does not leak a parish-local submission or override across parishes (RLS)", async () => {
+    // St. Monica — a different parish. listPrayers' per-parish reads carry NO explicit
+    // parish_id filter; they rely entirely on RLS, so this is the regression guard for the
+    // prayer_submissions / prayer_overrides policies against cross-tenant leakage.
+    const OTHER = "22222222-2222-2222-2222-222222222222";
+    await createPrayerSubmission(HS, userId, { title: "HS Only Litany", prayerText: "For Holy Spirit alone." });
+    await upsertPrayerOverride(HS, entryId, { text: "HS-only Memorare phrasing.", notes: "hs-private" });
+
+    // Holy Spirit sees its own local submission…
+    expect((await listPrayers(HS)).find((x) => x.title === "HS Only Litany")?.isLocal).toBe(true);
+
+    // …but another parish must not.
+    const other = await listPrayers(OTHER);
+    expect(other.find((x) => x.title === "HS Only Litany")).toBeUndefined();
+    // The shared universal prayer is still visible — with its universal text, never Holy
+    // Spirit's private override.
+    const shared = other.find((x) => x.title === "Memorare (int)");
+    expect(shared?.isLocal).toBe(false);
+    expect(shared?.prayerText).toContain("gracious Virgin Mary");
+    expect(shared?.overrideNote).toBeNull();
+  });
 });
