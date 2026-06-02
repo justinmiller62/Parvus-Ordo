@@ -78,6 +78,36 @@ test("an admin enrolls a learner from the roster", async ({ page }) => {
   await expect(page.getByTestId("students-list")).toContainText("E2E Student");
 });
 
+test("reaches a week's export from the cohort detail and back again", async ({ page }) => {
+  await login(page, "e2e-admin@parvaordo.test");
+  await page.goto("/ocia/cohorts");
+  const name = uniq();
+  await page.getByTestId("cohort-name").fill(name);
+  await page.getByTestId("cohort-create").click();
+  await page.getByText(name).click();
+
+  // Build a schedule so the Lessons tab has week-numbered rows (the export entry point).
+  await page.getByTestId("tab-schedule").click();
+  await page.getByTestId("settings-start").fill("2026-06-01");
+  await page.getByTestId("settings-start").blur();
+  await page.getByTestId("settings-day").selectOption("Tuesday");
+  await page.getByTestId("schedule-generate").click();
+  await expect(page.locator('[data-testid^="schedule-row-"]').first()).toBeVisible();
+
+  // Lessons tab → per-week "Export" link → that week's export page.
+  await page.getByTestId("tab-lessons").click();
+  const exportLink = page.getByTestId("week-export").first();
+  await expect(exportLink).toBeVisible();
+  await exportLink.click();
+  await expect(page).toHaveURL(/\/ocia\/cohorts\/[^/]+\/week\/\d+\/export$/);
+  await expect(page.getByTestId("weekly-export-header")).toContainText("Discussion");
+
+  // "Back to cohort" returns to the cohort detail (not /ocia).
+  await page.getByTestId("back-to-cohort").click();
+  await expect(page).toHaveURL(/\/ocia\/cohorts\/[^/]+$/);
+  await expect(page.getByTestId("lessons-overview")).toBeVisible();
+});
+
 test("a learning path can be created", async ({ page }) => {
   await login(page, "e2e-admin@parvaordo.test");
   await page.goto("/ocia/cohorts");

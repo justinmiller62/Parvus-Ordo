@@ -100,7 +100,7 @@ export function CohortDetailClient(props: {
       </div>
 
       <div key={tab} className="animate-[po-fade-in_200ms_ease-out]">
-        {tab === "lessons" ? <LessonsTab schedule={props.schedule} /> : null}
+        {tab === "lessons" ? <LessonsTab cohortId={cohortId} schedule={props.schedule} /> : null}
         {tab === "schedule" ? (
           <ScheduleTab cohortId={cohortId} settings={settings} schedule={props.schedule} addable={props.addable} />
         ) : null}
@@ -118,7 +118,7 @@ export function CohortDetailClient(props: {
 
 // ── Lessons (read-only overview) ─────────────────────────────────────────────
 
-function LessonsTab({ schedule }: { schedule: ScheduleEntry[] }) {
+function LessonsTab({ cohortId, schedule }: { cohortId: string; schedule: ScheduleEntry[] }) {
   if (schedule.length === 0) {
     return (
       <EmptyState
@@ -160,6 +160,16 @@ function LessonsTab({ schedule }: { schedule: ScheduleEntry[] }) {
             >
               Responses
             </Link>
+            {e.weekNumber != null ? (
+              <Link
+                href={`/ocia/cohorts/${cohortId}/week/${e.weekNumber}/export`}
+                className="rounded-md border border-gray-300 px-2.5 py-1 font-medium text-gray-700 transition hover:bg-parchment"
+                data-testid="week-export"
+                title={`Export week ${e.weekNumber} discussion bundle`}
+              >
+                Export
+              </Link>
+            ) : null}
           </div>
         </li>
       ))}

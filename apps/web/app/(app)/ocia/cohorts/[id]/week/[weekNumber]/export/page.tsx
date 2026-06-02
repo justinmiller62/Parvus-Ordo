@@ -75,11 +75,12 @@ export default async function WeeklyExportPage({ params }: { params: Promise<{ i
   return (
     <div className="mx-auto max-w-3xl motion-safe:animate-[po-fade-in_220ms_ease-out]">
       <Link
-        href="/ocia"
+        href={`/ocia/cohorts/${id}`}
+        data-testid="back-to-cohort"
         className="inline-flex items-center gap-1 text-sm text-gray-400 transition-colors hover:text-navy"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to OCIA
+        Back to cohort
       </Link>
 
       <header className="mt-3" data-testid="weekly-export-header">
