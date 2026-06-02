@@ -56,6 +56,18 @@ mutations→Server Actions, external/iOS→`/api/v1`, AI→MCP):
 is opt-in per parish; existing modules stay `true` for zero-change, Gather ships dark and each parish turns
 it on via the RFC-004 systems-admin toggle)*. `enabledModules(parishId)` already gates nav + every shim.
 
+### 2.1 Navigation & IA — top-level sidebar module with its own shell  *(human req po-wisp-moi45)*
+Gather is a **top-level module in the main left sidebar** (alongside OCIA, Parvus Studio, People). Clicking
+it **enters the module**; from there every Gather sub-section — Discovery/Directory, My Groups, Requests,
+Meetings, Sign-Ups, Events, Documents, Health Dashboard — is navigated from a **persistent left sub-nav
+inside the Gather module shell**. Implementation: a single `(app)/gather/layout.tsx` renders the module
+shell + its sidebar sub-nav, is gated once by `requireModule("gather")`, and **all** Gather routes nest
+under it so they always render **inside** the shell with "Gather" highlighted/active in the main sidebar.
+**Pitfall to avoid (po-s2lm):** Dictionary/Prayers once rendered *outside* the OCIA shell, popping the user
+to a bare nav — Gather pages must never escape the module shell. This IA (module shell + consistent sidebar
+sub-nav) is a **hard requirement, not styling**; design it once at the layout level so no sub-route can
+break it.
+
 ## 3. The Groups primitive + RBAC  *(T1 — foundation — P0)*
 
 Everything else hangs off Groups. This is the deepest section; it must be stable before T2+ build.
@@ -174,7 +186,7 @@ CREATE TABLE gather_requestables (
   detail        text,
   due_on        date,                            -- optional "hoped-for" date (never "deadline" in UI)
   -- polymorphic tap-back to whatever spawned it (no hard FK — source lives in many tables):
-  source_type   text,                            -- 'join_request'|'meeting_followup'|'shift'|'signup'|'pending_parishioner'|'form_submission'|'manual'
+  source_type   text,                            -- 'join_request'|'meeting_followup'|'shift'|'signup'|'form_submission'|'manual'
   source_id     uuid,
   recurrence    jsonb,                            -- {freq,interval,until} → regenerates a fresh open Requestable
   completed_at  timestamptz,
@@ -215,8 +227,9 @@ custom fields, automation rules, or approval chains (locked).
 ### 4.4 Emission — every Gather flow becomes a Requestable
 A single core `createRequestable({source_type, source_id, …})` is called by each flow instead of
 re-inventing pending/assign/track: **Request-to-Join** approval (§5), **meeting follow-ups** (§6),
-**shift/sign-up needs** (§7), **pending-parishioner** approval (§11), **form submissions to review** (§10),
-and staff-initiated asks. Acting on the Requestable updates the source via its owning flow (welcome a
+**shift/sign-up needs** (§7), **form submissions to review** (§10), and staff-initiated asks. *(The former
+pending-parishioner approval no longer emits a Requestable — the staff gate was removed, po-wisp-8qsb8.)*
+Acting on the Requestable updates the source via its owning flow (welcome a
 join-request → roster; finish a follow-up → meeting record). The health dashboard (§11) reads the same
 open items. This is the **single coordination spine** of the module.
 
@@ -295,13 +308,16 @@ by me" / "To review") aggregates across modules. *Engine code is reusable shared
 possible **minimal Application slice at T2** (Q2) so Request-to-Join applications aren't blocked on full T7.*
 
 ## 11. Non-parishioner invites + Health Dashboard + Mobile  *(T8)*
-- **Pending-parishioner flow** (spec §9, verbatim values): `inviteMember` (reuse) match-or-create; no match
-  → `pending_parishioner(parish_id, email, status awaiting_staff_approval, inviter, group_id, expires)` +
-  group roster `awaiting_acceptance`. The `pending` account has a **limited surface** — only the inviting
-  group; **enforced in core** (a `pending`-scoped read guard, not just nav). **Staff approval emits a
-  Requestable** (§4.4). **A second group's invite queues** until staff approval. **30-day** reminder,
-  **60-day** archive. Full **audit** (every invite/accept/approve/reject/expiry). *(Lands the master-Members
-  seam — Q1: where `pending_parishioner` ultimately lives.)*
+- **Non-parishioner invite — DIRECT, no staff-approval gate** *(human override po-wisp-8qsb8 of PRD §3.7/§4.9
+  + spec §9):* a group manager with `group.roster.invite_new` invites by email; `inviteMember` (reuse)
+  match-or-create; **no match → `gather_invited_member(parish_id, email, inviter, group_id, accepted_at)`
+  and the invite goes out immediately — no `awaiting_staff_approval` queue.** On acceptance the account is
+  **scoped: Gather capability + that one group only** — a hard **limited surface enforced in core** (an
+  account-scope guard keyed on the `invited` state, not just nav: no parish-wide directory/calendar/other
+  groups, no Giving). A second group's invite simply **adds that group** to the same scoped account (no
+  queue). **Staff oversight is post-hoc** — via the People manager (see/remove these scoped members); staff
+  do **not** gate the invite. Full **audit** (invite/accept/remove). *No approval Requestable is emitted —
+  the gate is gone.* *(Master-Members seam — Q1: where the invited-member record ultimately lives.)*
 - **Health dashboard** (`health_dashboard.view`, parish-staff): per-group health card (last meeting,
   attendance sparkline, member count + 90-day change, last broadcast, last sign-up, **overdue Requestables**,
   open join-requests, pending form submissions). Computed via SQL aggregates per group. **Dormancy flag**
@@ -333,8 +349,9 @@ time** (tip 0030; collision rule):
   `/api/v1` with parish resolved from host (`resolveParishIdForHost`) and a **read-only, visibility-gated**
   core path — never the authed mutation path. CMS seam (Q-note §18): served under the parish subdomain now,
   independent of the full CMS.
-- **Pending-parishioner** limited surface is enforced in core (a capability guard keyed on account state),
-  not merely hidden in nav — the same defense-in-depth rule as `requireModule`.
+- **Invited-member scoped surface** (Gather + single group only) is enforced in core (an account-scope guard
+  keyed on the `invited` state), not merely hidden in nav — this scope **is the safeguard** now that invites
+  are direct (no staff gate, po-wisp-8qsb8); same defense-in-depth rule as `requireModule`.
 - **Audit** for role transitions (§3.1), invites/approvals (§11), and staff-on-behalf actions.
 
 ## 14. API / entry-point surface
@@ -360,6 +377,8 @@ Gather must feel like a **welcoming parish hall**, not a dashboard — built for
 - **`prefers-reduced-motion`** honored globally (animations degrade to instant); WCAG, full keyboard +
   assistive-tech support, strong contrast; fast on modest phones; ParvusOrdo design language with Gather's
   warmer personality.
+- **Consistent module shell (IA):** every Gather page renders inside the Gather shell with its left sub-nav
+  and the main-sidebar "Gather" entry active — never popping out to a bare nav (§2.1; the po-s2lm pitfall).
 
 ## 16. Test plan
 - **unit (shared):** `GatherPermission` default bundles + `requireGroupPermission` decision table (staff
@@ -417,8 +436,9 @@ Four genuine decisions are mailed to the rector (`QUESTION[po-2whw]`); the RFC i
 **Decide-and-noted** (reversible, in-doc): `gather` `defaultEnabled:false` (opt-in per parish, §2); **ministries
 renamed+extended into `gather_groups`** touching 3 readers (§3.4 — flag if you want the parallel-table
 approach); Requests stays exactly the locked-lightweight shape (§4.1, no SLA/automation/custom-fields);
-pending-parishioner **30/60-day** windows + second-group-queues-until-approval per spec §9; Giving = Vanco
-**link-out only**; public surfaces served under the parish subdomain now, **independent of the full CMS**
+non-parishioner invite is **DIRECT — no staff-approval gate** (human override po-wisp-8qsb8; the Gather +
+single-group scope is the safeguard, staff oversight post-hoc via the People manager; PRD §7-8's 30/60-day
+queue policies are now **moot**); Giving = Vanco **link-out only**; public surfaces served under the parish subdomain now, **independent of the full CMS**
 (seam noted); full scope, the spec's Out list (§4.15) are deliberate **non-goals** (none pulled in).
 
 ## 19. Risks
@@ -426,6 +446,9 @@ pending-parishioner **30/60-day** windows + second-group-queues-until-approval p
   expensive; resolve first.
 - **Group-scoped RBAC is a new authz subsystem** layered inside the parish tenant — the Censor security pass
   must verify visibility + `requireGroupPermission` can't be bypassed (esp. via `/api/v1` and public routes).
+- **Direct non-parishioner invites** (no staff gate, po-wisp-8qsb8) let a group manager grant scoped parish
+  access — the **single-group + Gather-only scope guard is the sole safeguard**; the Censor security pass
+  must verify it can't be widened (no parish-wide reads, no second-group escalation, staff-removable).
 - **Requests is the coordination spine** — if each flow re-invents pending/assign/track instead of calling
   `createRequestable`, the module fractures; enforce the single emission path in review.
 - **Net-new infra (Q3)** (push/email/workers) gates T3/T5/T8 *delivery*; sequence the infra prerequisite so
