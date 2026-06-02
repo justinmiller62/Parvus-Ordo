@@ -21,6 +21,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ assetId
   if (!parishId || !isStaff(role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
+  // RFC-001 §3.5: OCIA must be ENABLED for the parish — a disabled module rejects direct API
+  // calls, it doesn't merely hide nav. This is a session-authed staff path (not the secret-authed
+  // clip callback), so we gate on the request viewer's enabledModules here. The worker queue
+  // consumer calls the core fn directly (core stays pure, ungated), so it is unaffected. (po-7diw)
+  if (!viewer?.enabledModules.has("ocia")) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   const asset = await getAsset(parishId, assetId);
   if (!asset) return NextResponse.json({ error: "not found" }, { status: 404 });
 

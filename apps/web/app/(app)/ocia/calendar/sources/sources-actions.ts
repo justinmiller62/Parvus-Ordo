@@ -22,14 +22,14 @@ function revalidate(): void {
 }
 
 export async function createSourceAction(input: CalendarSourceInput): Promise<void> {
-  const { parishId, userId } = await requireStaff("/ocia/calendar");
+  const { parishId, userId } = await requireStaff("/ocia/calendar", "ocia");
   assertValid(input);
   await createSource(parishId, userId, input);
   revalidate();
 }
 
 export async function updateSourceAction(id: string, input: CalendarSourceInput): Promise<void> {
-  const { parishId } = await requireStaff("/ocia/calendar");
+  const { parishId } = await requireStaff("/ocia/calendar", "ocia");
   assertValid(input);
   await updateSource(parishId, id, input);
   revalidate();
@@ -37,13 +37,13 @@ export async function updateSourceAction(id: string, input: CalendarSourceInput)
 
 /** Toggle a feed on/off — the common admin action; no full-row round-trip. */
 export async function setSourceEnabledAction(id: string, enabled: boolean): Promise<void> {
-  const { parishId } = await requireStaff("/ocia/calendar");
+  const { parishId } = await requireStaff("/ocia/calendar", "ocia");
   await setSourceEnabled(parishId, id, enabled);
   revalidate();
 }
 
 export async function deleteSourceAction(id: string): Promise<void> {
-  const { parishId } = await requireStaff("/ocia/calendar");
+  const { parishId } = await requireStaff("/ocia/calendar", "ocia");
   await deleteSource(parishId, id);
   revalidate();
 }

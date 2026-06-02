@@ -20,21 +20,21 @@ function assertValid(input: CalendarEventInput): void {
 }
 
 export async function createEventAction(input: CalendarEventInput): Promise<void> {
-  const { parishId, userId } = await requireStaff("/ocia/calendar");
+  const { parishId, userId } = await requireStaff("/ocia/calendar", "ocia");
   assertValid(input);
   await createCalendarEvent(parishId, userId, input);
   revalidatePath("/ocia/calendar");
 }
 
 export async function updateEventAction(id: string, input: CalendarEventInput): Promise<void> {
-  const { parishId } = await requireStaff("/ocia/calendar");
+  const { parishId } = await requireStaff("/ocia/calendar", "ocia");
   assertValid(input);
   await updateCalendarEvent(parishId, id, input);
   revalidatePath("/ocia/calendar");
 }
 
 export async function deleteEventAction(id: string): Promise<void> {
-  const { parishId } = await requireStaff("/ocia/calendar");
+  const { parishId } = await requireStaff("/ocia/calendar", "ocia");
   await deleteCalendarEvent(parishId, id);
   revalidatePath("/ocia/calendar");
 }
