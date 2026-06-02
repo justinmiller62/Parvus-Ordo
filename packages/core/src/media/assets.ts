@@ -244,7 +244,11 @@ export async function setTranscriptionStatus(opts: {
   );
 }
 
-/** Store a completed transcript (text + word timings). Marks transcription completed. */
+/**
+ * Store a completed transcript (text + word timings). Marks transcription completed.
+ * The provider's duration is authoritative (po-aitt): a transcriber-supplied duration
+ * only fills a missing value via COALESCE(duration_ms, $4) — it never overwrites one.
+ */
 export async function setTranscript(opts: {
   parishId: string;
   id: string;
@@ -258,7 +262,7 @@ export async function setTranscript(opts: {
        transcription_error  = NULL,
        transcript_text      = $2,
        transcript_json      = $3::jsonb,
-       duration_ms          = COALESCE($4, duration_ms)
+       duration_ms          = COALESCE(duration_ms, $4)
      WHERE id = $1`,
     [opts.id, opts.text, JSON.stringify(opts.words), opts.durationMs ?? null],
   );

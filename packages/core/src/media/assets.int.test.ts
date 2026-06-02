@@ -98,6 +98,36 @@ describe("asset lifecycle", () => {
     await deleteAsset(HOLY_SPIRIT, id);
   });
 
+  // po-aitt: the video provider's duration (set during transcode) is authoritative; the
+  // transcriber's duration must only FILL a missing one, never overwrite a provider value.
+  it("preserves the provider duration when the transcriber reports a different one", async () => {
+    const id = await createAsset({
+      parishId: HOLY_SPIRIT,
+      createdBy: await userId("admin@parvaordo.test"),
+      kind: "video",
+      title: "Provider duration wins",
+    });
+    // Provider/transcode sets the authoritative duration first…
+    await updateAssetStatus({ parishId: HOLY_SPIRIT, id, status: "ready", durationMs: 90_000 });
+    // …then the transcriber completes with its own (less accurate) duration.
+    await setTranscript({ parishId: HOLY_SPIRIT, id, text: "hi", words: [], durationMs: 123_456 });
+    expect((await getAsset(HOLY_SPIRIT, id))?.durationMs).toBe(90_000);
+    await deleteAsset(HOLY_SPIRIT, id);
+  });
+
+  it("fills the duration from the transcriber when the provider supplied none", async () => {
+    const id = await createAsset({
+      parishId: HOLY_SPIRIT,
+      createdBy: await userId("admin@parvaordo.test"),
+      kind: "video",
+      title: "Transcriber fills missing duration",
+    });
+    // No provider duration set; the transcriber's value fills the gap.
+    await setTranscript({ parishId: HOLY_SPIRIT, id, text: "hi", words: [], durationMs: 77_000 });
+    expect((await getAsset(HOLY_SPIRIT, id))?.durationMs).toBe(77_000);
+    await deleteAsset(HOLY_SPIRIT, id);
+  });
+
   it("filters by kind", async () => {
     const by = await userId("admin@parvaordo.test");
     const v = await createAsset({ parishId: HOLY_SPIRIT, createdBy: by, kind: "video", title: "V" });
