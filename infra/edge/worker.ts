@@ -8,6 +8,9 @@ interface Env {
   WORKOS_CLIENT_ID: string;
   WORKOS_API_KEY: string;
   WORKOS_COOKIE_PASSWORD: string;
+  // Dedicated signing secret for app-issued /api/v1 bearer tokens (po-u79). Optional:
+  // core/auth/api-token falls back to WORKOS_COOKIE_PASSWORD until this is provisioned.
+  API_TOKEN_SECRET?: string;
   WORKOS_REDIRECT_URI: string;
   NEXT_PUBLIC_WORKOS_REDIRECT_URI: string;
   PARISH_BASE_DOMAIN: string;
@@ -49,6 +52,7 @@ export class WebContainer extends Container<Env> {
       BUNNY_STREAM_LIBRARY_KEY: env.BUNNY_STREAM_LIBRARY_KEY,
       BUNNY_STREAM_CDN_HOSTNAME: env.BUNNY_STREAM_CDN_HOSTNAME,
       GROQ_API_KEY: env.GROQ_API_KEY,
+      ...(env.API_TOKEN_SECRET ? { API_TOKEN_SECRET: env.API_TOKEN_SECRET } : {}),
       ...(env.CLIP_CALLBACK_SECRET ? { CLIP_CALLBACK_SECRET: env.CLIP_CALLBACK_SECRET } : {}),
       ...(env.R2_ACCOUNT_ID ? { R2_ACCOUNT_ID: env.R2_ACCOUNT_ID } : {}),
       ...(env.R2_ACCESS_KEY_ID ? { R2_ACCESS_KEY_ID: env.R2_ACCESS_KEY_ID } : {}),

@@ -1,4 +1,4 @@
-import { lookupAppUser, verifyApiToken } from "@parvaordo/core";
+import { authorizeApiToken, lookupAppUser, verifyApiToken } from "@parvaordo/core";
 import type { Role } from "@parvaordo/shared";
 
 // Bearer auth for the public /api/v1 surface consumed by Parvus Studio (iOS).
@@ -20,7 +20,13 @@ export async function authenticateApiRequest(req: Request): Promise<ApiUser | nu
   const claims = await verifyApiToken(m[1]);
   if (!claims?.email) return null;
 
+  // Re-read identity from the DB every request (nothing trusted is cached in the token)
+  // and re-validate the token's bound parish against live memberships, so a user removed
+  // from that parish is cut off on their next call (po-u79). The matched membership's
+  // role — not a stale token claim — is authoritative for the request.
   const id = await lookupAppUser(claims.email);
-  if (!id?.parishId) return null;
-  return { userId: id.userId, parishId: id.parishId, role: id.role, email: claims.email };
+  if (!id) return null;
+  const membership = authorizeApiToken(claims.parishId, id.memberships);
+  if (!membership) return null;
+  return { userId: id.userId, parishId: membership.parishId, role: membership.role, email: claims.email };
 }

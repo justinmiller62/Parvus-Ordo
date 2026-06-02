@@ -17,7 +17,7 @@ export async function POST(req: Request): Promise<Response> {
   const user = await authenticateWithCode(code);
   if (!user) return Response.json({ error: "invalid or expired code" }, { status: 401 });
 
-  const { jwt, expiresAt } = await signApiToken({ userId: user.userId, email: user.email });
+  const { jwt, expiresAt } = await signApiToken({ userId: user.userId, email: user.email, parishId: user.parishId });
   return Response.json({
     jwt,
     user_id: user.userId,

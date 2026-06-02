@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickActiveMembership, type ParishMembership } from "./identity";
+import { authorizeApiToken, pickActiveMembership, type ParishMembership } from "./identity";
 
 const m = (parishId: string, role: ParishMembership["role"], host: string | null = null): ParishMembership => ({
   parishId,
@@ -37,5 +37,26 @@ describe("pickActiveMembership", () => {
   it("ignores a parishId the user doesn't hold and uses the sole membership", () => {
     const a = m("p1", "admin");
     expect(pickActiveMembership([a], { parishId: "nope" })).toBe(a);
+  });
+});
+
+describe("authorizeApiToken", () => {
+  it("returns null when the token carries no bound parish", () => {
+    const a = m("p1", "admin");
+    expect(authorizeApiToken("", [a])).toBeNull();
+    expect(authorizeApiToken(null, [a])).toBeNull();
+    expect(authorizeApiToken(undefined, [a])).toBeNull();
+  });
+  it("returns the live membership when the user still belongs to the bound parish", () => {
+    const a = m("p1", "admin");
+    const b = m("p2", "catechist");
+    expect(authorizeApiToken("p2", [a, b])).toBe(b);
+  });
+  it("cuts off (→ null) a user removed from the bound parish, even if other memberships remain", () => {
+    // Token bound to p2, but that membership was removed — only p1 remains (po-u79).
+    expect(authorizeApiToken("p2", [m("p1", "admin")])).toBeNull();
+  });
+  it("returns null when the user has no memberships at all", () => {
+    expect(authorizeApiToken("p1", [])).toBeNull();
   });
 });
