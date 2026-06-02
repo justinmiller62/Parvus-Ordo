@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("pg", () => ({ Pool: vi.fn(() => ({ connect: mocks.connect })) }));
 
-import { getDb, withTenant } from "./client";
+import { buildPoolConfig, getDb, withTenant } from "./client";
 
 describe("db chokepoint — rollback failure observability (po-rt2)", () => {
   let errorSpy: ReturnType<typeof vi.spyOn>;
@@ -105,5 +105,44 @@ describe("db chokepoint — rollback failure observability (po-rt2)", () => {
     ).rejects.toBe(originalErr);
 
     expect(errorSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("buildPoolConfig — connection budget + fail-fast timeouts (RFC-002 §2C/§2D, po-4a29)", () => {
+  const DB = "postgres://parvaordo_app:pw@localhost:5432/parvaordo";
+
+  it("uses safe defaults when no overrides are set", () => {
+    const c = buildPoolConfig({ DATABASE_URL: DB } as NodeJS.ProcessEnv);
+    expect(c.max).toBe(10);
+    expect(c.connectionTimeoutMillis).toBe(5_000);
+    expect(c.statement_timeout).toBe(30_000);
+  });
+
+  it("honors positive-integer env overrides (ops can tune the budget without a redeploy)", () => {
+    const c = buildPoolConfig({
+      DATABASE_URL: DB,
+      DB_POOL_MAX: "20",
+      DB_CONNECTION_TIMEOUT_MS: "2000",
+      DB_STATEMENT_TIMEOUT_MS: "15000",
+    } as unknown as NodeJS.ProcessEnv);
+    expect(c.max).toBe(20);
+    expect(c.connectionTimeoutMillis).toBe(2_000);
+    expect(c.statement_timeout).toBe(15_000);
+  });
+
+  it("falls back to defaults on invalid or non-positive overrides", () => {
+    const c = buildPoolConfig({
+      DATABASE_URL: DB,
+      DB_POOL_MAX: "0",
+      DB_CONNECTION_TIMEOUT_MS: "abc",
+      DB_STATEMENT_TIMEOUT_MS: "-5",
+    } as unknown as NodeJS.ProcessEnv);
+    expect(c.max).toBe(10);
+    expect(c.connectionTimeoutMillis).toBe(5_000);
+    expect(c.statement_timeout).toBe(30_000);
+  });
+
+  it("throws a clear error when DATABASE_URL is missing", () => {
+    expect(() => buildPoolConfig({} as NodeJS.ProcessEnv)).toThrow("DATABASE_URL is not set");
   });
 });
