@@ -53,6 +53,28 @@
   }
 }
 
+/* Bar/ring entrance for charts — grows from the leading edge (transform-origin set inline). */
+@keyframes po-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Accessibility: honor a reduced-motion preference everywhere — near-instant, no motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   background-color: var(--po-parchment);
   color: var(--po-navy);

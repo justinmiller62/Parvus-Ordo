@@ -15,6 +15,7 @@ import { VideoPlayer, type PlayerWord } from "@/src/components/ocia/video-player
 import { VideoStep } from "@/src/components/ocia/video-step";
 import { PreviewJumpTo } from "@/src/components/ocia/preview-nav";
 import { CompletionForms } from "@/src/components/ocia/completion-forms";
+import { LessonStartBeacon } from "@/src/components/ocia/lesson-start-beacon";
 import { advanceAction } from "./actions";
 
 const CARD = "rounded-lg border border-gray-200 bg-white p-6";
@@ -292,6 +293,8 @@ export default async function LessonPage({
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-8">
+      {/* Engagement: record lesson_start once when an active learner enters at the first step. */}
+      {isActive && current === 0 ? <LessonStartBeacon lessonId={id} versionId={lesson.versionId} /> : null}
       <Link
         href={isPreview ? `/ocia/lessons/${id}/edit${sp.v ? `?v=${sp.v}` : ""}` : "/ocia/lessons"}
         className="text-sm text-gray-400 hover:text-navy"
@@ -335,6 +338,8 @@ export default async function LessonPage({
           itemId={item.id}
           lessonId={id}
           step={current}
+          versionId={lesson.versionId}
+          total={total}
           initialMaxReachedMs={savedMaxReached}
           backHref={current > 0 ? hrefFor(current - 1) : undefined}
         />
@@ -344,6 +349,8 @@ export default async function LessonPage({
           <input type="hidden" name="itemId" value={item.id} />
           <input type="hidden" name="kind" value={item.kind} />
           <input type="hidden" name="step" value={current} />
+          <input type="hidden" name="versionId" value={lesson.versionId} />
+          <input type="hidden" name="total" value={total} />
           {body}
           <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
             {backEl}

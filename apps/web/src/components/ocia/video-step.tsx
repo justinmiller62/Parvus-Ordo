@@ -25,6 +25,8 @@ export function VideoStep({
   itemId,
   lessonId,
   step,
+  versionId,
+  total,
   initialMaxReachedMs,
   backHref,
 }: {
@@ -35,6 +37,8 @@ export function VideoStep({
   itemId: string;
   lessonId: string;
   step: number;
+  versionId: string;
+  total: number;
   initialMaxReachedMs: number;
   backHref?: string;
 }) {
@@ -47,6 +51,8 @@ export function VideoStep({
     fd.set("itemId", itemId);
     fd.set("kind", "video");
     fd.set("step", String(step));
+    fd.set("versionId", versionId);
+    fd.set("total", String(total));
     startTransition(() => {
       void advanceAction(fd);
     });

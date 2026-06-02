@@ -41,6 +41,7 @@ await client.query("DELETE FROM ocia_applicants WHERE parish_id = $1", [E2E_PARI
 await client.query("DELETE FROM student_questions WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM student_feedback  WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM answers              WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM engagement_events    WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM lesson_item_progress WHERE parish_id = $1", [E2E_PARISH]);
 await client.query(
   "DELETE FROM lesson_items   WHERE version_id IN (SELECT id FROM lesson_versions WHERE parish_id = $1)",
