@@ -234,4 +234,44 @@ describe("youth-teaches (integration)", () => {
     await deleteRecordings(HS, projectId);
     expect(await getLatestRecording(HS, projectId)).toBeNull();
   });
+
+  // Multi-tenant isolation invariant (Architecture §multi-tenant): a parish must read
+  // NONE of another's youth data. The youth module carries its own RLS policies and a
+  // SECURITY DEFINER token function, so — like assets/lessons/feedback/progress — it
+  // gets an explicit cross-parish denial test across every read path.
+  it("RLS denies a second parish any read of this parish's project, recording, and slides", async () => {
+    // Seed a recording + a slide under Holy Spirit so each assertion proves ISOLATION
+    // (the owner can still see the row) rather than reading a coincidentally empty table.
+    await createRecording(HS, {
+      projectId,
+      bunnyVideoId: "guid-rls",
+      playbackUrl: "https://iframe.mediadelivery.net/embed/672172/guid-rls",
+      durationSeconds: 42,
+      slideAdvanceCount: 1,
+    });
+    await getDb(HS).query(
+      "INSERT INTO youth_slides (parish_id, project_id, slide_order, r2_key) VALUES ($1,$2,1,$3) ON CONFLICT DO NOTHING",
+      [HS, projectId, `studio-slides/${projectId}/rls.png`],
+    );
+
+    // Owner (Holy Spirit) sees its own data…
+    expect(await getProject(HS, projectId)).not.toBeNull();
+    expect(await getLatestRecording(HS, projectId)).not.toBeNull();
+    expect((await listMyProjects(HS, teenId)).some((p) => p.id === projectId)).toBe(true);
+    expect((await listParishYouthProjects(HS)).some((p) => p.id === projectId)).toBe(true);
+    expect(await listProjectSlides(HS, projectId)).not.toHaveLength(0);
+
+    // …St. Peter, querying the very same ids, sees none of it. RLS scopes every read to
+    // app.parish_id, so these are real denials, not a coincidentally empty database.
+    expect(await getProject(ST_PETER, projectId)).toBeNull();
+    expect(await getProjectDetails(ST_PETER, projectId)).toBeNull();
+    expect(await getLatestRecording(ST_PETER, projectId)).toBeNull();
+    expect((await listMyProjects(ST_PETER, teenId)).some((p) => p.id === projectId)).toBe(false);
+    expect((await listParishYouthProjects(ST_PETER)).some((p) => p.id === projectId)).toBe(false);
+    expect(await listProjectSlides(ST_PETER, projectId)).toHaveLength(0);
+
+    // Clean up the rows seeded here (afterAll only knows the fixed fixtures).
+    await deleteRecordings(HS, projectId);
+    for (const s of await listProjectSlides(HS, projectId)) await deleteProjectSlide(HS, projectId, s.id);
+  });
 });
