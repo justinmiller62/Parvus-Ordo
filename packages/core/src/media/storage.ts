@@ -37,6 +37,13 @@ export interface StorageProvider {
   readonly name: string;
   /** Reserve a remote video object and return an upload target. */
   createUpload(opts: { title: string }): Promise<VideoUpload>;
+  /** Server-side upload of already-buffered bytes (e.g. a finished Parvus Studio
+   * recording the server holds in full), as opposed to a browser TUS stream.
+   * Returns the provider asset id + an embeddable playback URL. */
+  uploadBytes(
+    opts: { title: string },
+    bytes: ArrayBuffer | Uint8Array,
+  ): Promise<{ providerAssetId: string; playbackUrl: string }>;
   /** Poll the host for transcode progress / completion. */
   videoStatus(providerAssetId: string): Promise<VideoStatus>;
   playbackUrl(providerAssetId: string): string;
@@ -60,6 +67,11 @@ class StubStorage implements StorageProvider {
       playbackUrl: SAMPLE_HLS,
       posterUrl: "",
     };
+  }
+  async uploadBytes(): Promise<{ providerAssetId: string; playbackUrl: string }> {
+    // No network: "store" the bytes by handing back a sample playback URL so the
+    // recording flow completes offline / under MEDIA_STUB.
+    return { providerAssetId: `stub-${Date.now().toString(36)}`, playbackUrl: SAMPLE_HLS };
   }
   async videoStatus(): Promise<VideoStatus> {
     // Stub "transcodes" instantly so the upload flow can complete offline.
@@ -126,6 +138,37 @@ class BunnyStorage implements StorageProvider {
       playbackUrl: this.playbackUrl(guid),
       posterUrl: this.posterUrl(guid),
     };
+  }
+
+  async uploadBytes(
+    opts: { title: string },
+    bytes: ArrayBuffer | Uint8Array,
+  ): Promise<{ providerAssetId: string; playbackUrl: string }> {
+    const create = await fetch(this.base, {
+      method: "POST",
+      headers: { AccessKey: this.apiKey, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ title: opts.title }),
+    });
+    if (!create.ok) throw new Error(`Bunny createVideo failed: ${create.status} ${await create.text()}`);
+    const { guid } = (await create.json()) as { guid: string };
+
+    const put = await fetch(`${this.base}/${guid}`, {
+      method: "PUT",
+      headers: { AccessKey: this.apiKey },
+      // Cast bridges two tsconfigs: core (lib ES2022, no DOM `BodyInit`) and apps/web
+      // (DOM lib). `ArrayBuffer` is a valid fetch body in both; fetch accepts the
+      // Uint8Array at runtime regardless.
+      body: bytes as ArrayBuffer,
+    });
+    if (!put.ok) throw new Error(`Bunny uploadBytes failed: ${put.status}`);
+    return { providerAssetId: guid, playbackUrl: this.embedUrl(guid) };
+  }
+
+  /** Bunny's hosted iframe player — for direct `<iframe>` embed of a finished
+   * recording, distinct from the raw HLS playlist (playbackUrl) the OCIA media
+   * pipeline plays itself. */
+  private embedUrl(guid: string): string {
+    return `https://iframe.mediadelivery.net/embed/${this.libraryId}/${guid}`;
   }
 
   async videoStatus(guid: string): Promise<VideoStatus> {
