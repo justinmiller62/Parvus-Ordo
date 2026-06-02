@@ -722,6 +722,12 @@ export const GROUP_MEMBER_PERMISSIONS: readonly GatherPermission[] = ["request.c
 export const GROUP_TYPES = ["committee", "board", "ministry", "event_team"] as const;
 export type GroupType = (typeof GROUP_TYPES)[number];
 
+/** Group visibility (RFC-005 §3.1 CHECK): `public` (anyone in the parish), `members_only`
+ *  (active members), `leaders_only` (leadership-role members). The core read-filter layers
+ *  this on top of permissions — see core `canViewGroup` / `requireGroupPermission` (§3.3). */
+export const GROUP_VISIBILITIES = ["public", "members_only", "leaders_only"] as const;
+export type GroupVisibility = (typeof GROUP_VISIBILITIES)[number];
+
 /**
  * A starter role a new group is seeded with: the parish's word for it (`label`), whether it
  * is a leadership role (drives `leaders_only` visibility, §3.1), and its permission bundle.
