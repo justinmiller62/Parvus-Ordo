@@ -1,7 +1,13 @@
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
-import { IMPERSONATABLE_ROLES, type Role } from "@parvaordo/shared";
-import { type AppIdentity, type ParishMembership, lookupViewerContext, pickActiveMembership } from "@parvaordo/core";
+import { IMPERSONATABLE_ROLES, type ModuleKey, type Role } from "@parvaordo/shared";
+import {
+  type AppIdentity,
+  type ParishMembership,
+  enabledModules,
+  lookupViewerContext,
+  pickActiveMembership,
+} from "@parvaordo/core";
 import { type AuthedUser, getAuthedUser } from "./auth";
 
 export const VIEW_AS_COOKIE = "po_view_as";
@@ -18,6 +24,10 @@ export interface Viewer {
   viewingAs: Role | null;
   /** 2+ memberships and no host/cookie hint → show the "Choose a parish" screen. */
   needsParishChoice: boolean;
+  /** Modules enabled for the ACTIVE parish (RFC-001 §3.4). Parish-scoped and role-
+   * INDEPENDENT, so a super-admin "view as" never changes it; empty when there is no
+   * active parish (the chooser screen / an identity-less viewer). */
+  enabledModules: Set<ModuleKey>;
 }
 
 /**
@@ -41,7 +51,15 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   // Identity (login_lookup) AND the host→parish resolve (resolve_parish_id) come back in a
   // SINGLE pre-tenant round trip, not two (RFC-002 §2B2).
   const { identity: real, hostParishId } = await lookupViewerContext(authed.email, host);
-  if (!real) return { authed, identity: null, canImpersonate: false, viewingAs: null, needsParishChoice: false };
+  if (!real)
+    return {
+      authed,
+      identity: null,
+      canImpersonate: false,
+      viewingAs: null,
+      needsParishChoice: false,
+      enabledModules: new Set<ModuleKey>(),
+    };
 
   // Both hints — the po_active_parish cookie and the host-resolved parish — are UNTRUSTED;
   // pickActiveMembership cross-checks each against the user's own memberships. The effective
@@ -66,5 +84,17 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     }
   }
 
-  return { authed, identity: { ...real, role, parishId }, canImpersonate, viewingAs, needsParishChoice };
+  // Resolve enablement off the EFFECTIVE active parishId (after impersonation, which changes
+  // only `role`, never the parish) — so a super-admin viewing-as a role still sees the active
+  // parish's modules. One query/request, deduped by getViewer's cache(). (RFC-001 §3.4)
+  const modules = parishId ? await enabledModules(parishId) : new Set<ModuleKey>();
+
+  return {
+    authed,
+    identity: { ...real, role, parishId },
+    canImpersonate,
+    viewingAs,
+    needsParishChoice,
+    enabledModules: modules,
+  };
 });
