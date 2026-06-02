@@ -82,10 +82,11 @@ await client.query(`INSERT INTO ministries (parish_id, name, kind) VALUES ($1, '
 // ── Users + memberships (single-parish, so no chooser/switcher in the way) ───
 await client.query(
   `INSERT INTO users (email, display_name, is_super_admin) VALUES
-     ('e2e-admin@parvaordo.test',     'E2E Admin',     false),
-     ('e2e-catechist@parvaordo.test', 'E2E Catechist', false),
-     ('e2e-student@parvaordo.test',   'E2E Student',   false),
-     ('e2e-teen@parvaordo.test',      'E2E Teen',      false)`,
+     ('e2e-admin@parvaordo.test',        'E2E Admin',        false),
+     ('e2e-catechist@parvaordo.test',    'E2E Catechist',    false),
+     ('e2e-student@parvaordo.test',      'E2E Student',      false),
+     ('e2e-media-student@parvaordo.test','E2E Media Student',false),
+     ('e2e-teen@parvaordo.test',         'E2E Teen',         false)`,
 );
 await client.query(
   `INSERT INTO memberships (user_id, parish_id, ministry_id, role)

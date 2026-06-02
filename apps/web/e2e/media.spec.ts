@@ -3,6 +3,14 @@ import { expect, test } from "@playwright/test";
 // All media specs run inside the dedicated E2E Test Parish (seeded by
 // global-setup), so manual edits to the demo parishes never break them.
 const E2E_QUIZ_LESSON = "0e2e0000-0000-0000-0000-0000000000c2";
+const E2E_VIDEO_LESSON = "0e2e0000-0000-0000-0000-0000000000c1";
+
+// The learner flows use a DEDICATED learner (e2e-media-student), not the shared e2e-student,
+// for two reasons: (1) the learner lesson list is cohort-gated (po-dzwc) — a student with no
+// cohort sees an empty list, so we deep-link to the lesson by id rather than navigating the
+// list; (2) the completion flow resets + rewrites the learner's answers, so a dedicated learner
+// keeps it from clobbering the e2e-student's seeded answers that weekly-export.spec asserts on.
+// (The empty-list + over-exposure behavior is covered by student-lessons.spec.)
 
 test("media library lists the seeded video as ready + transcribed", async ({ page }) => {
   await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
@@ -16,10 +24,9 @@ test("media library lists the seeded video as ready + transcribed", async ({ pag
 });
 
 test("learner reaches the video step: seek-enforcing player + synced transcript render", async ({ page }) => {
-  await page.request.get("/dev/reset?email=e2e-student@parvaordo.test");
-  await page.goto("/dev/login?email=e2e-student@parvaordo.test");
-  await page.goto("/ocia/lessons");
-  await page.getByRole("link", { name: /E2E: Welcome Video Lesson/ }).click();
+  await page.request.get("/dev/reset?email=e2e-media-student@parvaordo.test");
+  await page.goto("/dev/login?email=e2e-media-student@parvaordo.test");
+  await page.goto(`/ocia/lessons/${E2E_VIDEO_LESSON}`);
 
   // Step 1 is the reading; advance to the video item.
   await expect(page.getByTestId("wizard-step-current")).toHaveText("1");
@@ -38,10 +45,9 @@ test("learner reaches the video step: seek-enforcing player + synced transcript 
 test("learner completes a lesson → asks a question + feedback → reviews answers; catechist sees them", async ({
   page,
 }) => {
-  await page.request.get("/dev/reset?email=e2e-student@parvaordo.test");
-  await page.goto("/dev/login?email=e2e-student@parvaordo.test");
-  await page.goto("/ocia/lessons");
-  await page.getByRole("link", { name: /E2E: Who Do You Say That I Am/ }).click();
+  await page.request.get("/dev/reset?email=e2e-media-student@parvaordo.test");
+  await page.goto("/dev/login?email=e2e-media-student@parvaordo.test");
+  await page.goto(`/ocia/lessons/${E2E_QUIZ_LESSON}`);
   await page.getByTestId("wizard-next").click(); // reading → continue
   await page.getByTestId("wizard-answer-input").fill("Jesus is the Christ.");
   await page.getByTestId("wizard-next").click();
