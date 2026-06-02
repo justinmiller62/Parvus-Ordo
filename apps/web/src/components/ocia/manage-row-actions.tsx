@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, MessageSquare, Trash2 } from "lucide-react";
+import { BarChart3, Eye, MessageSquare, Trash2 } from "lucide-react";
 import { deleteLessonFromListAction, unpublishLessonFromListAction } from "@/app/(app)/ocia/lessons/actions";
 
 const ICON = "rounded p-1 text-gray-400 hover:bg-gray-100";
@@ -36,6 +36,13 @@ export function ManageRowActions({
         className={`${ICON} hover:text-navy`}
       >
         <MessageSquare className="h-4 w-4" />
+      </Link>
+      <Link
+        href={`/ocia/lessons/${lessonId}/engagement`}
+        title="Engagement analytics"
+        className={`${ICON} hover:text-navy`}
+      >
+        <BarChart3 className="h-4 w-4" />
       </Link>
       {editable && status === "published" ? (
         <button

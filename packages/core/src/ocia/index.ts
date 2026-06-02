@@ -4,3 +4,4 @@ export * from "./progress";
 export * from "./feedback";
 export * from "./discussion-template";
 export * from "./weekly-export";
+export * from "./engagement";
