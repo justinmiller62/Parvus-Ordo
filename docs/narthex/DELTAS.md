@@ -26,7 +26,7 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | HIGH | ☑ Completion tied to actual watching | only the manual Continue writes completion |
 | HIGH | ☑ Transcription Retry control | `failed` renders a dead label, no re-run |
 | HIGH | ☑ Orphan asset cleanup on upload failure | failed TUS/createUpload leaves the asset row behind |
-| HIGH/MED | ☐ YouTube ingest | external asset kind + caption import; entirely absent |
+| HIGH/MED | ☑ YouTube ingest (backend, po-w4u0) | `ingestYouTubeAsset` (core/media/youtube.ts): a YouTube video is an external asset modeled as `kind:'video'` + `provider:'youtube'` (provider is free-text → NO asset_kind enum change, NO migration) with `provider_asset_id`=video id, `playback_url`=watch URL, `status:'ready'`. Captions imported into the SAME `transcript_json` (TranscriptWord[], per-segment) so transcript/segmentation/gating stay source-agnostic. Outbound youtube.com calls REUSE the SSRF-safe `fetchFeed` guard (HTTPS-only, host allowlist, private-IP, size/time). Best-effort: no captions / fetch error → `transcription_status:'failed'` (retryable), asset still created. v1 uses the watch-page-scrape track path; an InnerTube fallback for caption-restricted videos is a deferred hardening follow-up. The teacher picker is the SIBLING bead po-l595 (blocked-by this) |
 | MED | ☑ Transcript download (`[m:ss]` 10s grouping) | no export |
 | MED | ☐ Student-own / teacher-parish RLS on progress | `lesson_item_progress` parish-isolated but not row-owned |
 | LOW | ☐ Provider duration authoritative over transcriber | `setTranscript` COALESCE can overwrite |
