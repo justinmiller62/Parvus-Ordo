@@ -70,6 +70,116 @@ export function peopleEligible(role: Role | null): boolean {
   return role === "super_admin" || role === "admin";
 }
 
+// ─── Module registry + per-parish enablement resolver (RFC-001) ───────────────
+// One definition of "what modules exist, who may use each, and whether a parish may
+// turn it off" — shared by the app shell (nav), the module entry-point guards, the
+// core resolver, and the future systems-admin tool, so capability and enablement can
+// never drift across them. `platform`/`branding`/`auth` are infra, not modules;
+// `media` is an OCIA-internal asset library gated transitively by `ocia`, not a key.
+
+export type ModuleKey = "ocia" | "people" | "studio" | "dictionary" | "prayers" | "onboarding";
+
+export interface ModuleDef {
+  key: ModuleKey;
+  /** Human label (matches the nav launchers). */
+  label: string;
+  /** Roles that may use the module WHEN it is enabled — capability, not enablement. */
+  roles: Role[];
+  /** false = always-on platform capability a parish cannot disable (RFC-001 §3.1). */
+  toggleable: boolean;
+  /** Enablement when a parish has no explicit row. true for every module today, so
+   *  introducing the toggle is a zero-behavior-change deploy (RFC-001 §3.6). */
+  defaultEnabled: boolean;
+}
+
+// Locked override po-wisp-rrwul (supersedes RFC-001 §6.1): ONLY `ocia` and `studio`
+// are toggleable; `people`, `dictionary`, `prayers`, `onboarding` are always-on
+// platform capabilities a parish cannot disable. Per-module `roles` mirror the
+// existing eligibility predicates where they exist (ocia↔ociaEligible,
+// studio↔studioEligible, people↔peopleEligible); dictionary/prayers are usable by any
+// parish role (their routes gate on parish, not role); onboarding (OCIA applications +
+// invites) is a staff capability.
+export const MODULES: Record<ModuleKey, ModuleDef> = {
+  ocia: {
+    key: "ocia",
+    label: "OCIA",
+    roles: ["super_admin", "admin", "catechist", "catechumen_candidate"],
+    toggleable: true,
+    defaultEnabled: true,
+  },
+  studio: {
+    key: "studio",
+    label: "Parvus Studio",
+    roles: ["super_admin", "admin", "catechist", "studio"],
+    toggleable: true,
+    defaultEnabled: true,
+  },
+  people: {
+    key: "people",
+    label: "People",
+    roles: ["super_admin", "admin"],
+    toggleable: false,
+    defaultEnabled: true,
+  },
+  dictionary: {
+    key: "dictionary",
+    label: "Dictionary",
+    roles: ["super_admin", "admin", "catechist", "catechumen_candidate", "parish_member", "studio"],
+    toggleable: false,
+    defaultEnabled: true,
+  },
+  prayers: {
+    key: "prayers",
+    label: "Prayers",
+    roles: ["super_admin", "admin", "catechist", "catechumen_candidate", "parish_member", "studio"],
+    toggleable: false,
+    defaultEnabled: true,
+  },
+  onboarding: {
+    key: "onboarding",
+    label: "Onboarding",
+    roles: ["super_admin", "admin", "catechist"],
+    toggleable: false,
+    defaultEnabled: true,
+  },
+};
+
+/**
+ * Resolve which modules are enabled for a parish: a pure overlay of the parish's
+ * `parish_modules` rows onto the registry defaults (RFC-001 §3.3). Sparse-row
+ * semantics — a missing row means "use defaultEnabled" (§3.2). A non-toggleable
+ * module is always pinned to its default (true): it cannot be disabled by a row
+ * (§3.1), so the registry stays the source of truth even against a stray or legacy
+ * row. Rows for unknown module keys are ignored. The layered shape
+ * (`defaults ← parish rows`) is the seam a future diocese-cascade layer slots into
+ * without changing this signature (§3.3).
+ */
+export function resolveEnabled(
+  rows: ReadonlyArray<{ module_key: string; enabled: boolean }>,
+  registry: Record<ModuleKey, ModuleDef> = MODULES,
+): Set<ModuleKey> {
+  const overrides = new Map<string, boolean>();
+  for (const r of rows) overrides.set(r.module_key, r.enabled);
+  const enabled = new Set<ModuleKey>();
+  for (const key of Object.keys(registry) as ModuleKey[]) {
+    const def = registry[key];
+    // Always-on modules ignore rows; only a toggleable module honors a present row.
+    const on = def.toggleable && overrides.has(key) ? overrides.get(key)! : def.defaultEnabled;
+    if (on) enabled.add(key);
+  }
+  return enabled;
+}
+
+/**
+ * Whether `role` may use module `key` in a parish: the module must be enabled AND the
+ * role must be capable of it (RFC-001 §3.3). The single "is module M available to
+ * viewer V in parish P" rule, consumed by nav generation and the module entry-point
+ * guards so the client can never drift from the server gate.
+ */
+export function moduleAvailable(role: Role | null, key: ModuleKey, enabled: Set<ModuleKey>): boolean {
+  return enabled.has(key) && !!role && MODULES[key].roles.includes(role);
+}
+
 // Sacred-text display capitalization (used server + client). Ordered [pattern,
 // replacement]; multi-word phrases BEFORE singles so "Holy Spirit" is fixed first.
 const SACRED_TEXT: ReadonlyArray<readonly [RegExp, string]> = [
