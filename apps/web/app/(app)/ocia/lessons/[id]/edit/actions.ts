@@ -86,7 +86,7 @@ export async function ingestYouTubeAction(
   input: string,
   title?: string,
 ): Promise<VideoAssetOption> {
-  const { parishId, userId } = await requireStaff("/ocia");
+  const { parishId, userId } = await requireStaff("/ocia", "ocia");
   await assertDraft(parishId, versionId);
   const assetId = await ingestYouTubeAsset({ parishId, createdBy: userId, input, title });
   const a = await getAsset(parishId, assetId);

@@ -13,6 +13,10 @@ export async function GET(req: Request): Promise<Response> {
   const viewer = await getViewer();
   const parishId = viewer?.identity?.parishId;
   if (!parishId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // RFC-001 §3.5: the calendar is part of the OCIA module, so its feed proxy rejects when OCIA is
+  // disabled — a disabled module doesn't merely hide nav. No legitimate caller exists when OCIA is
+  // off (the calendar page is unreachable), so this only closes the direct-call surface. (po-7diw)
+  if (!viewer?.enabledModules.has("ocia")) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const url = new URL(req.url).searchParams.get("url");
   if (!url) return NextResponse.json({ error: "missing url" }, { status: 400 });

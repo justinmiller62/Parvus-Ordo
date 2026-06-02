@@ -14,6 +14,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ assetId
   if (!parishId || !isStaff(role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
+  // RFC-001 §3.5: OCIA must be ENABLED — a disabled module rejects direct API calls, it doesn't
+  // merely hide nav. Session-authed staff download of OCIA media, so gate on the viewer's
+  // enabledModules here. (po-7diw)
+  if (!viewer?.enabledModules.has("ocia")) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   const asset = await getAsset(parishId, assetId);
   if (!asset || !asset.transcriptText) return NextResponse.json({ error: "no transcript" }, { status: 404 });
 
