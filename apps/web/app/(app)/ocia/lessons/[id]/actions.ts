@@ -43,7 +43,17 @@ export async function saveVideoProgressAction(
 ): Promise<void> {
   const ctx = await studentContext();
   if (!ctx) return;
-  await markVideoProgress({ parishId: ctx.parishId, studentId: ctx.userId, itemId, maxReachedMs, completed });
+  // Shape-validate the client-supplied values here; core enforces them against the
+  // clip's real length so a forged position can't self-award completion (see
+  // markVideoProgress). A non-finite report is treated as zero progress.
+  const safeMax = Number.isFinite(maxReachedMs) ? Math.max(0, Math.floor(maxReachedMs)) : 0;
+  await markVideoProgress({
+    parishId: ctx.parishId,
+    studentId: ctx.userId,
+    itemId,
+    maxReachedMs: safeMax,
+    completed: completed === true,
+  });
 }
 
 /**
