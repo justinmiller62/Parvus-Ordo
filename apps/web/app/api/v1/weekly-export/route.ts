@@ -13,7 +13,9 @@ export const runtime = "nodejs";
 // invisible → 404, matching the page's "this cohort isn't available". (Comprehensive
 // bearer-auth integration coverage for /api/v1 is tracked in po-78ur.)
 export async function GET(req: Request): Promise<Response> {
-  const user = await authenticateApiRequest(req);
+  // Gate on the OCIA module (RFC-001 §3.5): a parish with OCIA disabled rejects this
+  // programmatic export the same as the page redirects — nav hiding is not enforcement.
+  const user = await authenticateApiRequest(req, "ocia");
   if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (!isStaff(user.role)) return Response.json({ error: "forbidden" }, { status: 403 });
 
