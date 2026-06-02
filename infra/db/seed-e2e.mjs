@@ -52,6 +52,8 @@ await client.query(
 await client.query("DELETE FROM lesson_versions WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM lessons         WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM assets          WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM calendar_events  WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM calendar_sources WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM cohorts         WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM youth_recordings   WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM youth_mcp_audit_log WHERE parish_id = $1", [E2E_PARISH]);
@@ -269,6 +271,21 @@ await client.query(
   `INSERT INTO prayer_entries (title, prayer_text, category, status)
    VALUES ('Hail Mary', 'Hail Mary, full of grace, the Lord is with thee...', 'marian', 'approved')
    ON CONFLICT (title) DO UPDATE SET prayer_text = EXCLUDED.prayer_text`,
+);
+
+// Calendar fixtures (po-d98g): a plain parish event + a transferred feast, which the pure
+// expander renders as a faded "ghost" on its actual date PLUS the full event on the
+// observed (celebrated) date. Both in June 2026 so the e2e navigates to ?month=2026-06.
+const adminId = "(SELECT id FROM users WHERE email = 'e2e-admin@parvaordo.test')";
+await client.query(
+  `INSERT INTO calendar_events (scope, parish_id, title, event_date, event_type, created_by)
+   VALUES ('parish', $1, 'E2E Parish Feast', '2026-06-15', 'custom', ${adminId})`,
+  [E2E_PARISH],
+);
+await client.query(
+  `INSERT INTO calendar_events (scope, parish_id, title, event_date, observed_date, event_type, created_by)
+   VALUES ('parish', $1, 'E2E Transferred Feast', '2026-06-10', '2026-06-12', 'liturgical', ${adminId})`,
+  [E2E_PARISH],
 );
 
 await client.end();
