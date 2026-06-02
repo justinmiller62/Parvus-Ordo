@@ -1,6 +1,13 @@
 import { getDb } from "../db/client";
 import { getAsset } from "../media/assets";
 
+// Student-progress data access. `lesson_item_progress` RLS isolates rows to the PARISH
+// only (the house model has no per-user GUC — `getDb` sets parish/diocese, not the user),
+// so per-student OWNERSHIP is enforced HERE at the app/core layer: every read and write is
+// keyed by `studentId`, and callers MUST pass the SESSION user id (never a client param),
+// so a learner reaches only their own rows. DB-layer per-user ownership is a deferred
+// cross-cutting RFC (po-s6vb; see CLAUDE.md "Student-owned tables").
+
 /** Mark a lesson item complete for a student (idempotent). */
 export async function markItemComplete(params: { parishId: string; studentId: string; itemId: string }): Promise<void> {
   await getDb(params.parishId).query(
