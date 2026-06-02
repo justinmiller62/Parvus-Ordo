@@ -194,3 +194,28 @@ export function clipSeek(s: ClipState): { clampTo?: number } {
 export function clipResumeSeconds(maxReachedMs: number): number {
   return Number.isFinite(maxReachedMs) && maxReachedMs > 0 ? maxReachedMs / 1000 : 0;
 }
+
+// ─── Recording upload policy (pure; server route + iOS client both validate) ──
+
+/** Max bytes for a Parvus Studio recording upload (~120MB, under the proxy's
+ * 128MB buffer cap). Shared so the iOS client can pre-validate before sending. */
+export const MAX_RECORDING_BYTES = 120 * 1024 * 1024;
+
+/** A rejected recording upload: the HTTP status the API surfaces and why. */
+export interface RecordingUploadRejection {
+  status: number;
+  message: string;
+}
+
+/**
+ * Validate an uploaded recording's byte size against the shared limit. Returns
+ * null when acceptable, or a rejection (status + message) to surface. Pure — no
+ * DB, no framework — so every upload path enforces the same cap and message.
+ */
+export function validateRecordingUpload(sizeBytes: number): RecordingUploadRejection | null {
+  if (sizeBytes > MAX_RECORDING_BYTES) {
+    const mb = (sizeBytes / 1024 / 1024).toFixed(0);
+    return { status: 413, message: `recording too large (${mb} MB). Max ${MAX_RECORDING_BYTES / 1024 / 1024} MB.` };
+  }
+  return null;
+}
