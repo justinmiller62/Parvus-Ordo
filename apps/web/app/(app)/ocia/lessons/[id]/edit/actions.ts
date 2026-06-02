@@ -8,7 +8,8 @@ import {
   deleteLessonItem,
   deleteVersion,
   ensureDraft,
-  getDb,
+  getLessonItemContent,
+  isEditableParishDraft,
   publishVersion,
   removeClip,
   removeClipForItem,
@@ -33,17 +34,10 @@ async function requireBuilder(): Promise<{ parishId: string; userId: string }> {
   return { parishId, userId };
 }
 
-// Edits may only touch a parish-owned DRAFT (unpublished) version.
+// Edits may only touch a parish-owned DRAFT (unpublished) version. Core owns the
+// rule; the action owns the redirect (presentation).
 async function assertDraft(parishId: string, versionId: string): Promise<void> {
-  const { rows } = await getDb(parishId).query<{
-    published_at: string | null;
-    scope: string;
-    parish_id: string | null;
-  }>("SELECT published_at, scope, parish_id FROM lesson_versions WHERE id = $1", [versionId]);
-  const v = rows[0];
-  if (!v || v.scope !== "parish" || v.parish_id !== parishId || v.published_at !== null) {
-    redirect("/ocia/lessons");
-  }
+  if (!(await isEditableParishDraft(parishId, versionId))) redirect("/ocia/lessons");
 }
 
 function defaultContent(kind: LessonItemKind, format?: string): Record<string, unknown> {
@@ -155,11 +149,7 @@ export async function materializeClipAction(
 ): Promise<{ clipAssetId: string }> {
   const { parishId, userId } = await requireBuilder();
   await assertDraft(parishId, versionId);
-  const { rows } = await getDb(parishId).query<{ content: Record<string, unknown> }>(
-    "SELECT content FROM lesson_items WHERE id = $1",
-    [itemId],
-  );
-  const content = rows[0]?.content ?? {};
+  const content = await getLessonItemContent(parishId, itemId);
   const prevClip = content.clip_asset_id as string | undefined;
 
   const clipAssetId = await requestClip({ parishId, createdBy: userId, sourceAssetId, startMs, endMs });
