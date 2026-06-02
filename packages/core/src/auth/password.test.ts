@@ -1,7 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppIdentity } from "../platform/identity";
 import { lookupAppUser } from "../platform/identity";
-import { authenticateWithPassword } from "./password";
+import type { AppLoginResult } from "./password";
+import { authenticateWithCode, authenticateWithPassword } from "./password";
+
+// --- Type-level regression (po-4pg) ---
+// The login result is shared by BOTH login paths, so it carries a generic name
+// (AppLoginResult), not a "Password"-prefixed one. These compile-time checks fail
+// `pnpm typecheck` if the exported name is missing or the two return signatures drift
+// apart. Erased at runtime, so vitest sees nothing here.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+type Assert<T extends true> = T;
+type LoginOf<F extends (...args: never[]) => Promise<unknown>> = Awaited<ReturnType<F>>;
+
+type _PasswordPathReturnsAppLogin = Assert<Equal<LoginOf<typeof authenticateWithPassword>, AppLoginResult | null>>;
+type _CodePathReturnsAppLogin = Assert<Equal<LoginOf<typeof authenticateWithCode>, AppLoginResult | null>>;
 
 // lookupAppUser hits the DB (login_lookup) — stub it so these stay unit-level, and
 // so we can assert the unverified, client-supplied email NEVER reaches the lookup.
@@ -91,5 +104,35 @@ describe("authenticateWithPassword", () => {
     const result = await authenticateWithPassword("verified@parish.org", "correct-password");
 
     expect(result).toBeNull();
+  });
+});
+
+// po-4pg: the authorization_code / Google path resolves to the SAME shape as the
+// password path — one shared AppLoginResult, which is why the type is not named for
+// passwords. (Also the first runtime coverage for authenticateWithCode.)
+describe("authenticateWithCode", () => {
+  beforeEach(() => {
+    vi.stubEnv("WORKOS_CLIENT_ID", "client_test");
+    vi.stubEnv("WORKOS_API_KEY", "sk_test");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it("resolves a login from the WorkOS-verified email to the shared AppLoginResult shape", async () => {
+    stubWorkos({ ok: true, email: "verified@parish.org" });
+    mockLookup.mockResolvedValue(IDENTITY);
+
+    const result = await authenticateWithCode("auth-code-123");
+
+    expect(mockLookup).toHaveBeenCalledWith("verified@parish.org");
+    expect(result).toEqual({
+      userId: "u-1",
+      email: "verified@parish.org",
+      displayName: "Verified User",
+      parishId: "parish-1",
+    });
   });
 });
