@@ -26,7 +26,8 @@ import {
   validateMcpToken,
 } from "@parvaordo/core";
 
-const HS = "11111111-1111-1111-1111-111111111111";
+const HS = "11111111-1111-1111-1111-111111111111"; // Holy Spirit — this teen's parish
+const ST_PETER = "33333333-3333-3333-3333-333333333333"; // a different parish — for RLS isolation
 const EMAIL = "youth-int@inttest.local";
 let teenId: string;
 let topicId: string;
@@ -95,18 +96,35 @@ describe("youth-teaches (integration)", () => {
     expect(await validateMcpToken("mcp_does_not_exist")).toBeNull();
   });
 
-  it("callYouthTool dispatches tools + writes the audit log", async () => {
+  it("callYouthTool dispatches tools + writes a tenant-scoped, parish-isolated audit log", async () => {
     const session = { parishId: HS, teenUserId: teenId };
     const res = (await callYouthTool(session, "list_my_projects", {})) as { projects: unknown[] };
     expect(res.projects.length).toBeGreaterThan(0);
     await callYouthTool(session, "get_project_details", { project_id: projectId });
-    const { rows } = await getDb(HS).query<{ tool_name: string }>(
-      "SELECT tool_name FROM youth_mcp_audit_log WHERE parish_id = $1",
+
+    // The audit log's worth is its integrity: WHICH parish and WHICH project each AI
+    // tool call touched. Assert the recorded tenancy, not merely that a row exists.
+    const { rows } = await getDb(HS).query<{ parish_id: string; project_id: string | null; tool_name: string }>(
+      "SELECT parish_id, project_id, tool_name FROM youth_mcp_audit_log WHERE parish_id = $1",
       [HS],
     );
-    const tools = rows.map((r) => r.tool_name);
-    expect(tools).toContain("list_my_projects");
-    expect(tools).toContain("get_project_details");
+
+    // list_my_projects is teen-scoped, not project-scoped → it logs parish + NULL project.
+    const listed = rows.filter((r) => r.tool_name === "list_my_projects");
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed.every((r) => r.parish_id === HS && r.project_id === null)).toBe(true);
+
+    // get_project_details records the exact project the AI read, under this parish.
+    const detailed = rows.filter((r) => r.tool_name === "get_project_details");
+    expect(detailed.some((r) => r.parish_id === HS && r.project_id === projectId)).toBe(true);
+
+    // Parish isolation: St. Peter, querying Holy Spirit's own project id, sees none of
+    // its audit trail — RLS scopes every read to app.parish_id. The same rows are
+    // visible to their owner above, so this is isolation, not just an empty table.
+    const { rows: leaked } = await getDb(ST_PETER).query("SELECT id FROM youth_mcp_audit_log WHERE project_id = $1", [
+      projectId,
+    ]);
+    expect(leaked).toHaveLength(0);
   });
 
   it("getProject returns the saved draft, status, and passages", async () => {
