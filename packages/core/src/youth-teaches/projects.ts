@@ -29,6 +29,8 @@ export interface YouthProjectDetails {
   correct_teaching: string | null;
 }
 
+// Spoken-delivery rate for a teen reading their script aloud. Intentionally lower than
+// shared's silent-reading READING_WPM (200): speaking aloud is slower than reading silently.
 const WORDS_PER_MINUTE = 150;
 
 /** Word count + estimated speaking time (~150 wpm). Pure + unit-testable. */

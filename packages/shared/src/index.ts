@@ -78,9 +78,16 @@ export interface BrandTokens {
 }
 
 /**
+ * Silent-reading speed (words/minute) for estimating how long a reading item takes a
+ * learner. Intentionally higher than youth-teaches' spoken-delivery rate (WORDS_PER_MINUTE
+ * = 150): a learner reads silently faster than a teen speaks a script aloud.
+ */
+const READING_WPM = 200;
+
+/**
  * Estimate a lesson's duration (seconds) from its items. Pure (lives in shared so
  * the client builder can use it without pulling the DB layer). Heuristics ported
- * from Narthex: video = clip length; reading = words / 200 wpm; question = 60s.
+ * from Narthex: video = clip length; reading = words / READING_WPM; question = 60s.
  */
 export function estimateItemsDurationSec(items: Array<{ kind: string; content: Record<string, unknown> }>): number {
   let sec = 0;
@@ -94,7 +101,7 @@ export function estimateItemsDurationSec(items: Array<{ kind: string; content: R
         .replace(/<[^>]*>/g, " ")
         .trim();
       const words = text ? text.split(/\s+/).length : 0;
-      sec += (words / 200) * 60;
+      sec += (words / READING_WPM) * 60;
     } else if (it.kind === "question") {
       sec += 60;
     }
