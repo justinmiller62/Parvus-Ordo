@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { getDb } from "../db/client";
+import { enabledModules } from "../platform/modules";
 import { assertOwnsProject } from "./ownership";
 import { getProjectDetails, listMyProjects, saveCorpusPassage, updateScriptDraft } from "./projects";
 import { addProjectSlide } from "./slides";
@@ -171,6 +172,9 @@ export async function callYouthTool(
   args: Record<string, unknown>,
 ): Promise<unknown> {
   const { parishId, teenUserId } = session;
+  // RFC-001 §3.5 enforcement: a disabled Parvus Studio module rejects MCP tool calls too,
+  // not just hides nav. The session's parish must have studio enabled. (po-7diw)
+  if (!(await enabledModules(parishId)).has("studio")) throw new Error("Parvus Studio is not enabled for this parish");
   switch (name) {
     case "list_my_projects": {
       await logMcpTool(parishId, null, name, args);

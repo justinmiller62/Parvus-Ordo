@@ -7,7 +7,7 @@ import { requireStaff } from "@/src/lib/require-role";
 // Staff-only (catechist/admin/super_admin) parvus-studio management actions.
 /** Create a project and assign it to a teen. */
 export async function createProjectAction(formData: FormData): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "studio");
   const teenUserId = String(formData.get("teenUserId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const topicId = String(formData.get("topicId") ?? "") || null;
@@ -18,7 +18,7 @@ export async function createProjectAction(formData: FormData): Promise<void> {
 
 /** Delete a project (recordings + audit cascade). */
 export async function deleteProjectAction(formData: FormData): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "studio");
   const projectId = String(formData.get("projectId") ?? "");
   if (!projectId) return;
   await deleteYouthProject(parishId, projectId);
@@ -27,7 +27,7 @@ export async function deleteProjectAction(formData: FormData): Promise<void> {
 
 /** Add a topic to the parish's topic library. */
 export async function createTopicAction(formData: FormData): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "studio");
   const title = String(formData.get("title") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim();
   if (!title || !category) return;

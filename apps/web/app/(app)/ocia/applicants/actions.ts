@@ -13,6 +13,7 @@ import {
 } from "@parvaordo/core";
 import { isStaff, type Role } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
+import { requireModule } from "@/src/lib/require-role";
 
 interface Reviewer {
   parishId: string;
@@ -22,6 +23,7 @@ interface Reviewer {
 
 /** Applicant review + inviting requires admin/catechist (or super_admin) in the active parish. */
 async function requireReviewer(): Promise<Reviewer> {
+  await requireModule("ocia"); // disabled OCIA → redirect home (RFC-001 §3.5)
   const v = await getViewer();
   const role = v?.identity?.role;
   const parishId = v?.identity?.parishId;

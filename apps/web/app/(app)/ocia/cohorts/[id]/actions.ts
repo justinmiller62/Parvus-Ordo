@@ -25,25 +25,25 @@ import { requireAdmin, requireStaff } from "@/src/lib/require-role";
 const rev = (cohortId: string) => revalidatePath(`/ocia/cohorts/${cohortId}`);
 
 export async function updateSettingsAction(cohortId: string, input: CohortSettingsInput): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   await updateCohortSettings(parishId, cohortId, input);
   rev(cohortId);
 }
 
 export async function setSequentialAction(cohortId: string, sequential: boolean): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   await setSequential(parishId, cohortId, sequential);
   rev(cohortId);
 }
 
 export async function generateScheduleAction(cohortId: string): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   await generateSchedule(parishId, cohortId);
   rev(cohortId);
 }
 
 export async function addScheduleEntryAction(cohortId: string, lessonId: string): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   if (!lessonId) return;
   await addScheduleEntry(parishId, cohortId, lessonId);
   rev(cohortId);
@@ -54,37 +54,37 @@ export async function updateScheduleEntryAction(
   entryId: string,
   patch: ScheduleEntryPatch,
 ): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   await updateScheduleEntry(parishId, entryId, patch);
   rev(cohortId);
 }
 
 export async function removeScheduleEntryAction(cohortId: string, entryId: string): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   await removeScheduleEntry(parishId, entryId);
   rev(cohortId);
 }
 
 export async function toggleMemberAction(cohortId: string, studentId: string, member: boolean): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   await toggleMember(parishId, cohortId, studentId, member);
   rev(cohortId);
 }
 
 export async function createPathAction(cohortId: string, name: string): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   await createPath(parishId, cohortId, name);
   rev(cohortId);
 }
 
 export async function deletePathAction(cohortId: string, pathId: string): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   await deletePath(parishId, pathId);
   rev(cohortId);
 }
 
 export async function setPathLessonsAction(cohortId: string, pathId: string, lessonIds: string[]): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   await setPathLessons(parishId, pathId, lessonIds);
   rev(cohortId);
 }
@@ -95,13 +95,13 @@ export async function togglePathMemberAction(
   studentId: string,
   member: boolean,
 ): Promise<void> {
-  const { parishId } = await requireStaff();
+  const { parishId } = await requireStaff("/", "ocia");
   await togglePathMember(parishId, pathId, studentId, member);
   rev(cohortId);
 }
 
 export async function deleteCohortAction(cohortId: string): Promise<void> {
-  const { parishId } = await requireAdmin();
+  const { parishId } = await requireAdmin("/", "ocia");
   await deleteCohort(parishId, cohortId);
   redirect("/ocia/cohorts");
 }

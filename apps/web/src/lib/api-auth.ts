@@ -1,5 +1,5 @@
-import { authorizeApiToken, lookupAppUser, verifyApiToken } from "@parvaordo/core";
-import type { Role } from "@parvaordo/shared";
+import { authorizeApiToken, enabledModules, lookupAppUser, verifyApiToken } from "@parvaordo/core";
+import type { ModuleKey, Role } from "@parvaordo/shared";
 
 // Bearer auth for the public /api/v1 surface consumed by Parvus Studio (iOS).
 // The app logs in via POST /api/v1/auth/login and receives an app-issued token
@@ -13,7 +13,7 @@ export interface ApiUser {
 }
 
 /** Verify the Bearer app token → our app user, or null (caller returns 401). */
-export async function authenticateApiRequest(req: Request): Promise<ApiUser | null> {
+export async function authenticateApiRequest(req: Request, module?: ModuleKey): Promise<ApiUser | null> {
   const m = /^Bearer\s+(.+)$/i.exec(req.headers.get("authorization") ?? "");
   if (!m?.[1]) return null;
 
@@ -28,5 +28,8 @@ export async function authenticateApiRequest(req: Request): Promise<ApiUser | nu
   if (!id) return null;
   const membership = authorizeApiToken(claims.parishId, id.memberships);
   if (!membership) return null;
+  // RFC-001 §3.5: a disabled module rejects direct API calls too, it doesn't merely hide nav.
+  // The bearer identity's parish must have the (toggleable) module enabled. (po-7diw)
+  if (module && !(await enabledModules(membership.parishId)).has(module)) return null;
   return { userId: id.userId, parishId: membership.parishId, role: membership.role, email: claims.email };
 }

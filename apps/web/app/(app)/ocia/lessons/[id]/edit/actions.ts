@@ -54,7 +54,7 @@ const rp = (lessonId: string) => revalidatePath(`/ocia/lessons/${lessonId}/edit`
 
 /** Start editing: ensure a draft exists (copying the live version), then open it. */
 export async function ensureDraftAction(lessonId: string): Promise<void> {
-  const { parishId } = await requireStaff("/ocia");
+  const { parishId } = await requireStaff("/ocia", "ocia");
   const draftId = await ensureDraft(parishId, lessonId);
   redirect(`/ocia/lessons/${lessonId}/edit?v=${draftId}`);
 }
@@ -65,7 +65,7 @@ export async function addItemAction(
   kind: LessonItemKind,
   format?: string,
 ): Promise<{ id: string; content: Record<string, unknown> }> {
-  const { parishId } = await requireStaff("/ocia");
+  const { parishId } = await requireStaff("/ocia", "ocia");
   await assertDraft(parishId, versionId);
   const content = defaultContent(kind, format);
   const id = await addLessonItem({ parishId, versionId, kind, content });
@@ -108,14 +108,14 @@ export async function updateItemAction(
   itemId: string,
   content: Record<string, unknown>,
 ): Promise<void> {
-  const { parishId } = await requireStaff("/ocia");
+  const { parishId } = await requireStaff("/ocia", "ocia");
   await assertDraft(parishId, versionId);
   await updateLessonItem({ parishId, itemId, content });
   rp(lessonId);
 }
 
 export async function deleteItemAction(lessonId: string, versionId: string, itemId: string): Promise<void> {
-  const { parishId } = await requireStaff("/ocia");
+  const { parishId } = await requireStaff("/ocia", "ocia");
   await assertDraft(parishId, versionId);
   await removeClipForItem(parishId, itemId); // clean up the item's cut clip, if any
   await deleteLessonItem({ parishId, itemId });
@@ -123,7 +123,7 @@ export async function deleteItemAction(lessonId: string, versionId: string, item
 }
 
 export async function reorderAction(lessonId: string, versionId: string, orderedIds: string[]): Promise<void> {
-  const { parishId } = await requireStaff("/ocia");
+  const { parishId } = await requireStaff("/ocia", "ocia");
   await assertDraft(parishId, versionId);
   await reorderLessonItems({ parishId, versionId, orderedIds });
   rp(lessonId);
@@ -135,7 +135,7 @@ export async function updateMetaAction(
   title: string,
   description: string,
 ): Promise<void> {
-  const { parishId } = await requireStaff("/ocia");
+  const { parishId } = await requireStaff("/ocia", "ocia");
   await assertDraft(parishId, versionId);
   await updateVersionMeta({ parishId, versionId, title, description: description || null });
   rp(lessonId);
@@ -143,14 +143,14 @@ export async function updateMetaAction(
 
 /** Publish a draft, or make an already-published version live again (rollback). */
 export async function publishAction(lessonId: string, versionId: string): Promise<void> {
-  const { parishId } = await requireStaff("/ocia");
+  const { parishId } = await requireStaff("/ocia", "ocia");
   await publishVersion({ parishId, lessonId, versionId });
   rp(lessonId);
 }
 
 /** Take the lesson offline (no live version). */
 export async function unpublishAction(lessonId: string): Promise<void> {
-  const { parishId } = await requireStaff("/ocia");
+  const { parishId } = await requireStaff("/ocia", "ocia");
   await unpublishLesson({ parishId, lessonId });
   rp(lessonId);
 }
@@ -168,7 +168,7 @@ export async function materializeClipAction(
   startMs: number,
   endMs: number | null,
 ): Promise<{ clipAssetId: string }> {
-  const { parishId, userId } = await requireStaff("/ocia");
+  const { parishId, userId } = await requireStaff("/ocia", "ocia");
   await assertDraft(parishId, versionId);
   const content = await getLessonItemContent(parishId, itemId);
   const prevClip = content.clip_asset_id as string | undefined;
@@ -186,14 +186,14 @@ export async function materializeClipAction(
 
 /** Discard a draft / delete a historical version (not the live one). */
 export async function deleteVersionAction(lessonId: string, versionId: string): Promise<void> {
-  const { parishId } = await requireStaff("/ocia");
+  const { parishId } = await requireStaff("/ocia", "ocia");
   await deleteVersion({ parishId, lessonId, versionId });
   redirect(`/ocia/lessons/${lessonId}/edit`);
 }
 
 /** Delete the whole lesson (parish-owned only). */
 export async function deleteLessonAction(lessonId: string): Promise<void> {
-  const { parishId } = await requireStaff("/ocia");
+  const { parishId } = await requireStaff("/ocia", "ocia");
   await removeClipsForLesson(parishId, lessonId); // clean up all cut clips first
   await deleteLesson(parishId, lessonId);
   redirect("/ocia/lessons");
