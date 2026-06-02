@@ -108,4 +108,26 @@ describe("dictionary (integration)", () => {
     invalidateDictionaryCache();
     expect((await listDictionary(HS)).some((x) => x.headword === "sacristy-int")).toBe(true);
   });
+
+  it("does not leak a parish-local submission or override across parishes (RLS)", async () => {
+    // St. Monica — a different parish. listDictionary's per-parish reads carry NO explicit
+    // parish_id filter; they rely entirely on RLS, so this is the regression guard for the
+    // dictionary_submissions / dictionary_overrides policies against cross-tenant leakage.
+    const OTHER = "22222222-2222-2222-2222-222222222222";
+    await createDictionarySubmission(HS, userId, { headword: "hsonlyterm", definition: "Holy Spirit only." });
+    await upsertOverride(HS, entryId, { definition: "HS-only override.", notes: "hs-private" });
+
+    // Holy Spirit sees its own local submission…
+    expect((await listDictionary(HS)).find((x) => x.headword === "hsonlyterm")?.isLocal).toBe(true);
+
+    // …but another parish must not.
+    const other = await listDictionary(OTHER);
+    expect(other.find((x) => x.headword === "hsonlyterm")).toBeUndefined();
+    // The shared universal entry is still visible — with its universal definition, never
+    // Holy Spirit's private override (overrides must not cross parishes either).
+    const shared = other.find((x) => x.headword === "eucharist-int");
+    expect(shared?.isLocal).toBe(false);
+    expect(shared?.definition).toBe("The Real Presence.");
+    expect(shared?.overrideNote).toBeNull();
+  });
 });
