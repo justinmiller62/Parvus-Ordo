@@ -104,12 +104,13 @@ A parish runs on its people — its committees, boards, ministries, and the even
 > *As a parishioner, I want one calm screen telling me what I've been asked to help with.*
 1. After login, the default landing is **"What's next for me?"** — the warm, personal view of my Requests: things people have asked of me, shifts this week, upcoming meetings (RSVP), RSVP'd events, group activity, forms awaiting me.
 
-### 3.10 Requests — being asked, and asking, gently
-> *As anyone, I want one warm place showing what I've been asked to help with; as a leader, I want to ask a member for help without it ever feeling like a work order.*
-1. A chair turns a meeting follow-up into a Request — *"Could you bring the readings on Sunday?"* — and either asks Maria directly or posts it to the group's board for whoever can help.
-2. Maria sees it in her personal **"my requests"** alongside everything else asked of her, each with a clear, kind next step.
-3. She says **yes** — or **"not this time,"** with no guilt; if yes, she can add a comment, tick off subtasks, and mark it done. The requester sees it's handled and a small **thank-you** appears.
-4. The group's **board** shows what's still hoped for, so the ministry can pick things up together — a shared to-do, never a scoreboard.
+### 3.10 Requests — being asked, asking, and tending the list, gently
+> *As anyone, I want one warm place showing what I've been asked to help with and an easy way to work through it; as a leader, I want to ask for help and see what's still open without it ever feeling like a work order.*
+1. A chair turns a meeting follow-up into a Request — *"Could you bring the readings on Sunday?"* — and either asks Maria directly or posts it to the group's **board** for whoever can help.
+2. Maria sees it in her personal **"my requests"** alongside everything else asked of her, sorted by what's soonest, each with a clear, kind next step.
+3. She opens it: reads the details, asks a quick question in **comments**, ticks off a **subtask** or two, and either says **yes** or **"not this time,"** with no guilt. If she can't, she **hands it back** and the board offers it to someone else.
+4. As she works it, its **status** moves open → in-progress → done; the requester sees it's handled and a small **thank-you** appears.
+5. The coordinator scans the **board** — filtered to what's still open, sorted by due date — for a gentle overview of what's outstanding by person, so they know where a kind nudge or a re-ask would help. Nothing quietly slips; no one is made to feel they "owe."
 
 ---
 
@@ -135,9 +136,12 @@ A parish runs on its people — its committees, boards, ministries, and the even
 
 > **Keep it lightweight — those capabilities and nothing more.** No SLAs, no custom fields, no automation rules, no approval-chain workflows, no enterprise ticketing cruft. Simple, warm, fast.
 
-**Two surfaces:**
-- **Group boards** — each group (ministry / board / committee) has its own shared board of Requests; a leader can ask a specific member, or post it for whoever can help to claim. A shared to-do the group works together, never a leaderboard.
-- **Personal "my requests"** — every person has one place showing every Request involving them across their groups, each with a clear, kind next step. **"What's next for me?" (3.9) is this personal view.**
+**The working experience — a real, gentle to-do / ticketing flow (just soft-toned and lightweight):**
+
+- **The group board — a usable working list.** Each group (ministry / board / committee) has a shared board of its Requests, organized by status (**open → assigned → in-progress → done**, plus declined / cancelled). **Filter and sort by status, priority, due date, or person**; tend the list — pick something up, ask a member, re-prioritize, or hand it on. A shared list the group works together, warm and never a leaderboard.
+- **Working a Request.** Open one to see its **details** and a tap back to its **source**; talk it through in **comments**, tick off its **subtasks**, move its **status** along, **hand it to someone else** (reassign) if you can't, and **mark it done** — with a small thank-you. Recurring Requests quietly come back around on schedule.
+- **A leader's overview — so nothing slips.** Leaders and staff get a gentle overview of everything still open across the group, **grouped by person and by status, with anything past its hoped-for date surfaced kindly** — so a coordinator can see at a glance where a gentle nudge or a re-ask would help. A clear picture of what's outstanding, framed as care — never a scoreboard or a ledger of who "owes."
+- **Personal "my requests" — a real, friendly to-do list.** Every person has one place with every Request involving them across their groups: what they've said yes to, what's been asked, what's coming back around — **sortable by due or priority**, each with a clear, kind next step, and worked the same way (open, comment, subtasks, status, done). **"What's next for me?" (3.9) is its friendliest face.**
 
 **Every Gather flow becomes a Request** (instead of each reinventing pending/assign/track logic): Request-to-Join approvals (4.2), meeting follow-ups (4.3), sign-up & shift needs (4.4 / 4.5), pending-parishioner approvals (4.9), Forms-Engine submissions to review (4.12), and staff-initiated asks. The health dashboard (4.10) reflects the same open items.
 
