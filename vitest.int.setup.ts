@@ -26,6 +26,7 @@ export default async function setup(): Promise<void> {
     throw new Error(
       `Integration DB at DATABASE_URL is not reachable: ${reason}. ` +
         "Start it with `pnpm db:up` (then `pnpm db:migrate && pnpm db:seed`).",
+      { cause: err },
     );
   }
   try {

@@ -32,6 +32,8 @@ jobs:
         run: pnpm format:check
       - name: Typecheck
         run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
       - name: Unit tests
         run: pnpm test
       # Route-tree smoke: `next build` validates the Next route tree (duplicate or
