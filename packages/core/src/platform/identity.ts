@@ -1,5 +1,6 @@
 import type { Role } from "@parvaordo/shared";
 import { getDb } from "../db/client";
+import { parishBaseDomain, resolveParishRef } from "./hostname";
 
 export interface ParishMembership {
   parishId: string;
@@ -30,16 +31,13 @@ interface LookupRow {
   parish_hostname: string | null;
 }
 
+const LOGIN_LOOKUP_COLUMNS = "user_id, display_name, is_super_admin, role, parish_id, parish_name, parish_hostname";
+
 /**
- * Map an authenticated email to the app's identity + ALL memberships via the
- * login_lookup SECURITY DEFINER function (cross-tenant, pre-tenant-context).
- * Returns null when no matching user exists.
+ * Shape the raw login_lookup rows into an AppIdentity (one membership per parish). Shared
+ * by lookupAppUser and lookupViewerContext so both derive identity identically.
  */
-export async function lookupAppUser(email: string): Promise<AppIdentity | null> {
-  const { rows } = await getDb(null).query<LookupRow>(
-    "SELECT user_id, display_name, is_super_admin, role, parish_id, parish_name, parish_hostname FROM login_lookup($1)",
-    [email],
-  );
+function buildIdentity(rows: LookupRow[]): AppIdentity | null {
   const first = rows[0];
   if (!first) return null;
 
@@ -66,6 +64,47 @@ export async function lookupAppUser(email: string): Promise<AppIdentity | null> 
     parishId: primary?.parishId ?? null,
     memberships,
   };
+}
+
+/**
+ * Map an authenticated email to the app's identity + ALL memberships via the
+ * login_lookup SECURITY DEFINER function (cross-tenant, pre-tenant-context).
+ * Returns null when no matching user exists.
+ */
+export async function lookupAppUser(email: string): Promise<AppIdentity | null> {
+  const { rows } = await getDb(null).query<LookupRow>(`SELECT ${LOGIN_LOOKUP_COLUMNS} FROM login_lookup($1)`, [email]);
+  return buildIdentity(rows);
+}
+
+/** getViewer's identity + the request host's parish, resolved together in one read. */
+export interface ViewerContext {
+  identity: AppIdentity | null;
+  /** The parish the request hostname maps to (slug / custom domain), or null for the apex
+   * or an unknown host. An UNTRUSTED hint: pickActiveMembership only honors it when it
+   * matches one of the user's own memberships, so resolving it here changes nothing about
+   * the tenant boundary — only how it is fetched. */
+  hostParishId: string | null;
+}
+
+/**
+ * One-round-trip resolve of the two pre-tenant lookups getViewer needs on every request:
+ * the caller's identity (login_lookup) AND the request host's parish (resolve_parish_id),
+ * folded into a SINGLE getDb(null) read instead of two (RFC-002 §2B2). resolve_parish_id is
+ * STABLE and its args don't depend on the login_lookup rows, so it evaluates once; it
+ * piggybacks on the identity round trip that always happens, so getViewer needs no separate
+ * host round trip (the standalone resolveParishIdForHost + its TTL cache stay for the public
+ * /apply path). Returns identity null when no user matches the email — the host is then
+ * irrelevant and getViewer short-circuits.
+ */
+export async function lookupViewerContext(email: string, host: string | null): Promise<ViewerContext> {
+  const ref = resolveParishRef(host, parishBaseDomain());
+  const slug = ref.kind === "slug" ? ref.slug : null;
+  const domain = ref.kind === "custom" ? ref.domain : null;
+  const { rows } = await getDb(null).query<LookupRow & { host_parish_id: string | null }>(
+    `SELECT ${LOGIN_LOOKUP_COLUMNS}, resolve_parish_id($2, $3) AS host_parish_id FROM login_lookup($1)`,
+    [email, slug, domain],
+  );
+  return { identity: buildIdentity(rows), hostParishId: rows[0]?.host_parish_id ?? null };
 }
 
 /**
