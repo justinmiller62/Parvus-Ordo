@@ -35,12 +35,15 @@ export async function listParishMembers(parishId: string): Promise<ParishMember[
   }));
 }
 
-/** Rename a member. Updates the global users.display_name, but RLS on the
- * memberships EXISTS-check pins it to a member of THIS parish. */
+/** Rename a member. Updates the global (RLS-less) users.display_name, so the parish
+ * guard is kept SELF-CONTAINED: the EXISTS is scoped to the acting parish ($3)
+ * explicitly rather than relying on transitive memberships RLS. The cross-tenant
+ * guarantee ("you may only rename a member of THIS parish") then holds on its own
+ * terms and survives any future change to memberships RLS (po-73w). */
 export async function setMemberName(parishId: string, userId: string, displayName: string): Promise<void> {
   await getDb(parishId).query(
-    "UPDATE users SET display_name = $2 WHERE id = $1 AND EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = $1)",
-    [userId, displayName],
+    "UPDATE users SET display_name = $2 WHERE id = $1 AND EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = $1 AND m.parish_id = $3)",
+    [userId, displayName, parishId],
   );
 }
 
