@@ -1,6 +1,6 @@
 # RFC-005 — Parvus Gather (Parish Ministries, Boards, Events & Requests)
 
-**Status:** Draft — 4 decisions pending (see §18); rfc-ready held until the foundational ones (esp. Q1 Members) resolve · **Addresses:** po-2whw (RFC) from **po-h99 / PRD-001** (`prd-approved`) · **Source spec:** `docs/specs/parvus-gather.md` (11 sections) + LOCKED `requests-requestables.md`
+**Status:** **Final — all 4 decisions resolved** (user, 2026-06-02; see §18) · **rfc-ready**, awaiting the user's approval gate before decomposition · **Addresses:** po-2whw (RFC) from **po-h99 / PRD-001** (`prd-approved`) · **Source spec:** `docs/specs/parvus-gather.md` (11 sections) + LOCKED `requests-requestables.md`
 **Builds on:** RFC-001 (module registry/`parish_modules` — Gather is a new toggleable module) · RFC-004 (systems-admin toggles it) · reuses `core/calendar` (iCal), `core/people` (interim directory), `core/onboarding` (invites), `core/media`+`assets` (vault/photos)
 **Author:** platform-architect · **Directive:** full module, no shortcuts, iterative T1–T8 (T1 = Groups+RBAC = P0), full 4-lens Censor review per bead
 
@@ -26,10 +26,10 @@ handoff. Gather replaces that with one warm, touch-friendly home. Grounding in t
 | Per-parish module on/off | `MODULES` registry + `parish_modules` + `resolveEnabled` (RFC-001, built) — toggleable = ocia/studio | add **`gather`** as a 3rd toggleable module (§2) |
 | Group RBAC | parish `membership_role` enum only (coarse) | **group-scoped dynamic roles + permission bundles** (§3.2) — net-new |
 | Meetings calendar | `core/calendar/ical.ts` (parse/fetch/window) | iCal **feed generation** per group (§6) — net-new, reuses the lib |
-| Members directory | `core/people` (`listParishMembers`/`setMemberRole`/…) over `users`+`memberships` | interim source for Gather; master Members module "not yet specced" (Q1) |
+| Members directory | `core/people` (`listParishMembers`/`setMemberRole`/…) over `users`+`memberships` | **interim directory = `users`+`memberships`+`core/people`** (Q1 ✓); a future Members module absorbs the Gather-owned `pending_parishioner` later |
 | Invites | `core/onboarding/invite.ts` (`inviteMember`) | extend for group invites + **`pending_parishioner`** (§11) |
 | Files | `assets` (0007: scope/provider bunny-r2/kind/status) | **Document Vault** + group photos = new asset kinds (§9) |
-| Out-of-band jobs | only `infra/workers/clip-cutter` | push, email-broadcast, scheduled reminders/expiry → **net-new workers** (Q3) |
+| Out-of-band jobs | only `infra/workers/clip-cutter` | push, email-broadcast, scheduled reminders/expiry → **net-new infra the user + chief-of-staff stand up separately** (Q3); Gather **designs against** it but ships no bead that depends on it (§17.1) |
 
 **Migration tip is `0030`** (RFC-001/004 migrations are landing now); Gather's migrations are **`0031+`,
 numbered next-free at build time** (collision rule — never hardcode).
@@ -49,7 +49,10 @@ mutations→Server Actions, external/iOS→`/api/v1`, AI→MCP):
   redirect-home when disabled) + `requireGroupPermission` per action. RSC reads + thin Server Action shims.
 - **`apps/web/app/api/v1/gather/`** — external/iOS + public no-login surfaces (public sign-ups, directory
   cards, public forms), the per-group **iCal feed**, and day-of check-in.
-- **`infra/workers/`** — net-new scheduled/queue workers for push, email broadcast, and time-based nudges.
+- **`infra/workers/`** — push, email-broadcast, and scheduled time-based-nudge workers are **net-new external
+  infra** (stood up separately by the user + chief-of-staff, Q3); Gather's worker-touching code sits behind a
+  thin notification **port** so the scheduled slices light up when that infra lands — **no Gather build bead
+  depends on it** (§17.1).
 
 **Enablement.** Add to `MODULES` (shared): `gather` — `toggleable: true`, `roles: every role`
 (parishioner-facing community module), **`defaultEnabled: false`** *(recommended — a net-new major module
@@ -222,7 +225,10 @@ custom fields, automation rules, or approval chains (locked).
   kind next step. **"What's next for me?" (the daily landing) is its friendliest face.**
 - **Leader who-owes-what overview** (per group): outstanding grouped by person + status, **overdue
   surfaced kindly** — framed as care, never a ledger.
-- **Parish-staff view** (Q4, §18): an optional office/pastor view of all open Requests parish-wide.
+- **No parish-wide staff view** *(Q4 resolved — deferred):* Requests stay **per-group boards + personal
+  inbox only** this pass. A parish-wide office/pastor Requests view is intentionally **out of scope for now**
+  — the per-group leader who-owes-what overview + the §11 health dashboard cover the near-term staff need;
+  revisit later if demand appears.
 
 ### 4.4 Emission — every Gather flow becomes a Requestable
 A single core `createRequestable({source_type, source_id, …})` is called by each flow instead of
@@ -245,9 +251,10 @@ Status/labels and all surfaced copy come from shared **invitation-first constant
 - **Request-to-Join:** `gather_join_requests(parish_id, group_id, user_id, message, status)` → on create,
   **emits a Requestable** to the group's `approve_join_request` role-pool. Approve → `gather_group_members`
   row + warm welcome; decline → neutral notice.
-- **Application route (pending Q2):** groups requiring an application route through a Forms-Engine
-  Application (§10) instead of a simple request; admin chooses per group. *Designed against the minimal
-  forms slice (Q2).* Auto-suggest 3–5 groups by declared interest on onboarding.
+- **Application route (Q2 ✓):** groups requiring an application route through the **minimal Forms Application
+  slice that ships with T2** (Application type + reviewer workflow → Requestable, §10) instead of a simple
+  request; admin chooses per group. The full builder/field-types land at T7. Auto-suggest 3–5 groups by
+  declared interest on onboarding.
 
 ## 6. Meetings  *(T3)*
 - `gather_meetings` (group_id, starts_at, location, virtual_link, series_id, quorum snapshot, status) +
@@ -259,14 +266,19 @@ Status/labels and all surfaced copy come from shared **invitation-first constant
 - **Minutes → locked PDF** (reuse the PDF path used elsewhere; store as an `assets` row, kind `document`).
 - **Follow-ups → Requestables** (§4.4) with optional due date, on the board + each person's inbox.
 - **iCal feed:** per-group personal subscribable URL `/api/v1/gather/groups/:id/calendar.ics` — **generate**
-  VEVENTs (net-new) reusing `core/calendar` primitives + the existing ICS conventions. (Infra: hosting an
-  authenticated feed URL — Q3 confirm.)
+  VEVENTs (net-new) reusing `core/calendar` primitives + the existing ICS conventions. This is a plain
+  `/api/v1` GET route (no push, no worker) — **not infra-blocked; ships with T3.**
+- **Meeting reminders** (time-based nudges before a meeting) need the **scheduled-job worker = external infra
+  (Q3) → this slice is BLOCKED ON EXTERNAL INFRA** and excluded from the T3 build beads; the rest of T3
+  (agenda, RSVP, quorum, minutes, follow-up Requestables, iCal feed) proceeds (§17.1).
 
 ## 7. Schedules & Shifts + Sign-Ups  *(T4)*
 - **Shifts:** `gather_shift_needs` (recurring need: role, datetime pattern) → materialized
   `gather_shift_slots` (open/claimed/no_show); volunteers self-claim; **swap request** notifies eligible
-  replacements; coordinator open/filled/no-show view; **24h reminder** (worker — Q3). Unfilled needs can
-  **emit a Requestable** to the group pool.
+  replacements; coordinator open/filled/no-show view; unfilled needs **emit a Requestable** to the group
+  pool. The **24h shift reminder** needs the scheduled-job worker → **BLOCKED ON EXTERNAL INFRA (Q3)**, so
+  that one nudge is excluded from the T4 beads; everything else in T4 (claim/swap, sign-ups, templates, CSV)
+  proceeds (§17.1).
 - **Sign-Ups:** `gather_signups` (visibility public|parish|group, format slot|item|open) +
   `gather_signup_fields` (the **custom field editor**: short/long text, number, dropdown, multi-select,
   date, file, signature; required/help-text) + `gather_signup_responses` (claim/release) +
@@ -274,13 +286,16 @@ Status/labels and all surfaced copy come from shared **invitation-first constant
   Live response table; **CSV export**. Public no-login claim via `/api/v1/gather/signups/:id`.
 - *Sign-ups are for claiming/contributing; structured applications/waivers use the Forms Engine (§10).*
 
-## 8. Communication  *(T5)*
+## 8. Communication  *(T5 — BLOCKED ON EXTERNAL INFRA, Q3)*
+**This entire tier depends on the push + email-broadcast providers + the scheduled-job worker, which the user
++ chief-of-staff stand up separately (Q3).** Gather **designs** T5 in full now but produces **no build bead**
+for it until that infra exists (§17.1); the data model + core are written behind a `notify.*` port so T5
+lights up by swapping the adapter when the providers land.
 - `gather_broadcasts` (group_id, channels[email,push], target {group|role|ad-hoc list}, important bool) +
   `gather_broadcast_receipts` (per-recipient open/ack). Replies route to a **group inbox**
   (`gather_group_inbox`), never the sender's personal email. **Read receipts** (per-broadcast counts;
   per-recipient to sender only). **Email failsafe:** anything pushed also emails if the app isn't opened in
-  12h (worker). **"Important"** → 24h gentle follow-up to non-acknowledgers (worker, capped). *All of this
-  needs the push + email-broadcast infra — Q3.*
+  12h (worker). **"Important"** → 24h gentle follow-up to non-acknowledgers (worker, capped).
 
 ## 9. Document Vault  *(T6)*
 Per-group files **reuse the `assets` table** (0007) — add asset kinds `document`/`group_photo`; add
@@ -304,8 +319,9 @@ w/e-sign→PDF/Inquiry), rich **field types**, **conditional logic**, **multi-pa
 **e-signature + PDF**, **CSV/PDF export**, **public embed widget** (no-login, on the parish site), and a
 **starter-template library** (volunteer application, ministry-interest survey, committee application,
 photo-release waiver, parental consent, scholarship, generic inquiry). Unified **Forms inbox** ("Submitted
-by me" / "To review") aggregates across modules. *Engine code is reusable shared infra; flagged for a
-possible **minimal Application slice at T2** (Q2) so Request-to-Join applications aren't blocked on full T7.*
+by me" / "To review") aggregates across modules. *Engine code is reusable shared infra; the **minimal
+Application slice (Application type + reviewer workflow → Requestable) ships at T2** (Q2 ✓) so Request-to-Join
+applications aren't blocked on the full T7 engine.*
 
 ## 11. Non-parishioner invites + Health Dashboard + Mobile  *(T8)*
 - **Non-parishioner invite — DIRECT, no staff-approval gate** *(human override po-wisp-8qsb8 of PRD §3.7/§4.9
@@ -317,7 +333,9 @@ possible **minimal Application slice at T2** (Q2) so Request-to-Join application
   groups, no Giving). A second group's invite simply **adds that group** to the same scoped account (no
   queue). **Staff oversight is post-hoc** — via the People manager (see/remove these scoped members); staff
   do **not** gate the invite. Full **audit** (invite/accept/remove). *No approval Requestable is emitted —
-  the gate is gone.* *(Master-Members seam — Q1: where the invited-member record ultimately lives.)*
+  the gate is gone.* **(Q1 ✓:** the invited/pending record is a **Gather-owned `pending_parishioner` table**
+  over the interim `users`+`memberships`+`core/people` directory; the future Members module absorbs it later —
+  keep it self-contained so that migration is a lift, not a rewrite.)
 - **Health dashboard** (`health_dashboard.view`, parish-staff): per-group health card (last meeting,
   attendance sparkline, member count + 90-day change, last broadcast, last sign-up, **overdue Requestables**,
   open join-requests, pending form submissions). Computed via SQL aggregates per group. **Dormancy flag**
@@ -325,8 +343,10 @@ possible **minimal Application slice at T2** (Q2) so Request-to-Join application
   preserved).
 - **Mobile surface:** the unified ParvusOrdo app — "What's next for me?" + Requests as primary surfaces,
   Discovery, group pages, sign-up claim, meeting agendas/RSVP/threads, iCal subscribe, Events RSVP/shifts/
-  check-in, push inbox, profile/family, Giving (Vanco link-out). *Whether the unified app shell exists or
-  is part of this work — Q3; web-first RSC is the primary surface regardless.*
+  check-in, push inbox, profile/family, Giving (Vanco link-out). **The unified native app shell is external
+  infra the user + chief-of-staff stand up separately (Q3) → BLOCKED ON EXTERNAL INFRA; no Gather build bead
+  this pass.** **Web-first RSC is the primary surface and ships every tier regardless** (fully usable in a
+  phone browser); the native shell later consumes the same `/api/v1/gather/**` surface (§17.1).
 
 ## 12. Data model & migrations (append-only, `0031+`, RLS on every table)
 One migration per tier keeps the build aligned to the delivery sequence; numbers are **next-free at build
@@ -397,41 +417,66 @@ Gather must feel like a **welcoming parish hall**, not a dashboard — built for
 
 ## 17. Delivery sequence (T1–T8) — order, not scope
 Every tier ships **in full**, each bead under **full 4-lens Censor review** (directive). **T1 beads = P0.**
+Annotations reflect the **resolved** §18 decisions: **✅ proceeds now**; **⛔ infra** = a slice **blocked on
+external infra** (Q3) — designed here, but **not** decomposed into a build bead until that infra lands (§17.1).
 ```
-T1 (P0)  Groups primitive + group RBAC engine + ministries reconcile      ┐ foundation —
-+        Requests pillar (requestables/comments/subtasks + emission spine) ┘ built together, everything depends on them
-T2  Directory + Request-to-Join (+ minimal Forms Application slice, pending Q2)
-T3  Meetings (+ iCal feed generation; push/feed infra pending Q3)
-T4  Schedules & Shifts + Sign-Ups
-T5  Communication (push + email broadcast infra pending Q3)
-T6  Document Vault (assets reuse)
-T7  Events + full Forms Engine
-T8  Non-parishioner invites + Health Dashboard + Mobile surface (shell pending Q3; Members seam Q1)
+T1 (P0)  Groups primitive + group RBAC engine + ministries reconcile      ┐ foundation —      ✅
++        Requests pillar (requestables/comments/subtasks + emission spine) ┘ all depends on it  ✅
+T2  Directory + Request-to-Join + minimal Forms Application slice (Q2)                          ✅
+T3  Meetings: agenda / RSVP / quorum / minutes / follow-ups + iCal feed                         ✅
+       └ meeting reminders (time-based push)                                                    ⛔ infra
+T4  Schedules & Shifts + Sign-Ups                                                               ✅
+       └ 24h shift reminder (scheduled worker)                                                  ⛔ infra
+T5  Communication (push + email broadcast)                                          ⛔ ENTIRE TIER infra
+T6  Document Vault (assets reuse)                                                               ✅
+T7  Events (RSVP / check-in / shifts / sign-ups / booths) + full Forms Engine                  ✅
+       └ event live-alert push                                                                  ⛔ infra
+T8  Non-parishioner invites (Q1 pending_parishioner) + Health Dashboard                         ✅
+       └ unified native mobile app shell                                                        ⛔ infra
 ```
-Inter-tier deps: T2–T8 all consume **Groups (T1)** and emit **Requestables**. Forms (T7) is referenced by
-T2 (applications) — hence the Q2 minimal-slice question. Mobile (T8) depends on Q3. Decompose per tier into
-build beads only after the **foundational** §18 questions resolve (esp. Q1) and the user approves (2nd gate).
+Inter-tier deps: T2–T8 all consume **Groups (T1)** and emit **Requestables**. The minimal **Forms Application
+slice ships with T2** (Q2); the full Forms Engine is T7. Decompose per tier into build beads **after the user
+approves this final RFC** (the 2nd gate) — all foundational §18 questions are now resolved.
 
-## 18. Decisions & open questions
-Four genuine decisions are mailed to the rector (`QUESTION[po-2whw]`); the RFC is written around the
-**recommended** answers with dependent sections isolated. The rest are decide-and-noted.
+### 17.1 External-infra isolation (Q3) — decomposition rule
+The user + chief-of-staff stand up the net-new infra **separately**: **push notifications, an email/broadcast
+provider, a scheduled-job (cron) worker, and the unified native mobile app shell.** Hard rule for the rector's
+decomposition: **design these now, but emit NO build bead that depends on a service that doesn't exist yet.**
+- **Blocked on external infra** (designed, not beaded yet): **T5 Communication in full** (push + email
+  broadcast); every **time-based nudge** that needs the scheduled worker — meeting reminders (T3), the 24h
+  shift reminder (T4), event live-alerts (T7), and the broadcast email-failsafe / "important" follow-up (T5);
+  and the **native mobile app shell** (T8).
+- **Proceeds now** (no external-infra dependency): **T1, T2, T4, and the non-push core of T3** (agenda, RSVP,
+  quorum, minutes, follow-up Requestables, **iCal feed** — a plain `/api/v1` route), plus **T6**, **T7**
+  (events + Forms, minus live-alert push), and **T8** (invites + health dashboard, minus the native shell).
+- **Isolation mechanics:** recurring-Requestable regeneration runs **synchronously on the `done` transition**
+  (§4.2), so recurrence is **not** worker-blocked — only *time-based* reminders are. All notification sends go
+  through a thin **port interface** (`notify.push` / `notify.email`) with a no-op stub until the providers
+  land, so core compiles and ships now and each blocked slice lights up by swapping the adapter — no rework.
+  When the infra exists, the blocked slices are filed as their **own follow-up beads**, blocked-on those infra
+  deliverables — so the unblocked work is never gated behind a service that isn't there yet.
 
-- **Q1 (biggest) — Parish Members master directory.** Spec says it's "not yet specced," yet Gather reads
-  members and writes `pending_parishioner`. *Recommend:* **T1 builds against the existing `users` +
-  `memberships` + `core/people` as the interim directory**, and `pending_parishioner` ships as a
-  Gather-owned table the future Members module absorbs. Or: spec a minimal Members capability first
-  (blocks T1). **Need the call before decomposing T1.**
-- **Q2 — Forms Engine timing.** T2 Request-to-Join can require an application (a form). *Recommend:* land a
-  **minimal Forms slice (Application type + reviewer workflow → Requestable) with T2**, full builder/types at
-  T7. Or keep all forms at T7 (T2 applications use a simple request only until then).
-- **Q3 — Infra availability (push, email-broadcast, scheduled-job worker, unified mobile app shell).** iCal
-  parsing exists in `core/calendar`; **push, an email/broadcast provider, a scheduled/cron worker, and the
-  unified app shell are net-new.** *Recommend:* stand up a single scheduled-job worker + confirm a push +
-  email provider as a T3/T5 infra prerequisite; web-first RSC is the primary surface and the native shell is
-  a separate track. **Confirm what exists vs. what this work stands up** (gates T3/T5/T8 delivery, not design).
-- **Q4 — Requests board scope.** Per-group boards + personal inbox are locked. *Recommend:* **also add a
-  parish-wide staff view** of all open Requests (cheap; staff need who-owes-what oversight, which the health
-  dashboard already implies). Or keep group-scoped + personal only.
+## 18. Decisions — all four resolved (user, 2026-06-02)
+The four genuine decisions are **closed** by the user; the RFC above is finalized around them. Recorded here
+for the rector's decomposition.
+
+- **Q1 — Parish Members master directory → RESOLVED (interim directory).** T1 builds against the **existing
+  `users` + `memberships` + `core/people`** as the interim parish directory; **`pending_parishioner` ships as
+  a Gather-owned table** the future Members module absorbs later. No Members module is specced and **nothing
+  blocks T1.** (§1, §5, §11, §12.)
+- **Q2 — Forms Engine timing → RESOLVED (minimal slice at T2).** A **minimal Forms slice — the Application
+  type + reviewer workflow → Requestable — ships with T2**; the full builder + field-types + other form types
+  land at **T7.** T2 Request-to-Join applications are therefore not blocked on T7. (§5, §10, §17.)
+- **Q3 — Net-new infra → RESOLVED (external; stood up separately; do NOT bead).** The **push, email/broadcast
+  provider, scheduled-job worker, and unified native mobile app shell are stood up separately by the user +
+  chief-of-staff** — the Gather fleet does **not** build them. The infra-dependent slices (T5 in full, all
+  time-based reminders, the native shell) are **designed but marked BLOCKED ON EXTERNAL INFRA**, and **no
+  build bead may depend on a service that doesn't exist yet.** Decomposition is **isolated** so **T1 / T2 / T4
+  / the non-push core of T3** (and the non-push parts of T6/T7/T8) proceed now (§17.1). The blocked slices
+  become their own follow-up beads when the infra lands.
+- **Q4 — Requests board scope → RESOLVED (group + personal only).** Requests stay **per-group boards +
+  personal inbox only**; **no parish-wide staff view** this pass (revisit later). The per-group leader
+  who-owes-what overview + the §11 health dashboard cover the near-term staff need. (§4.3.)
 
 **Decide-and-noted** (reversible, in-doc): `gather` `defaultEnabled:false` (opt-in per parish, §2); **ministries
 renamed+extended into `gather_groups`** touching 3 readers (§3.4 — flag if you want the parallel-table
@@ -442,8 +487,10 @@ queue policies are now **moot**); Giving = Vanco **link-out only**; public surfa
 (seam noted); full scope, the spec's Out list (§4.15) are deliberate **non-goals** (none pulled in).
 
 ## 19. Risks
-- **Members dependency (Q1)** is the critical path — decomposing T1 against the wrong directory assumption is
-  expensive; resolve first.
+- **Members dependency (Q1 — resolved):** T1 builds on the interim `users`+`memberships`+`core/people`
+  directory with a Gather-owned `pending_parishioner`; the future Members module must absorb that table
+  cleanly — keep `pending_parishioner` self-contained (no cross-table coupling) so the later migration is a
+  lift, not a rewrite.
 - **Group-scoped RBAC is a new authz subsystem** layered inside the parish tenant — the Censor security pass
   must verify visibility + `requireGroupPermission` can't be bypassed (esp. via `/api/v1` and public routes).
 - **Direct non-parishioner invites** (no staff gate, po-wisp-8qsb8) let a group manager grant scoped parish
@@ -451,8 +498,11 @@ queue policies are now **moot**); Giving = Vanco **link-out only**; public surfa
   must verify it can't be widened (no parish-wide reads, no second-group escalation, staff-removable).
 - **Requests is the coordination spine** — if each flow re-invents pending/assign/track instead of calling
   `createRequestable`, the module fractures; enforce the single emission path in review.
-- **Net-new infra (Q3)** (push/email/workers) gates T3/T5/T8 *delivery*; sequence the infra prerequisite so
-  tiers aren't blocked late.
+- **External infra (Q3 — resolved external):** push / email / scheduled-worker / native-shell are stood up by
+  the user + chief-of-staff, **not** the Gather fleet. The risk shifts to **leakage** — a build bead must
+  never depend on a service that doesn't exist yet; keep every notification send behind the `notify.*` port
+  (§17.1) and file the blocked slices as separate infra-gated follow-ups, so the unblocked majority ships
+  uninterrupted.
 - **`ministries` rename touches existing surfaces** (§3.4) — coordinate with in-flight OCIA/people beads;
   prove `next build` + the people/home reads still pass.
 - **Tone regression risk** — "lightweight + invitation-first" must be defended every tier (it's the product's
