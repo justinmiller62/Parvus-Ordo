@@ -345,6 +345,13 @@ function singleOccurrence(
   return [{ date, time: allDay ? null : baseTime }];
 }
 
+// Defensive per-event cap on RRULE expansion. The visible window is only ~3 months, so any
+// legitimate frequency (daily/weekly/monthly) stays far below this; an unbounded sub-daily
+// RRULE (e.g. FREQ=SECONDLY or MINUTELY with no COUNT/UNTIL) from an admin-added — and
+// therefore attacker-influenceable — feed would otherwise expand to >100k occurrences inside
+// `between` and hang the request. We stop generation at the cap (truncate, never throw).
+const MAX_RRULE_OCCURRENCES_PER_EVENT = 1000;
+
 function expandRecurring(
   dtstart: ICAL.Time,
   rrule: unknown,
@@ -357,7 +364,13 @@ function expandRecurring(
   const rule = rrulestr(`DTSTART:${dtstart.toICALString()}\nRRULE:${rruleText}`);
   const after = utcDate(opts.rangeStart, 0, 0, 0);
   const before = utcDate(opts.rangeEnd, 23, 59, 59);
-  const dates = (rule as RRule).between(after, before, true);
+  // Iterate with a callback so generation stops at the cap instead of materializing every
+  // occurrence first — this bounds the work for a pathological sub-daily feed.
+  const dates: Date[] = [];
+  (rule as RRule).between(after, before, true, (occ) => {
+    dates.push(occ);
+    return dates.length < MAX_RRULE_OCCURRENCES_PER_EVENT;
+  });
   const exdates = collectExdates(ve);
 
   const occurrences: Occurrence[] = [];
