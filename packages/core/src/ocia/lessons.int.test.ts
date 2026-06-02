@@ -11,8 +11,10 @@ import {
   getDb,
   getLessonDetail,
   getLessonForEdit,
+  getLessonItemContent,
   getManageLessons,
   getPublishedLessons,
+  isEditableParishDraft,
   publishVersion,
   unpublishLesson,
 } from "@parvaordo/core";
@@ -251,5 +253,41 @@ describe("manage-list supporting indexes (scalability, po-edu)", () => {
     const defs = await lessonVersionIndexDefs();
     const redundant = defs.filter((d) => /USING btree \(lesson_id\)\s*$/.test(d));
     expect(redundant).toEqual([]);
+  });
+});
+
+// po-co4 — these two readers were extracted from the lesson-edit Server Action (which
+// held the only raw getDb in apps/web). Exercise them directly in core.
+describe("edit-guard readers (po-co4)", () => {
+  it("isEditableParishDraft: own unpublished parish draft → true; published or another parish → false", async () => {
+    const admin = await userId("admin@parvaordo.test");
+    const id = await createLesson({ parishId: HOLY_SPIRIT, createdBy: admin, title: "Editable?" });
+    const v = (await getLessonForEdit(HOLY_SPIRIT, id))!.selected.versionId;
+
+    expect(await isEditableParishDraft(HOLY_SPIRIT, v)).toBe(true);
+    // RLS hides HS's parish version from another parish → not an editable draft for them.
+    expect(await isEditableParishDraft(ST_MONICA, v)).toBe(false);
+
+    await publishVersion({ parishId: HOLY_SPIRIT, lessonId: id, versionId: v });
+    expect(await isEditableParishDraft(HOLY_SPIRIT, v)).toBe(false);
+
+    await deleteLesson(HOLY_SPIRIT, id); // self-clean
+  });
+
+  it("getLessonItemContent: returns the item's content blob, {} when the item is gone", async () => {
+    const admin = await userId("admin@parvaordo.test");
+    const id = await createLesson({ parishId: HOLY_SPIRIT, createdBy: admin, title: "Item content" });
+    const v = (await getLessonForEdit(HOLY_SPIRIT, id))!.selected.versionId;
+    const itemId = await addLessonItem({
+      parishId: HOLY_SPIRIT,
+      versionId: v,
+      kind: "reading",
+      content: { html: "<p>hi</p>" },
+    });
+
+    expect(await getLessonItemContent(HOLY_SPIRIT, itemId)).toEqual({ html: "<p>hi</p>" });
+    expect(await getLessonItemContent(HOLY_SPIRIT, "00000000-0000-0000-0000-000000000000")).toEqual({});
+
+    await deleteLesson(HOLY_SPIRIT, id); // self-clean
   });
 });

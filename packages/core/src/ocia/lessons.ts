@@ -262,6 +262,30 @@ export async function getLessonForEdit(
   };
 }
 
+/** True iff `versionId` is a draft this parish may edit: a parish-owned, unpublished
+ *  version. The edit Server Actions gate every mutation on this (they redirect when
+ *  it's false). RLS already hides other parishes' versions, but the scope/ownership
+ *  check is explicit so the rule lives in core, not in the presentation tier. */
+export async function isEditableParishDraft(parishId: string, versionId: string): Promise<boolean> {
+  const { rows } = await getDb(parishId).query<{
+    published_at: string | null;
+    scope: ContentScope;
+    parish_id: string | null;
+  }>("SELECT published_at, scope, parish_id FROM lesson_versions WHERE id = $1", [versionId]);
+  const v = rows[0];
+  return !!v && v.scope === "parish" && v.parish_id === parishId && v.published_at === null;
+}
+
+/** A single item's content blob (empty object when the item is gone). Lets the
+ *  clip-materialize action merge a new clip ref into the item's existing content. */
+export async function getLessonItemContent(parishId: string, itemId: string): Promise<Record<string, unknown>> {
+  const { rows } = await getDb(parishId).query<{ content: Record<string, unknown> }>(
+    "SELECT content FROM lesson_items WHERE id = $1",
+    [itemId],
+  );
+  return rows[0]?.content ?? {};
+}
+
 // ── Mutations ────────────────────────────────────────────────────────────────
 
 export async function createLesson(params: { parishId: string; createdBy: string; title?: string }): Promise<string> {
