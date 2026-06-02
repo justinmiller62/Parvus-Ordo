@@ -6,7 +6,9 @@ import { expect, test } from "@playwright/test";
 const E2E_COHORT = "0e2e0000-0000-0000-0000-0000000000e1";
 const EXPORT_URL = `/ocia/cohorts/${E2E_COHORT}/week/1/export`;
 
-test("catechist sees the weekly export with lesson material + the student's answer, and copies it", async ({ page }) => {
+test("catechist sees the weekly export with lesson material + the student's answer, and copies it", async ({
+  page,
+}) => {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/dev/login?email=e2e-catechist@parvaordo.test");
   await page.goto(EXPORT_URL);

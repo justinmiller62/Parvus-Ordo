@@ -156,7 +156,9 @@ describe("assembleWeeklyExport — multiple paths, distinct lessons", () => {
 
 describe("assembleWeeklyExport — two paths sharing one lesson", () => {
   // Both paths point at L1/V1; each card shows only its own members' answers.
-  const ex = assembleWeeklyExport(mkInput([WL_P1, { ...WL_P2, lesson_id: "L1", version_id: "V1", title: "Lesson One" }]));
+  const ex = assembleWeeklyExport(
+    mkInput([WL_P1, { ...WL_P2, lesson_id: "L1", version_id: "V1", title: "Lesson One" }]),
+  );
 
   it("attributes shared-lesson answers per path membership", () => {
     const adults = ex.paths.find((p) => p.pathName === "Adults")!;

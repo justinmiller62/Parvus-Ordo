@@ -50,14 +50,14 @@ beforeAll(async () => {
   cohortId = await insertId("INSERT INTO cohorts (parish_id, name) VALUES ($1, 'Int Export Cohort') RETURNING id", [
     HOLY_SPIRIT,
   ]);
-  pAdults = await insertId("INSERT INTO learning_paths (parish_id, cohort_id, name) VALUES ($1, $2, 'Adults') RETURNING id", [
-    HOLY_SPIRIT,
-    cohortId,
-  ]);
-  pTeens = await insertId("INSERT INTO learning_paths (parish_id, cohort_id, name) VALUES ($1, $2, 'Teens') RETURNING id", [
-    HOLY_SPIRIT,
-    cohortId,
-  ]);
+  pAdults = await insertId(
+    "INSERT INTO learning_paths (parish_id, cohort_id, name) VALUES ($1, $2, 'Adults') RETURNING id",
+    [HOLY_SPIRIT, cohortId],
+  );
+  pTeens = await insertId(
+    "INSERT INTO learning_paths (parish_id, cohort_id, name) VALUES ($1, $2, 'Teens') RETURNING id",
+    [HOLY_SPIRIT, cohortId],
+  );
   for (const [path, email] of [
     [pAdults, S1],
     [pAdults, S2],
@@ -73,7 +73,12 @@ beforeAll(async () => {
   // A published lesson: one reading block + one question.
   lessonId = await createLesson({ parishId: HOLY_SPIRIT, createdBy: uid[S1]!, title: "Grace & Mercy" });
   const versionId = (await getLessonForEdit(HOLY_SPIRIT, lessonId))!.selected.versionId;
-  await addLessonItem({ parishId: HOLY_SPIRIT, versionId, kind: "reading", content: { html: "<p>On <b>grace</b>.</p>" } });
+  await addLessonItem({
+    parishId: HOLY_SPIRIT,
+    versionId,
+    kind: "reading",
+    content: { html: "<p>On <b>grace</b>.</p>" },
+  });
   await addLessonItem({ parishId: HOLY_SPIRIT, versionId, kind: "question", content: { prompt: "What is grace?" } });
   await publishVersion({ parishId: HOLY_SPIRIT, lessonId, versionId });
   questionItemId = (await getLessonDetail(HOLY_SPIRIT, lessonId))!.items.find((i) => i.kind === "question")!.id;

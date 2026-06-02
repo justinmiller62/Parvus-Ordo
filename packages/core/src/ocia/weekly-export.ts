@@ -189,9 +189,7 @@ export function assembleWeeklyExport(input: AssembleInput): WeeklyExport {
     const wl = weekLessonByPath.get(p.path_id);
     if (!wl) continue; // no (live) lesson assigned to this path for the week → skip
     const memberIds = membersByPath.get(p.path_id) ?? new Set<string>();
-    const versionItems = (itemsByVersion.get(wl.version_id) ?? [])
-      .slice()
-      .sort((a, b) => a.position - b.position);
+    const versionItems = (itemsByVersion.get(wl.version_id) ?? []).slice().sort((a, b) => a.position - b.position);
 
     const readingBlocks: string[] = [];
     const questions: ExportQuestion[] = [];
