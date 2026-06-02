@@ -75,8 +75,8 @@ export async function submitFeedbackAction(lessonId: string, text: string): Prom
 export async function saveVideoProgressAction(itemId: string, maxReachedMs: number): Promise<void> {
   const ctx = await studentContext();
   if (!ctx) return;
-  // Shape-validate the client report; core clamps it to the clip and derives completion.
-  // A non-finite report is treated as zero progress.
+  // Shape-validate the client report only; core paces it against real elapsed time, clamps
+  // it to the clip, and derives completion. A non-finite report is treated as zero progress.
   const safeMax = Number.isFinite(maxReachedMs) ? Math.max(0, Math.floor(maxReachedMs)) : 0;
   await markVideoProgress({ parishId: ctx.parishId, studentId: ctx.userId, itemId, maxReachedMs: safeMax });
 }
