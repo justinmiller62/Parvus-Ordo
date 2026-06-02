@@ -7,10 +7,11 @@ const mocks = vi.hoisted(() => {
   const clientQuery = vi.fn();
   const release = vi.fn();
   const connect = vi.fn(async () => ({ query: clientQuery, release }));
-  return { clientQuery, release, connect };
+  const poolQuery = vi.fn(); // pool.query — the transaction-less getDb(null) path (RFC-002 §2B1)
+  return { clientQuery, release, connect, poolQuery };
 });
 
-vi.mock("pg", () => ({ Pool: vi.fn(() => ({ connect: mocks.connect })) }));
+vi.mock("pg", () => ({ Pool: vi.fn(() => ({ connect: mocks.connect, query: mocks.poolQuery })) }));
 
 import { buildPoolConfig, getDb, withTenant } from "./client";
 
@@ -41,7 +42,9 @@ describe("db chokepoint — rollback failure observability (po-rt2)", () => {
       return { rows: [] }; // BEGIN / set_config
     });
 
-    await expect(getDb(null).query("SELECT 1")).rejects.toBe(originalErr);
+    // getDb(null) is now transaction-less (no ROLLBACK to observe); the rollback contract
+    // lives on the TENANT path, so this regression test targets getDb(parishId). (RFC-002 §2B1)
+    await expect(getDb("parish-1").query("SELECT 1")).rejects.toBe(originalErr);
 
     expect(errorSpy).toHaveBeenCalledTimes(1);
     expect(errorSpy.mock.calls[0]).toContain(rollbackErr);
@@ -58,7 +61,9 @@ describe("db chokepoint — rollback failure observability (po-rt2)", () => {
       return { rows: [] }; // BEGIN / ROLLBACK both succeed
     });
 
-    await expect(getDb(null).query("SELECT 1")).rejects.toBe(originalErr);
+    // getDb(null) is now transaction-less (no ROLLBACK to observe); the rollback contract
+    // lives on the TENANT path, so this regression test targets getDb(parishId). (RFC-002 §2B1)
+    await expect(getDb("parish-1").query("SELECT 1")).rejects.toBe(originalErr);
     expect(errorSpy).not.toHaveBeenCalled();
     expect(mocks.release).toHaveBeenCalledTimes(1);
   });
@@ -105,6 +110,40 @@ describe("db chokepoint — rollback failure observability (po-rt2)", () => {
     ).rejects.toBe(originalErr);
 
     expect(errorSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("getDb null vs tenant path (RFC-002 §2B1)", () => {
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "postgres://test/db");
+    vi.clearAllMocks();
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("runs a getDb(null) read directly on the pool — no connection checkout, no BEGIN", async () => {
+    mocks.poolQuery.mockResolvedValue({ rows: [{ id: "x" }] });
+
+    const out = await getDb(null).query("SELECT * FROM login_lookup($1)", ["a@b.com"]);
+
+    expect(out).toEqual({ rows: [{ id: "x" }] });
+    expect(mocks.poolQuery).toHaveBeenCalledWith("SELECT * FROM login_lookup($1)", ["a@b.com"]);
+    expect(mocks.connect).not.toHaveBeenCalled(); // no client checkout for the null path
+    expect(mocks.clientQuery).not.toHaveBeenCalled(); // ⇒ no BEGIN / COMMIT issued
+  });
+
+  it("keeps a tenant read transactional: BEGIN → set_config(app.parish_id) → query → COMMIT", async () => {
+    mocks.clientQuery.mockImplementation(async (sql: string) =>
+      sql === "SELECT 1" ? { rows: [{ ok: 1 }] } : { rows: [] },
+    );
+
+    const out = await getDb("parish-1").query("SELECT 1");
+
+    expect(out).toEqual({ rows: [{ ok: 1 }] });
+    const issued = mocks.clientQuery.mock.calls.map((c) => String(c[0]));
+    expect(issued[0]).toBe("BEGIN");
+    expect(issued.at(-1)).toBe("COMMIT");
+    expect(issued.some((s) => s.includes("set_config('app.parish_id'"))).toBe(true);
+    expect(mocks.poolQuery).not.toHaveBeenCalled(); // tenant path never uses the autocommit pool.query
   });
 });
 

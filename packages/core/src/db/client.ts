@@ -105,11 +105,22 @@ async function rollbackQuietly(client: PoolClient, context: string): Promise<voi
 export function getDb(parishId: string | null): TenantDb {
   return {
     async query<T = Record<string, unknown>>(sql: string, params: unknown[] = []) {
+      // No tenant → no GUC to isolate, so a BEGIN/COMMIT would be pure overhead. Run the
+      // single statement directly on the pool (checkout → autocommit → release), taking the
+      // cross-tenant SECURITY DEFINER lookups (login_lookup, resolve_parish_id,
+      // list_application_parishes, validateMcpToken) off the per-request transaction count.
+      // Safe: one statement, no session/GUC state to leak across the pooler. (RFC-002 §2B1)
+      if (parishId === null) {
+        const result = await getPool().query(sql, params);
+        return { rows: result.rows as T[] };
+      }
+      // Tenant read/write: MUST stay transactional. The transaction-local set_config(.., true)
+      // GUC only persists across set + query inside ONE BEGIN/COMMIT; a session-scoped GUC
+      // would leak to the next tenant under PgBouncer transaction-mode pooling. (RFC-002 §2B3)
       const client = await getPool().connect();
       try {
         await client.query("BEGIN");
-        // Only set the GUCs when we have a tenant; with none, the policies see no
-        // tenant and return only world-readable (global) rows.
+        // parishId is non-null here; an empty string still skips the GUC, exactly as before.
         if (parishId) {
           await setTenantContext(client, parishId);
         }

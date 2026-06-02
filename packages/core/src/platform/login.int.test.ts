@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { afterAll, describe, expect, it } from "vitest";
-import { closeDb, getDb, lookupAppUser } from "@parvaordo/core";
+import { closeDb, getDb, lookupAppUser, lookupViewerContext } from "@parvaordo/core";
 
 const HOLY_SPIRIT = "11111111-1111-1111-1111-111111111111";
 
@@ -28,6 +28,29 @@ describe("lookupAppUser (login_lookup, integration)", () => {
 
   it("returns null for an unknown email", async () => {
     expect(await lookupAppUser("nobody@example.com")).toBeNull();
+  });
+});
+
+// RFC-002 §2B2: getViewer used to make TWO pre-tenant reads (login_lookup + resolve_parish_id);
+// lookupViewerContext folds them into one. These prove identity AND the host's parish come back
+// together and correctly — the host resolve still matches resolveParishIdForHost's result.
+describe("lookupViewerContext (login_lookup + resolve_parish_id in one round trip, integration)", () => {
+  it("returns identity AND the host's parish together for a slug host", async () => {
+    const ctx = await lookupViewerContext("admin@parvaordo.test", "holy-spirit.localhost");
+    expect(ctx.identity?.role).toBe("admin");
+    expect(ctx.identity?.parishId).toBe(HOLY_SPIRIT);
+    expect(ctx.hostParishId).toBe(HOLY_SPIRIT); // resolved in the SAME read as identity
+  });
+
+  it("resolves hostParishId to null on the apex while still returning identity", async () => {
+    const ctx = await lookupViewerContext("admin@parvaordo.test", "localhost:3000");
+    expect(ctx.identity?.role).toBe("admin");
+    expect(ctx.hostParishId).toBeNull();
+  });
+
+  it("returns identity null for an unknown user (the host is then irrelevant)", async () => {
+    const ctx = await lookupViewerContext("nobody@example.com", "holy-spirit.localhost");
+    expect(ctx.identity).toBeNull();
   });
 });
 

@@ -1,13 +1,7 @@
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { IMPERSONATABLE_ROLES, type Role } from "@parvaordo/shared";
-import {
-  type AppIdentity,
-  type ParishMembership,
-  lookupAppUser,
-  pickActiveMembership,
-  resolveParishIdForHost,
-} from "@parvaordo/core";
+import { type AppIdentity, type ParishMembership, lookupViewerContext, pickActiveMembership } from "@parvaordo/core";
 import { type AuthedUser, getAuthedUser } from "./auth";
 
 export const VIEW_AS_COOKIE = "po_view_as";
@@ -41,17 +35,18 @@ export interface Viewer {
 export const getViewer = cache(async (): Promise<Viewer | null> => {
   const authed = await getAuthedUser();
   if (!authed) return null;
-  const real = await lookupAppUser(authed.email);
-  if (!real) return { authed, identity: null, canImpersonate: false, viewingAs: null, needsParishChoice: false };
 
   const jar = await cookies();
   const host = (await headers()).get("host");
-  // The request hostname resolves to a parish by slug (subdomain) or custom domain.
-  const hostParishId = await resolveParishIdForHost(host);
-  // The po_active_parish cookie is UNTRUSTED — passed only as a hint that
-  // pickActiveMembership cross-checks against the user's own memberships. The effective
-  // parishId below comes from the matched membership, never from the raw cookie, so it is
-  // safe to feed getDb. Never bypass pickActiveMembership with the cookie value directly.
+  // Identity (login_lookup) AND the host→parish resolve (resolve_parish_id) come back in a
+  // SINGLE pre-tenant round trip, not two (RFC-002 §2B2).
+  const { identity: real, hostParishId } = await lookupViewerContext(authed.email, host);
+  if (!real) return { authed, identity: null, canImpersonate: false, viewingAs: null, needsParishChoice: false };
+
+  // Both hints — the po_active_parish cookie and the host-resolved parish — are UNTRUSTED;
+  // pickActiveMembership cross-checks each against the user's own memberships. The effective
+  // parishId below comes from the matched membership, never from a raw hint, so it is safe to
+  // feed getDb. Never bypass pickActiveMembership with a hint value directly.
   const active: ParishMembership | null = pickActiveMembership(real.memberships, {
     parishId: jar.get(ACTIVE_PARISH_COOKIE)?.value,
     hostParishId,
