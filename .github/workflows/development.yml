@@ -34,6 +34,12 @@ jobs:
         run: pnpm typecheck
       - name: Unit tests
         run: pnpm test
+      # Route-tree smoke: `next build` validates the Next route tree (duplicate or
+      # mismatched dynamic slug names, etc.) — a class of break `tsc --noEmit` does
+      # NOT catch. Catches it here at the gate instead of only at deploy. All routes
+      # are dynamic (ƒ), so the build pre-renders nothing and needs no DB/secrets. (po-jold)
+      - name: Build (route-tree smoke)
+        run: pnpm --filter @parvaordo/web build
 
       - name: Run DB migrations (Neon dev)
         run: node infra/db/migrate.mjs

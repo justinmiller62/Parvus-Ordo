@@ -57,12 +57,8 @@ function PathCard({ path, multiPath, index }: { path: PathWeekData; multiPath: b
   );
 }
 
-export default async function WeeklyExportPage({
-  params,
-}: {
-  params: Promise<{ cohortId: string; weekNumber: string }>;
-}) {
-  const { cohortId, weekNumber } = await params;
+export default async function WeeklyExportPage({ params }: { params: Promise<{ id: string; weekNumber: string }> }) {
+  const { id, weekNumber } = await params;
   const viewer = await getViewer();
   const role = viewer?.identity?.role;
   const parishId = viewer?.identity?.parishId;
@@ -72,7 +68,7 @@ export default async function WeeklyExportPage({
 
   const week = Number.parseInt(weekNumber ?? "1", 10);
   const validWeek = Number.isInteger(week) && week >= 1;
-  const data = validWeek ? await buildWeeklyExport(parishId, { cohortId, week }) : null;
+  const data = validWeek ? await buildWeeklyExport(parishId, { cohortId: id, week }) : null;
   const paths = data?.paths ?? [];
   const multiPath = paths.length > 1;
 
