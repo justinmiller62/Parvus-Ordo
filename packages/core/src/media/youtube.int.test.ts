@@ -20,16 +20,16 @@ afterAll(async () => {
   await closeDb();
 });
 
-const withCaptions = async () => ({
-  text: "Real Presence",
-  words: [{ word: "Real Presence", start: 0, end: 1.5 }],
+const withMedia = async () => ({
+  captions: { text: "Real Presence", words: [{ word: "Real Presence", start: 0, end: 1.5 }] },
+  durationMs: 212_000,
 });
 
 describe("ingestYouTubeAsset (integration)", () => {
-  it("creates an external youtube video asset and imports its captions into the transcript", async () => {
+  it("creates an external youtube video asset and imports its captions + duration", async () => {
     const assetId = await ingestYouTubeAsset(
       { parishId: HOLY_SPIRIT, createdBy: adminId, input: "https://youtu.be/abc12345678", title: "  Eucharist 101  " },
-      { fetchCaptions: withCaptions },
+      { fetchMedia: withMedia },
     );
     made.push(assetId);
 
@@ -41,6 +41,7 @@ describe("ingestYouTubeAsset (integration)", () => {
     expect(a!.playbackUrl).toBe("https://www.youtube.com/watch?v=abc12345678");
     expect(a!.status).toBe("ready"); // nothing to upload/process
     expect(a!.title).toBe("Eucharist 101"); // trimmed
+    expect(a!.durationMs).toBe(212_000); // captured so the watch-completion gate can resolve
     expect(a!.transcriptionStatus).toBe("completed");
     expect(a!.transcriptText).toBe("Real Presence");
     expect(a!.transcriptJson).toEqual([{ word: "Real Presence", start: 0, end: 1.5 }]);
@@ -49,7 +50,7 @@ describe("ingestYouTubeAsset (integration)", () => {
   it("still creates the asset but marks transcription failed when no captions are available", async () => {
     const assetId = await ingestYouTubeAsset(
       { parishId: HOLY_SPIRIT, createdBy: adminId, input: "dQw4w9WgXcQ" },
-      { fetchCaptions: async () => null },
+      { fetchMedia: async () => ({ captions: null, durationMs: null }) },
     );
     made.push(assetId);
 
@@ -61,11 +62,11 @@ describe("ingestYouTubeAsset (integration)", () => {
     expect(a!.transcriptJson).toBeNull();
   });
 
-  it("marks transcription failed (not the whole ingest) when caption fetch throws", async () => {
+  it("marks transcription failed (not the whole ingest) when the watch-page fetch throws", async () => {
     const assetId = await ingestYouTubeAsset(
       { parishId: HOLY_SPIRIT, createdBy: adminId, input: "https://www.youtube.com/watch?v=abc12345678" },
       {
-        fetchCaptions: async () => {
+        fetchMedia: async () => {
           throw new Error("not_https");
         },
       },
@@ -85,7 +86,7 @@ describe("ingestYouTubeAsset (integration)", () => {
   it("scopes the asset to its parish — another parish cannot read it (RLS)", async () => {
     const assetId = await ingestYouTubeAsset(
       { parishId: HOLY_SPIRIT, createdBy: adminId, input: "https://youtu.be/abc12345678" },
-      { fetchCaptions: withCaptions },
+      { fetchMedia: withMedia },
     );
     made.push(assetId);
     expect(await getAsset(HOLY_SPIRIT, assetId)).not.toBeNull();

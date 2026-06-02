@@ -14,7 +14,13 @@
 // transcription_status='failed', retryable), matching the Narthex YouTube add.
 
 import { fetchFeed } from "../calendar/ical";
-import { createAsset, setTranscript, setTranscriptionStatus, type TranscriptWord } from "./assets";
+import { createAsset, setTranscript, setTranscriptionStatus, updateAssetStatus, type TranscriptWord } from "./assets";
+import { extractYouTubeId } from "./youtube-url";
+
+// The pure URL/id helpers live in a server-free module so the teacher picker (a Client
+// Component) can import them via "@parvaordo/core/youtube-url"; re-exported here for the
+// server/ingest side and the existing test surface.
+export { extractYouTubeId, youTubeEmbedUrl } from "./youtube-url";
 
 /** youtube.com covers www.youtube.com and m.youtube.com (suffix match in the allowlist). */
 const YOUTUBE_ALLOWED_HOSTS = "youtube.com";
@@ -25,35 +31,6 @@ const TIMEDTEXT_MAX_BYTES = 2 * 1024 * 1024;
 export interface YouTubeFetchDeps {
   fetchImpl?: typeof fetch;
   lookup?: (hostname: string) => Promise<string[]>;
-}
-
-const YT_ID = /^[A-Za-z0-9_-]{11}$/;
-
-/**
- * Extract the 11-char video id from a watch / youtu.be / embed / shorts URL or a bare id.
- * Returns null for anything that doesn't yield a valid id (the caller decides how to fail).
- */
-export function extractYouTubeId(input: string): string | null {
-  const s = input.trim();
-  if (YT_ID.test(s)) return s;
-  let url: URL;
-  try {
-    url = new URL(s);
-  } catch {
-    return null;
-  }
-  const host = url.hostname.replace(/^www\.|^m\./, "");
-  let candidate: string | null = null;
-  if (host === "youtu.be") {
-    candidate = url.pathname.slice(1).split("/")[0] ?? null;
-  } else if (host === "youtube.com") {
-    if (url.pathname === "/watch") candidate = url.searchParams.get("v");
-    else {
-      const m = url.pathname.match(/^\/(?:embed|shorts|v)\/([^/]+)/);
-      candidate = m ? m[1]! : null;
-    }
-  }
-  return candidate && YT_ID.test(candidate) ? candidate : null;
 }
 
 const ENTITIES: Record<string, string> = {
@@ -109,16 +86,36 @@ export function parseTimedTextXml(xml: string): TranscriptWord[] {
 }
 
 /**
- * Fetch + parse a YouTube video's captions, SSRF-safe. Scrapes the watch page for the
- * timedtext track URL, then fetches + parses it. Returns null when no caption track exists
- * or it parses empty. Network/SSRF errors from fetchFeed propagate (the caller treats them
- * as a failed import). NOTE: this is the best-effort watch-page-scrape path; an InnerTube
- * fallback for caption-restricted videos is a documented hardening follow-up.
+ * Pull the video length (ms) from a watch page's `"lengthSeconds":"NNN"` (videoDetails).
+ * Returns null when absent / non-positive / implausibly long (> 24h guards against a
+ * livestream sentinel or a parse on the wrong field). The student player's completion
+ * gate is duration-derived server-side, so capturing this at ingest is what makes a
+ * YouTube lesson item completable (an unknown length fails the gate closed).
  */
-export async function fetchYouTubeCaptions(
-  videoId: string,
-  deps: YouTubeFetchDeps = {},
-): Promise<{ text: string; words: TranscriptWord[] } | null> {
+export function parseYouTubeLengthSeconds(html: string): number | null {
+  const m = html.match(/"lengthSeconds":"(\d+)"/);
+  if (!m) return null;
+  const secs = Number(m[1]);
+  if (!Number.isFinite(secs) || secs <= 0 || secs > 24 * 60 * 60) return null;
+  return secs * 1000;
+}
+
+export interface YouTubeMedia {
+  captions: { text: string; words: TranscriptWord[] } | null;
+  /** Video length in ms, or null when the watch page didn't expose it. */
+  durationMs: number | null;
+}
+
+/**
+ * Fetch a YouTube video's watch page ONCE and derive both its caption transcript and its
+ * duration, SSRF-safe. Scrapes the watch page for `lengthSeconds` and the timedtext track
+ * URL, then fetches + parses that track. `captions` is null when no track exists or it
+ * parses empty; `durationMs` is null when the page didn't expose a length. Network/SSRF
+ * errors from fetchFeed propagate (the caller treats them as a failed import). NOTE: this
+ * is the best-effort watch-page-scrape path; an InnerTube fallback for caption-restricted
+ * videos is a documented hardening follow-up.
+ */
+export async function fetchYouTubeMedia(videoId: string, deps: YouTubeFetchDeps = {}): Promise<YouTubeMedia> {
   const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const html = await fetchFeed(watchUrl, {
     allowedHosts: YOUTUBE_ALLOWED_HOSTS,
@@ -127,9 +124,11 @@ export async function fetchYouTubeCaptions(
     lookup: deps.lookup,
   });
 
+  const durationMs = parseYouTubeLengthSeconds(html);
+
   // The player response embeds caption tracks as JSON-escaped baseUrls.
   const m = html.match(/"baseUrl":"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/);
-  if (!m) return null;
+  if (!m) return { captions: null, durationMs };
   const trackUrl = m[1]!.replace(/\\u0026/g, "&").replace(/\\\//g, "/");
 
   const xml = await fetchFeed(trackUrl, {
@@ -139,8 +138,19 @@ export async function fetchYouTubeCaptions(
     lookup: deps.lookup,
   });
   const words = parseTimedTextXml(xml);
-  if (words.length === 0) return null;
-  return { text: words.map((w) => w.word).join("\n"), words };
+  if (words.length === 0) return { captions: null, durationMs };
+  return { captions: { text: words.map((w) => w.word).join("\n"), words }, durationMs };
+}
+
+/**
+ * Fetch + parse a YouTube video's captions, SSRF-safe (a captions-only view of
+ * {@link fetchYouTubeMedia}). Returns null when no caption track exists or it parses empty.
+ */
+export async function fetchYouTubeCaptions(
+  videoId: string,
+  deps: YouTubeFetchDeps = {},
+): Promise<{ text: string; words: TranscriptWord[] } | null> {
+  return (await fetchYouTubeMedia(videoId, deps)).captions;
 }
 
 export interface IngestYouTubeOptions {
@@ -151,20 +161,20 @@ export interface IngestYouTubeOptions {
   title?: string;
 }
 
-/** Injectable caption fetcher so ingest is integration-testable without YouTube. */
+/** Injectable watch-page fetcher so ingest is integration-testable without YouTube. */
 export interface IngestYouTubeDeps extends YouTubeFetchDeps {
-  fetchCaptions?: (
-    videoId: string,
-    deps: YouTubeFetchDeps,
-  ) => Promise<{ text: string; words: TranscriptWord[] } | null>;
+  fetchMedia?: (videoId: string, deps: YouTubeFetchDeps) => Promise<YouTubeMedia>;
 }
 
 /**
- * Ingest a YouTube video as an external `provider: "youtube"` video asset and import its
- * captions into the transcript. The asset is always created (status 'ready'); captions are
- * best-effort — when absent or the fetch fails, transcription_status is set to 'failed'
- * (retryable) rather than failing the ingest. Throws only when the input has no valid id.
- * Returns the new asset id.
+ * Ingest a YouTube video as an external `provider: "youtube"` video asset, importing its
+ * captions into the transcript and its length into `duration_ms`. The asset is always
+ * created (status 'ready'); the watch-page fetch (captions + duration) is best-effort —
+ * when it returns nothing or throws, transcription_status is set to 'failed' (retryable)
+ * rather than failing the ingest. Capturing the duration is what lets the duration-derived
+ * watch-completion gate be satisfied for a whole-video YouTube item (it has no [start,end]
+ * window to derive a length from). Throws only when the input has no valid id. Returns the
+ * new asset id.
  */
 export async function ingestYouTubeAsset(opts: IngestYouTubeOptions, deps: IngestYouTubeDeps = {}): Promise<string> {
   const videoId = extractYouTubeId(opts.input);
@@ -181,9 +191,12 @@ export async function ingestYouTubeAsset(opts: IngestYouTubeOptions, deps: Inges
     status: "ready",
   });
 
-  const fetchCaptions = deps.fetchCaptions ?? fetchYouTubeCaptions;
+  const fetchMedia = deps.fetchMedia ?? fetchYouTubeMedia;
   try {
-    const captions = await fetchCaptions(videoId, { fetchImpl: deps.fetchImpl, lookup: deps.lookup });
+    const { captions, durationMs } = await fetchMedia(videoId, { fetchImpl: deps.fetchImpl, lookup: deps.lookup });
+    if (durationMs != null) {
+      await updateAssetStatus({ parishId: opts.parishId, id: assetId, status: "ready", durationMs });
+    }
     if (captions) {
       await setTranscript({ parishId: opts.parishId, id: assetId, text: captions.text, words: captions.words });
     } else {

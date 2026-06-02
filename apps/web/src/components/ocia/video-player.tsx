@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Hls from "hls.js";
-import { clipResumeSeconds, clipSeek, clipTimeUpdate, videoWatchThresholdMs } from "@parvaordo/shared";
+import {
+  VIDEO_PROGRESS_SAVE_INTERVAL_MS,
+  clipResumeSeconds,
+  clipSeek,
+  clipTimeUpdate,
+  videoWatchThresholdMs,
+} from "@parvaordo/shared";
 import { findDictionaryTerms } from "@parvaordo/core/dictionary-text";
 import { saveVideoProgressAction } from "@/app/(app)/ocia/lessons/[id]/actions";
 import { useDictionary } from "@/src/components/ocia/dictionary/dictionary-provider";
@@ -132,8 +138,9 @@ export function VideoPlayer({
       setCurrentTime(t);
       if (rel > maxReachedRef.current) maxReachedRef.current = rel;
 
-      // Persist progress, throttled to ~10s of new ground.
-      if (persist && rel - lastSaveRef.current >= 10) {
+      // Persist progress, throttled to one save interval of new ground. The server paces
+      // each save against real elapsed time, so this cadence sets the natural watch pace.
+      if (persist && rel - lastSaveRef.current >= VIDEO_PROGRESS_SAVE_INTERVAL_MS / 1000) {
         lastSaveRef.current = rel;
         void saveVideoProgressAction(persistItemId!, Math.round(rel * 1000));
       }

@@ -17,12 +17,25 @@ import {
   removeClip,
   requestClip,
 } from "@parvaordo/core";
+import { VIDEO_WATCH_FIRST_SAVE_BUDGET_MS } from "@parvaordo/shared";
 
 const HOLY_SPIRIT = "11111111-1111-1111-1111-111111111111";
 
 async function userId(email: string): Promise<string> {
   const { rows } = await getDb(HOLY_SPIRIT).query<{ id: string }>("SELECT id FROM users WHERE email = $1", [email]);
   return rows[0]!.id;
+}
+
+/**
+ * Simulate real watch time passing by backdating the progress row's `updated_at`, so the
+ * NEXT markVideoProgress paces the report against that much wall-clock (pacedMaxReachedMs).
+ * Lets these tests drive the legitimate "watched over real time" path without sleeping.
+ */
+async function elapseWatchSeconds(student: string, itemId: string, seconds: number): Promise<void> {
+  await getDb(HOLY_SPIRIT).query(
+    "UPDATE lesson_item_progress SET updated_at = now() - make_interval(secs => $1) WHERE student_id = $2 AND item_id = $3",
+    [seconds, student, itemId],
+  );
 }
 
 afterAll(async () => {
@@ -89,7 +102,7 @@ describe("clips (stub processor)", () => {
 });
 
 describe("video watch progress", () => {
-  it("persists the furthest point (grows only); completion stays false when the clip length is unknown", async () => {
+  it("persists the furthest point (paced + grows only); completion stays false when the clip length is unknown", async () => {
     const by = await userId("admin@parvaordo.test");
     const student = await userId("student@parvaordo.test");
     const lessonId = await createLesson({ parishId: HOLY_SPIRIT, createdBy: by, title: "Progress Test" });
@@ -97,6 +110,7 @@ describe("video watch progress", () => {
     // content:{} has no resolvable clip length, so the completion gate fails closed.
     const itemId = await addLessonItem({ parishId: HOLY_SPIRIT, versionId, kind: "video", content: {} });
 
+    // First save (no prior row) lands within the first-save budget.
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 4000 });
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(4000);
 
@@ -104,7 +118,16 @@ describe("video watch progress", () => {
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 1000 });
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(4000);
 
-    // the furthest point still grows, but completion never flips for an unknown length
+    // an immediate huge jump is paced away — a rapid save advances at most by the (tiny)
+    // real elapsed × rate, nowhere near the 10,000,000 requested. No rapid walk-up.
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 10_000_000 });
+    const afterJump = await getItemMaxReached(HOLY_SPIRIT, student, itemId);
+    expect(afterJump).toBeGreaterThanOrEqual(4000); // never shrinks
+    expect(afterJump).toBeLessThan(6000); // ...but barely moved (real round-trip is a few ms)
+
+    // once real watch time has elapsed the furthest point grows, but completion never flips
+    // for an unknown length
+    await elapseWatchSeconds(student, itemId, 30);
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 8000 });
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(8000);
     expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
@@ -154,22 +177,28 @@ describe("video completion is earned, not client-trusted", () => {
     return { lessonId, versionId, itemId, sourceId };
   }
 
-  it("clamps an over-large forged maxReachedMs to the clip (seek-ceiling integrity); end-of-clip completion is the best-effort residual (po-4dyo)", async () => {
+  it("paces a single forged save — it can't jump a long clip to the end or self-complete (po-4dyo)", async () => {
     const student = await userId("student@parvaordo.test");
     const { lessonId, versionId, itemId, sourceId } = await videoItemOnClip();
 
-    // Client claims it watched 5,000,000ms of a 30,000ms clip.
+    // Client claims it instantly watched to 5,000,000ms of a 30,000ms clip, in ONE save.
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 5_000_000 });
 
-    // The stored furthest point is clamped to the clip, so a forged report can't inflate
-    // the seek-enforcement ceiling beyond the real window.
-    expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(CLIP_MS); // clamped, not 5,000,000
-    // Completion is derived server-side from that clamped point. Clamped to the clip end
-    // it satisfies the gate — the documented best-effort residual: the furthest point is
-    // client-reported, so a forge to the end still self-completes (po-4dyo). What this
-    // bead DID close are the trivial forges — the client `completed` boolean (now gone)
-    // and a direct advanceAction POST (now bounced by the video gate below).
-    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(true);
+    // With no prior watch history the first save is paced to the fixed budget — well under
+    // the clip — so the stored point is neither the forged value, the clip end, nor enough
+    // to satisfy completion. The one-shot forge that motivated po-4dyo no longer works.
+    expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(VIDEO_WATCH_FIRST_SAVE_BUDGET_MS);
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
+    expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(false);
+
+    // An immediate second forge can't climb to the end either: a rapid save advances at most
+    // by the (tiny) real elapsed × rate, so the point stays near the budget and far below the
+    // 25s end-grace — no rapid walk-up.
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 5_000_000 });
+    const afterSecondForge = await getItemMaxReached(HOLY_SPIRIT, student, itemId);
+    expect(afterSecondForge).toBeGreaterThanOrEqual(VIDEO_WATCH_FIRST_SAVE_BUDGET_MS); // never shrinks
+    expect(afterSecondForge).toBeLessThan(VIDEO_WATCH_FIRST_SAVE_BUDGET_MS + 2_000); // barely moved
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
 
     await deleteLesson(HOLY_SPIRIT, lessonId);
     await deleteAsset(HOLY_SPIRIT, sourceId); // cascades the clip
@@ -188,10 +217,16 @@ describe("video completion is earned, not client-trusted", () => {
     await deleteAsset(HOLY_SPIRIT, sourceId);
   });
 
-  it("honors completion when the student actually reaches the clip end", async () => {
+  it("honors completion when the student reaches the clip end over real watch time", async () => {
     const student = await userId("student@parvaordo.test");
     const { lessonId, versionId, itemId, sourceId } = await videoItemOnClip();
 
+    // An honest paced watch: an opening mid-clip save, then real time elapses before the
+    // furthest point reaches the end-grace.
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 1_000 });
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
+
+    await elapseWatchSeconds(student, itemId, 20); // ~20s of real watching of the 30s clip
     // Within the player's 5s end-grace of a 30s clip — a real finish.
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: CLIP_MS - 1_000 });
 
@@ -202,7 +237,7 @@ describe("video completion is earned, not client-trusted", () => {
     await deleteAsset(HOLY_SPIRIT, sourceId);
   });
 
-  it("isVideoItemWatched (the advanceAction gate) is false until the persisted point reaches the end-grace", async () => {
+  it("isVideoItemWatched (the advanceAction gate) is false until a paced watch reaches the end-grace", async () => {
     const student = await userId("student@parvaordo.test");
     const { lessonId, itemId, sourceId } = await videoItemOnClip();
 
@@ -213,7 +248,8 @@ describe("video completion is earned, not client-trusted", () => {
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 1_000 });
     expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(false);
 
-    // Reaching within the end-grace flips the gate true.
+    // Reaching within the end-grace over real watch time flips the gate true.
+    await elapseWatchSeconds(student, itemId, 20);
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: CLIP_MS - 1_000 });
     expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(true);
 
@@ -231,8 +267,28 @@ describe("video completion is earned, not client-trusted", () => {
     expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
     expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(false);
 
-    // Genuinely watching the short clip (>= 90% of 3s) does complete it.
+    // Genuinely watching the short clip (>= 90% of 3s) over real time does complete it.
+    await elapseWatchSeconds(student, itemId, 3);
     await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 3_000 });
+    expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(true);
+    expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(true);
+
+    await deleteLesson(HOLY_SPIRIT, lessonId);
+    await deleteAsset(HOLY_SPIRIT, sourceId);
+  });
+
+  it("a clip within the first-save budget completes on a single save — the one-shot watch AND the bounded short-clip residual (po-4dyo)", async () => {
+    const student = await userId("student@parvaordo.test");
+    // A clip shorter than the first-save budget can be finished by the player's single
+    // completion save (no prior throttle save) — the legitimate one-shot path. By the same
+    // token a one-shot forge of a clip this short still self-completes: the documented
+    // residual. Pacing makes a forge cost ~clip-length of real time, which for a clip
+    // shorter than one save interval is negligible; the high-value LONG clips are closed
+    // (see the forge test above).
+    const { lessonId, versionId, itemId, sourceId } = await videoItemOnClip(6_000);
+    expect(6_000).toBeLessThan(VIDEO_WATCH_FIRST_SAVE_BUDGET_MS);
+
+    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 6_000 });
     expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(true);
     expect(await isVideoItemWatched({ parishId: HOLY_SPIRIT, studentId: student, itemId })).toBe(true);
 

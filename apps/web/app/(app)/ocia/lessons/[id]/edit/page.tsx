@@ -34,6 +34,7 @@ export default async function EditLessonPage({
       durationMs: a.durationMs,
       playbackUrl: a.playbackUrl!,
       posterUrl: a.posterUrl,
+      provider: a.provider,
     }));
 
   // Processing state of each video item's cut clip (drives the green/gray dot).

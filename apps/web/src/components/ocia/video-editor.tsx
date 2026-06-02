@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Hls from "hls.js";
+import { Youtube } from "lucide-react";
+import { extractYouTubeId, youTubeEmbedUrl } from "@parvaordo/core/youtube-url";
 
 export interface VideoAssetOption {
   id: string;
@@ -10,6 +12,8 @@ export interface VideoAssetOption {
   durationMs: number | null;
   playbackUrl: string;
   posterUrl: string | null;
+  /** Asset provider: "youtube" renders an embed (no Bunny trim/clip); else the trimmer. */
+  provider: string;
 }
 
 function fmt(sec: number): string {
@@ -32,6 +36,7 @@ export function VideoEditor({
   clipStatus,
   onGenerateClip,
   generating,
+  onAddYouTube,
 }: {
   content: Record<string, unknown>;
   assets: VideoAssetOption[];
@@ -40,9 +45,44 @@ export function VideoEditor({
   clipStatus?: "none" | "processing" | "ready" | "failed";
   onGenerateClip?: () => void;
   generating?: boolean;
+  /** Ingest a YouTube URL/id into the library and return it as a pickable option. */
+  onAddYouTube?: (input: string, title: string) => Promise<VideoAssetOption>;
 }) {
   const assetId = (content.asset_id as string | undefined) ?? "";
   const asset = assets.find((a) => a.id === assetId) ?? null;
+  const isYouTube = asset?.provider === "youtube";
+  const ytVideoId = isYouTube ? extractYouTubeId(asset!.playbackUrl) : null;
+
+  // "Add from YouTube" sub-form state (a video item can source a YouTube video in
+  // addition to selecting a Bunny upload — the Narthex picker's YouTube tab).
+  const [ytOpen, setYtOpen] = useState(false);
+  const [ytInput, setYtInput] = useState("");
+  const [ytTitle, setYtTitle] = useState("");
+  const [ytBusy, setYtBusy] = useState(false);
+  const [ytError, setYtError] = useState<string | null>(null);
+  const ytPreviewId = extractYouTubeId(ytInput);
+  const ytPreviewUrl = ytPreviewId ? youTubeEmbedUrl(ytPreviewId) : null;
+
+  const addYouTube = async () => {
+    if (!onAddYouTube || !ytInput.trim() || ytBusy) return;
+    setYtBusy(true);
+    setYtError(null);
+    try {
+      const opt = await onAddYouTube(ytInput.trim(), ytTitle.trim());
+      // YouTube items play in full — no Bunny [start,end] trim window, and no cut clip
+      // (drop any stale clip_asset_id from a previously-selected Bunny source).
+      const next: Record<string, unknown> = { ...content, asset_id: opt.id, start_ms: 0, end_ms: null };
+      delete next.clip_asset_id;
+      onChange(next);
+      setYtInput("");
+      setYtTitle("");
+      setYtOpen(false);
+    } catch (e) {
+      setYtError(e instanceof Error ? e.message : "Could not add that YouTube video");
+    } finally {
+      setYtBusy(false);
+    }
+  };
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -164,18 +204,6 @@ export function VideoEditor({
     propagate(startSec, e, duration > 0 && e >= duration - 0.05);
   };
 
-  if (assets.length === 0) {
-    return (
-      <p className="text-sm text-gray-500">
-        No ready videos yet.{" "}
-        <Link href="/ocia/media" className="text-burgundy underline">
-          Upload one in the Media Library
-        </Link>
-        , then come back to trim it here.
-      </p>
-    );
-  }
-
   const startPct = duration ? (startSec / duration) * 100 : 0;
   const endPct = duration ? (endSec / duration) * 100 : 100;
   const playPct = duration ? (playhead / duration) * 100 : 0;
@@ -193,13 +221,127 @@ export function VideoEditor({
           <option value="">Select a video…</option>
           {assets.map((a) => (
             <option key={a.id} value={a.id}>
-              {a.title}
+              {a.provider === "youtube" ? `${a.title} (YouTube)` : a.title}
             </option>
           ))}
         </select>
       </label>
 
-      {asset ? (
+      {/* Add from YouTube — sits alongside the Bunny library select (Narthex YouTube tab). */}
+      {onAddYouTube ? (
+        <div className="rounded-md border border-gray-200 bg-parchment/30">
+          {!ytOpen ? (
+            <button
+              type="button"
+              onClick={() => setYtOpen(true)}
+              data-testid="youtube-add-toggle"
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-burgundy"
+            >
+              <Youtube className="h-4 w-4 text-rose" />
+              Add from YouTube
+            </button>
+          ) : (
+            <div className="space-y-2 p-3 motion-safe:animate-[po-fade-in_150ms_ease-out]">
+              <div className="flex items-center gap-2 text-sm font-medium text-navy">
+                <Youtube className="h-4 w-4 text-rose" />
+                Add a YouTube video
+              </div>
+              <input
+                value={ytInput}
+                onChange={(e) => {
+                  setYtInput(e.target.value);
+                  setYtError(null);
+                }}
+                placeholder="YouTube URL or video ID"
+                data-testid="youtube-url-input"
+                autoFocus
+                className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+              />
+              <input
+                value={ytTitle}
+                onChange={(e) => setYtTitle(e.target.value)}
+                placeholder="Title (optional)"
+                data-testid="youtube-title-input"
+                className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+              />
+              {ytPreviewUrl ? (
+                <div className="overflow-hidden rounded-md border border-gray-200 bg-black">
+                  <iframe
+                    src={ytPreviewUrl}
+                    title="YouTube preview"
+                    data-testid="youtube-preview"
+                    className="aspect-video w-full"
+                    allow="accelerometer; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : ytInput.trim() ? (
+                <p className="text-xs text-gray-400">Paste a YouTube watch/share link or an 11-character video ID.</p>
+              ) : null}
+              {ytError ? (
+                <p className="text-xs text-rose" data-testid="youtube-error" role="alert">
+                  {ytError}
+                </p>
+              ) : null}
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setYtOpen(false);
+                    setYtInput("");
+                    setYtTitle("");
+                    setYtError(null);
+                  }}
+                  disabled={ytBusy}
+                  className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={addYouTube}
+                  disabled={ytBusy || !ytInput.trim()}
+                  data-testid="youtube-add-submit"
+                  className="rounded-md bg-rose px-3 py-1.5 text-sm font-medium text-white hover:bg-rose/90 disabled:opacity-50"
+                >
+                  {ytBusy ? "Adding…" : "Add video"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {assets.length === 0 && !asset ? (
+        <p className="text-sm text-gray-500" data-testid="video-empty">
+          No videos in your library yet.{" "}
+          <Link href="/ocia/media" className="text-burgundy underline">
+            Upload one in the Media Library
+          </Link>{" "}
+          or add a YouTube video above.
+        </p>
+      ) : null}
+
+      {/* A YouTube source plays in full via its embed — no Bunny trimmer or clip cutting. */}
+      {asset && isYouTube && ytVideoId ? (
+        <div className="space-y-2">
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-black">
+            <iframe
+              src={youTubeEmbedUrl(ytVideoId) ?? undefined}
+              title={asset.title}
+              data-testid="youtube-item-preview"
+              className="aspect-video w-full"
+              allow="accelerometer; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+          <p className="text-xs text-gray-400">
+            YouTube videos play in full. Learners still can’t skip ahead until they’ve watched it through.
+          </p>
+        </div>
+      ) : null}
+
+      {asset && !isYouTube ? (
         <>
           <div className="overflow-hidden rounded-lg bg-black">
             <video

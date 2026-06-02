@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { extractYouTubeId, fetchYouTubeCaptions, parseTimedTextXml } from "./youtube";
+import {
+  extractYouTubeId,
+  fetchYouTubeCaptions,
+  fetchYouTubeMedia,
+  parseTimedTextXml,
+  parseYouTubeLengthSeconds,
+  youTubeEmbedUrl,
+} from "./youtube";
 
 describe("extractYouTubeId", () => {
   it("accepts a bare 11-char id", () => {
@@ -98,5 +105,69 @@ describe("fetchYouTubeCaptions (SSRF-safe fetch, injected IO)", () => {
         headers: { "content-type": "text/html" },
       })) as unknown as typeof fetch;
     expect(await fetchYouTubeCaptions("abc12345678", { fetchImpl: noCaptions, lookup })).toBeNull();
+  });
+});
+
+describe("youTubeEmbedUrl", () => {
+  it("builds a privacy-enhanced embed URL for a valid id", () => {
+    expect(youTubeEmbedUrl("dQw4w9WgXcQ")).toBe(
+      "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1",
+    );
+  });
+
+  it("returns null for anything that isn't a bare 11-char id (no arbitrary embeds)", () => {
+    expect(youTubeEmbedUrl("")).toBeNull();
+    expect(youTubeEmbedUrl("short")).toBeNull();
+    expect(youTubeEmbedUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBeNull();
+    expect(youTubeEmbedUrl("../../evil")).toBeNull();
+  });
+});
+
+describe("parseYouTubeLengthSeconds", () => {
+  it("extracts lengthSeconds (videoDetails) into ms", () => {
+    expect(parseYouTubeLengthSeconds('..."lengthSeconds":"212","keywords"...')).toBe(212_000);
+  });
+
+  it("returns null when absent, zero, or implausibly long", () => {
+    expect(parseYouTubeLengthSeconds("<html>no details</html>")).toBeNull();
+    expect(parseYouTubeLengthSeconds('"lengthSeconds":"0"')).toBeNull();
+    expect(parseYouTubeLengthSeconds('"lengthSeconds":"999999999"')).toBeNull(); // > 24h
+  });
+});
+
+describe("fetchYouTubeMedia (single watch-page fetch → captions + duration)", () => {
+  const lookup = async () => ["142.250.72.14"];
+  const fetchImpl = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.includes("/watch")) {
+      return new Response(
+        '"lengthSeconds":"212",window.ytInitcaptions={"captionTracks":[{"baseUrl":"https://www.youtube.com/api/timedtext?v=abc12345678\\u0026lang=en"}]}',
+        { status: 200, headers: { "content-type": "text/html" } },
+      );
+    }
+    if (url.includes("/api/timedtext")) {
+      return new Response('<transcript><text start="0" dur="1.5">Real Presence</text></transcript>', {
+        status: 200,
+        headers: { "content-type": "text/xml" },
+      });
+    }
+    return new Response("not found", { status: 404 });
+  }) as unknown as typeof fetch;
+
+  it("returns both the parsed captions and the duration in one pass", async () => {
+    const media = await fetchYouTubeMedia("abc12345678", { fetchImpl, lookup });
+    expect(media.durationMs).toBe(212_000);
+    expect(media.captions?.words).toEqual([{ word: "Real Presence", start: 0, end: 1.5 }]);
+  });
+
+  it("still returns the duration when no caption track is present", async () => {
+    const noCaptions = (async () =>
+      new Response('"lengthSeconds":"90"', {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      })) as unknown as typeof fetch;
+    const media = await fetchYouTubeMedia("abc12345678", { fetchImpl: noCaptions, lookup });
+    expect(media.durationMs).toBe(90_000);
+    expect(media.captions).toBeNull();
   });
 });

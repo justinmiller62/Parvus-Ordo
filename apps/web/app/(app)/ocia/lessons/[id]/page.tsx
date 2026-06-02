@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Lock } from "lucide-react";
 import {
   clipTranscript,
+  extractYouTubeId,
   getAnswersForVersion,
   getAsset,
   getCompletedItemsForVersion,
@@ -15,6 +16,7 @@ import {
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { VideoPlayer, type PlayerWord } from "@/src/components/ocia/video-player";
+import { YouTubePlayer } from "@/src/components/ocia/youtube-player";
 import { VideoStep } from "@/src/components/ocia/video-step";
 import { PreviewJumpTo } from "@/src/components/ocia/preview-nav";
 import { CompletionForms } from "@/src/components/ocia/completion-forms";
@@ -208,6 +210,7 @@ export default async function LessonPage({
   // source when no real clip exists yet (also the local/stub path, where the stub
   // "clip" reuses the source URL).
   let playerProps: { src: string; startMs: number; endMs: number | null; words: PlayerWord[] } | null = null;
+  let youTubeVideoId: string | null = null;
   let videoNode: ReactNode = null;
   if (item.kind === "video") {
     const sourceId = item.content.asset_id as string | undefined;
@@ -217,6 +220,9 @@ export default async function LessonPage({
     const source = sourceId ? await getAsset(identity.parishId, sourceId) : null;
     const clip = clipId ? await getAsset(identity.parishId, clipId) : null;
     const startSec = startMs / 1000;
+
+    // A YouTube source has no cut clip — it plays in full via its embed (IFrame player).
+    youTubeVideoId = source?.provider === "youtube" ? extractYouTubeId(source.playbackUrl ?? "") : null;
 
     const realClip =
       clip?.status === "ready" && clip.playbackUrl && clip.playbackUrl !== source?.playbackUrl ? clip : null;
@@ -233,12 +239,20 @@ export default async function LessonPage({
       const words = clipTranscript(source.transcriptJson ?? [], startMs, endMs);
       playerProps = { src: source.playbackUrl, startMs, endMs, words };
     }
-    videoNode = playerProps ? (
-      <VideoPlayer {...playerProps} unlocked={isPreview} />
-    ) : (
+    videoNode = !playerProps ? (
       <div className="rounded-lg border-2 border-dashed border-gray-200 bg-parchment p-10 text-center text-sm text-gray-400">
         This video isn’t ready yet.
       </div>
+    ) : youTubeVideoId ? (
+      <YouTubePlayer
+        videoId={youTubeVideoId}
+        startMs={playerProps.startMs}
+        endMs={playerProps.endMs}
+        words={playerProps.words}
+        unlocked={isPreview}
+      />
+    ) : (
+      <VideoPlayer {...playerProps} unlocked={isPreview} />
     );
   }
 
@@ -386,6 +400,7 @@ export default async function LessonPage({
             total={total}
             initialMaxReachedMs={savedMaxReached}
             backHref={current > 0 ? hrefFor(current - 1) : undefined}
+            youTubeVideoId={youTubeVideoId}
           />
         ) : isActive ? (
           <form action={advanceAction}>

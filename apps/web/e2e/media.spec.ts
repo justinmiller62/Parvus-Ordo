@@ -42,10 +42,16 @@ test("learner reaches the video step: seek-enforcing player + synced transcript 
   await expect(page.getByTestId("wizard-next")).toContainText("Watch to continue");
 });
 
-// Drive the seeded 8s clip's <video> to its end WITHOUT real-time playback: walk
-// currentTime forward in <=2s steps (so the player's no-skip clamp, rel > maxReached + 2,
-// never fires) and dispatch `timeupdate` so the player flips `watched` and persists the
-// furthest point. A clip-length of real playback is not needed (and would be flaky).
+// Drive the seeded 8s clip's <video> to its end by walking currentTime forward in <=2s
+// steps (so the player's no-skip clamp, rel > maxReached + 2, never fires) and dispatching
+// `timeupdate` so the player flips `watched` and persists the furthest point.
+//
+// The steps elapse REAL time (a fraction of the clip length): the server now PACES each
+// progress save against the wall-clock since the previous one (pacedMaxReachedMs, po-4dyo),
+// so the furthest point can't outrun real time. We advance ~1.5s of clip per ~0.9s of real
+// time (~1.7x, well within the ~2.5x rate the server allows but far below a one-shot forge),
+// which mimics a genuine watch and clears the completion gate. (Driving it in ~0ms — as the
+// old fast-forward did — now reads as a forge and is correctly refused.)
 async function simulateWatchToEnd(page: import("@playwright/test").Page, clipSec: number): Promise<void> {
   await page.evaluate(async (endSec) => {
     const video = document.querySelector<HTMLVideoElement>('[data-testid="video-player"] video');
@@ -61,7 +67,7 @@ async function simulateWatchToEnd(page: import("@playwright/test").Page, clipSec
     for (let s = 0; s <= endSec; s += 1.5) {
       t = s;
       video.dispatchEvent(new Event("timeupdate"));
-      await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 900)); // elapse real time so server-side pacing passes
     }
     t = endSec;
     video.dispatchEvent(new Event("timeupdate"));
@@ -198,6 +204,35 @@ test("catechist adds a video item and the iMovie-style trimmer mounts", async ({
   await page.getByRole("button", { name: "Close editor" }).click();
 
   // Clean up the lesson this test created.
+  await page.getByTestId("delete-lesson-btn").click();
+  await page.waitForURL(/\/ocia\/lessons$/);
+});
+
+// The "Add from YouTube" affordance and its live preview are pure client behavior (id
+// extraction → youtube-nocookie embed URL), so this asserts the picker UX without the
+// network — actually ingesting a YouTube video reaches youtube.com, which is out of scope
+// for an offline e2e (see DELTAS: YouTube student-playback e2e is externally blocked).
+test("catechist video picker offers a YouTube source with a live preview", async ({ page }) => {
+  page.on("dialog", (d) => d.accept());
+  await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
+  await page.goto("/ocia/lessons");
+  await page.getByRole("button", { name: "New lesson" }).click();
+  await page.waitForURL(/\/ocia\/lessons\/[0-9a-f-]+\/edit$/);
+
+  await page.getByRole("button", { name: "Video" }).click();
+  await page.getByRole("button", { name: "Edit" }).first().click();
+  await expect(page.getByRole("heading", { name: "Edit Video" })).toBeVisible();
+
+  // Open the YouTube sub-form and paste a watch URL → the privacy-enhanced embed previews.
+  await page.getByTestId("youtube-add-toggle").click();
+  await expect(page.getByTestId("youtube-add-submit")).toBeDisabled(); // empty input
+  await page.getByTestId("youtube-url-input").fill("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  const preview = page.getByTestId("youtube-preview");
+  await expect(preview).toBeVisible();
+  await expect(preview).toHaveAttribute("src", /youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/);
+  await expect(page.getByTestId("youtube-add-submit")).toBeEnabled();
+
+  await page.getByRole("button", { name: "Close editor" }).click();
   await page.getByTestId("delete-lesson-btn").click();
   await page.waitForURL(/\/ocia\/lessons$/);
 });
