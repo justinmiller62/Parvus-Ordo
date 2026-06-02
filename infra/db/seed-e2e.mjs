@@ -65,7 +65,7 @@ await client.query("DELETE FROM dictionary_overrides   WHERE parish_id = $1", [E
 await client.query("DELETE FROM prayer_submissions     WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM prayer_overrides       WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM memberships     WHERE parish_id = $1", [E2E_PARISH]);
-await client.query("DELETE FROM ministries      WHERE parish_id = $1", [E2E_PARISH]);
+await client.query("DELETE FROM gather_groups   WHERE parish_id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM users    WHERE email LIKE 'e2e-%@parvaordo.test'");
 await client.query("DELETE FROM parishes WHERE id = $1", [E2E_PARISH]);
 await client.query("DELETE FROM dioceses WHERE id = $1", [E2E_DIOCESE]);
@@ -79,7 +79,7 @@ await client.query(
    VALUES ($1, $2, 'E2E Test Parish', 'e2e-test', 'e2e-test.localhost', true)`,
   [E2E_PARISH, E2E_DIOCESE],
 );
-await client.query(`INSERT INTO ministries (parish_id, name, kind) VALUES ($1, 'OCIA', 'formation')`, [E2E_PARISH]);
+await client.query(`INSERT INTO gather_groups (parish_id, name, type) VALUES ($1, 'OCIA', 'ministry')`, [E2E_PARISH]);
 
 // ── Users + memberships (single-parish, so no chooser/switcher in the way) ───
 await client.query(
@@ -94,7 +94,7 @@ await client.query(
   `INSERT INTO memberships (user_id, parish_id, ministry_id, role)
    SELECT u.id, $1,
           CASE WHEN u.email = 'e2e-catechist@parvaordo.test'
-               THEN (SELECT id FROM ministries WHERE parish_id = $1 AND name = 'OCIA')
+               THEN (SELECT id FROM gather_groups WHERE parish_id = $1 AND name = 'OCIA')
                ELSE NULL END,
           (CASE u.email
              WHEN 'e2e-admin@parvaordo.test'     THEN 'admin'
