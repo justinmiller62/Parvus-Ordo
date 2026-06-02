@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Film,
   Heart,
+  HeartHandshake,
   Home,
   LayoutDashboard,
   LogOut,
@@ -64,6 +65,10 @@ function topNav(role: Role | null): NavItem[] {
   if (studioEligible(role))
     items.push({ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true });
   if (peopleEligible(role)) items.push({ href: "/people", label: "People", Icon: Users, live: true });
+  // Gather is parishioner-facing — a top-level entry for every parish role (RFC-005 §2.1). It stays
+  // here (not a sidebar replacement like OCIA/Studio): entering /gather keeps this main sidebar with
+  // "Gather" active, and gather/layout.tsx renders the module's own persistent sub-nav alongside it.
+  items.push({ href: "/gather", label: "Gather", Icon: HeartHandshake, live: true });
   return items;
 }
 
