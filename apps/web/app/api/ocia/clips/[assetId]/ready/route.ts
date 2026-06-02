@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server";
-import { createHash, timingSafeEqual } from "node:crypto";
-import { getAssetParishId, updateAssetStatus } from "@parvaordo/core";
+import { getAssetParishId, secretsMatch, updateAssetStatus } from "@parvaordo/core";
 
 export const runtime = "nodejs";
-
-// Constant-time comparison of the shared secret. Hashing both sides to a fixed-width
-// SHA-256 digest keeps timingSafeEqual on equal-length buffers (it throws otherwise)
-// and avoids leaking the secret's length through an early size mismatch.
-function secretsMatch(provided: string, expected: string): boolean {
-  const a = createHash("sha256").update(provided).digest();
-  const b = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(a, b);
-}
 
 // Callback hit by the clip cut-service (Cloudflare Container) when a clip finishes
 // (or fails). Authenticated by a shared secret since it isn't a logged-in user.
