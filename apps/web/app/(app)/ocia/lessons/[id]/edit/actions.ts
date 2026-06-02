@@ -8,7 +8,9 @@ import {
   deleteLessonItem,
   deleteVersion,
   ensureDraft,
+  getAsset,
   getLessonItemContent,
+  ingestYouTubeAsset,
   isEditableParishDraft,
   publishVersion,
   removeClip,
@@ -22,6 +24,7 @@ import {
   type LessonItemKind,
 } from "@parvaordo/core";
 import { requireStaff } from "@/src/lib/require-role";
+import type { VideoAssetOption } from "@/src/components/ocia/video-editor";
 
 // Edits may only touch a parish-owned DRAFT (unpublished) version. Core owns the
 // rule; the action owns the redirect (presentation).
@@ -68,6 +71,35 @@ export async function addItemAction(
   const id = await addLessonItem({ parishId, versionId, kind, content });
   rp(lessonId);
   return { id, content };
+}
+
+/**
+ * Add a YouTube video to the parish's library as an external `provider:'youtube'` asset
+ * (no Bunny upload) and return it as a pickable video option so the editor can select it
+ * into the current video item. Captions + duration import best-effort in core. Throws on an
+ * invalid URL/id (the picker surfaces the message). Gated to a parish-owned draft, like the
+ * other authoring mutations.
+ */
+export async function ingestYouTubeAction(
+  lessonId: string,
+  versionId: string,
+  input: string,
+  title?: string,
+): Promise<VideoAssetOption> {
+  const { parishId, userId } = await requireStaff("/ocia");
+  await assertDraft(parishId, versionId);
+  const assetId = await ingestYouTubeAsset({ parishId, createdBy: userId, input, title });
+  const a = await getAsset(parishId, assetId);
+  if (!a || !a.playbackUrl) throw new Error("Could not add that YouTube video");
+  rp(lessonId);
+  return {
+    id: a.id,
+    title: a.title,
+    durationMs: a.durationMs,
+    playbackUrl: a.playbackUrl,
+    posterUrl: a.posterUrl,
+    provider: a.provider,
+  };
 }
 
 export async function updateItemAction(
