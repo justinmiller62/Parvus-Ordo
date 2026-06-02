@@ -19,6 +19,9 @@ export * from "./platform";
 // OCIA module
 export * from "./ocia";
 
+// cohorts — student grouping, scheduling, gating, learning paths (keystone)
+export * from "./cohorts";
+
 // media / asset manager
 export * from "./media";
 

@@ -65,3 +65,16 @@ h3,
 h4 {
   font-family: var(--po-font-heading);
 }
+
+/* Honor a reduced-motion preference everywhere: neutralize the entry animations
+   (po-fade-in / po-slide-up) and any transitions, but keep all content visible. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
