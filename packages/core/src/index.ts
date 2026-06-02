@@ -43,3 +43,6 @@ export * from "./prayers";
 
 // parvus studio (studio creators make short catechetical videos with AI help)
 export * from "./youth-teaches";
+
+// parvus gather (RFC-005) — parish groups, RBAC, and the Requests coordination spine
+export * from "./gather";
