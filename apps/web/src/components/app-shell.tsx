@@ -9,6 +9,7 @@ import {
   BookOpenCheck,
   Calendar,
   Clapperboard,
+  ClipboardList,
   Film,
   Heart,
   Home,
@@ -95,6 +96,9 @@ function ociaNav(role: Role | null): NavItem[] {
     ...(canReturnToDashboard ? [{ href: "/", label: "Dashboard", Icon: ArrowLeft, live: true } as NavItem] : []),
     { href: "/ocia", label: "OCIA Home", Icon: Home, live: true },
     { href: "/ocia/lessons", label: isLearner ? "My Lessons" : "Lesson Builder", Icon: BookOpen, live: true },
+    ...(isLearner
+      ? [{ href: "/ocia/my-answers", label: "My Answers", Icon: ClipboardList, live: true } as NavItem]
+      : []),
     ...(isLearner ? LEARNER_MODULES : CATECHIST_MODULES),
   ];
 }

@@ -55,7 +55,7 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | HIGH | ☐ Cohort/schedule/release gating | lists ALL published parish lessons unconditionally (over-exposure) |
 | HIGH | ☐ Lesson-level progress status + Due/Completed split + "All caught up!" | per-item progress exists but not aggregated/surfaced |
 | HIGH | ☐ Sequential locking + skip_sequence | depends on cohorts |
-| MED | ☐ "My Answers"/review + "My Schedule" calendar | depends on review mode + schedule |
+| MED | ☑ "My Answers" review surface (po-65xa) / ☐ "My Schedule" calendar | My Answers surface at `/ocia/my-answers` lists answered lessons (`getStudentAnsweredLessons`, live-version answers only so the review reliably shows them) linking into the existing review mode (`?review=1`); learner nav entry added. The "My Schedule" calendar half is tracked with the Unified Calendar port (po-oa5n / po-d98g), not here |
 | (Cohorts/Scheduling keystone landed in po-mf1 — `getStudentLessons` supplies the gating; this is now a UI-wiring task, no longer blocked) |
 
 ## auth-onboarding + home-dashboard
