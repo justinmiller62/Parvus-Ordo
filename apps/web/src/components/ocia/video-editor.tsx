@@ -5,6 +5,9 @@ import Link from "next/link";
 import Hls from "hls.js";
 import { Youtube } from "lucide-react";
 import { extractYouTubeId, youTubeEmbedUrl } from "@parvaordo/core/youtube-url";
+import { clampTrimEnd, clampTrimStart, trimWindowToMs } from "@parvaordo/shared";
+import { TrimTrack } from "@/src/components/ocia/trim-track";
+import { YouTubeTrimmer } from "@/src/components/ocia/youtube-trimmer";
 
 export interface VideoAssetOption {
   id: string;
@@ -16,18 +19,12 @@ export interface VideoAssetOption {
   provider: string;
 }
 
-function fmt(sec: number): string {
-  if (!Number.isFinite(sec) || sec < 0) sec = 0;
-  const s = Math.floor(sec);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
-
-const NUDGE = "rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50";
-
 /**
- * iMovie-style video trimmer: a live preview plus a filmstrip with draggable
- * in/out handles. Dragging a handle scrubs the preview to that frame (the iMovie
- * feel). Produces the lesson item's clip window: { asset_id, start_ms, end_ms }.
+ * Lesson video-item editor. A Bunny upload gets the iMovie-style trimmer (live
+ * `<video>` preview + a filmstrip with draggable in/out handles); a YouTube source
+ * gets the IFrame-API {@link YouTubeTrimmer}. Both produce the same lesson-item clip
+ * window: { asset_id, start_ms, end_ms }. The shared {@link TrimTrack} renders the
+ * handles + controls for both.
  */
 export function VideoEditor({
   content,
@@ -85,8 +82,6 @@ export function VideoEditor({
   };
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const dragging = useRef<"start" | "end" | null>(null);
 
   const [duration, setDuration] = useState(asset?.durationMs ? asset.durationMs / 1000 : 0);
   const [startSec, setStartSec] = useState(((content.start_ms as number) ?? 0) / 1000);
@@ -120,25 +115,10 @@ export function VideoEditor({
   }, [assetId]);
 
   const propagate = useCallback(
-    (s: number, e: number, full: boolean) => {
-      onChange({
-        ...content,
-        asset_id: assetId,
-        start_ms: Math.round(s * 1000),
-        end_ms: full ? null : Math.round(e * 1000),
-      });
+    (s: number, e: number) => {
+      onChange({ ...content, asset_id: assetId, ...trimWindowToMs(s, e, duration) });
     },
-    [onChange, content, assetId],
-  );
-
-  const timeFromX = useCallback(
-    (clientX: number): number => {
-      const rect = trackRef.current?.getBoundingClientRect();
-      if (!rect || rect.width === 0 || duration === 0) return 0;
-      const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-      return pct * duration;
-    },
-    [duration],
+    [onChange, content, assetId, duration],
   );
 
   // HLS can't seek on every pointer-move without thrashing the segment loader, so
@@ -159,54 +139,36 @@ export function VideoEditor({
     }
   };
 
-  const onPointerDownHandle = (which: "start" | "end") => (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragging.current = which;
-    videoRef.current?.pause(); // don't fight playback while scrubbing
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragging.current) return;
-    const t = timeFromX(e.clientX);
-    if (dragging.current === "start") {
-      const s = Math.max(0, Math.min(t, endSec - 0.5));
+  // Live drag from the trim track: clamp, reflect in state, scrub the preview.
+  const onScrub = (which: "start" | "end", t: number) => {
+    if (which === "start") {
+      const s = clampTrimStart(t, endSec);
       setStartSec(s);
       seekPreview(s);
     } else {
-      const en = Math.min(duration, Math.max(t, startSec + 0.5));
-      setEndSec(en);
-      seekPreview(en);
+      const e = clampTrimEnd(t, startSec, duration);
+      setEndSec(e);
+      seekPreview(e);
     }
   };
-
-  const onPointerUp = () => {
-    const which = dragging.current;
-    if (!which) return;
-    dragging.current = null;
+  const onScrubEnd = (which: "start" | "end") => {
     seekPreview(which === "start" ? startSec : endSec, true); // precise final frame
-    propagate(startSec, endSec, endSec >= duration - 0.05);
+    propagate(startSec, endSec);
   };
 
   // Precise setters shared by the nudge buttons + numeric inputs (clamped).
   const applyStart = (v: number) => {
-    const s = Math.max(0, Math.min(v, endSec - 0.5));
+    const s = clampTrimStart(v, endSec);
     setStartSec(s);
     seekPreview(s, true);
-    propagate(s, endSec, duration > 0 && endSec >= duration - 0.05);
+    propagate(s, endSec);
   };
   const applyEnd = (v: number) => {
-    const hi = duration > 0 ? duration : v;
-    const e = Math.max(startSec + 0.5, Math.min(v, hi));
+    const e = clampTrimEnd(v, startSec, duration);
     setEndSec(e);
     seekPreview(e, true);
-    propagate(startSec, e, duration > 0 && e >= duration - 0.05);
+    propagate(startSec, e);
   };
-
-  const startPct = duration ? (startSec / duration) * 100 : 0;
-  const endPct = duration ? (endSec / duration) * 100 : 100;
-  const playPct = duration ? (playhead / duration) * 100 : 0;
 
   return (
     <div className="space-y-4">
@@ -322,23 +284,16 @@ export function VideoEditor({
         </p>
       ) : null}
 
-      {/* A YouTube source plays in full via its embed — no Bunny trimmer or clip cutting. */}
+      {/* A YouTube source is trimmed via the IFrame Player API — no Bunny <video>/HLS
+          scrub and no server clip cut; the student player enforces [start,end]. */}
       {asset && isYouTube && ytVideoId ? (
-        <div className="space-y-2">
-          <div className="overflow-hidden rounded-lg border border-gray-200 bg-black">
-            <iframe
-              src={youTubeEmbedUrl(ytVideoId) ?? undefined}
-              title={asset.title}
-              data-testid="youtube-item-preview"
-              className="aspect-video w-full"
-              allow="accelerometer; encrypted-media; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-          <p className="text-xs text-gray-400">
-            YouTube videos play in full. Learners still can’t skip ahead until they’ve watched it through.
-          </p>
-        </div>
+        <YouTubeTrimmer
+          videoId={ytVideoId}
+          assetId={assetId}
+          content={content}
+          durationHintMs={asset.durationMs}
+          onChange={onChange}
+        />
       ) : null}
 
       {asset && !isYouTube ? (
@@ -361,107 +316,18 @@ export function VideoEditor({
             />
           </div>
 
-          {/* Filmstrip trimmer */}
-          <div
-            ref={trackRef}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerLeave={onPointerUp}
-            data-testid="trim-track"
-            className="relative h-14 touch-none select-none overflow-hidden rounded-md border border-gray-200 bg-navy/5"
-            style={
-              asset.posterUrl
-                ? {
-                    backgroundImage: `url(${asset.posterUrl})`,
-                    backgroundSize: "auto 100%",
-                    backgroundRepeat: "repeat-x",
-                  }
-                : undefined
-            }
-          >
-            {/* dim outside the selection */}
-            <div className="absolute inset-y-0 left-0 bg-black/45" style={{ width: `${startPct}%` }} />
-            <div className="absolute inset-y-0 right-0 bg-black/45" style={{ width: `${100 - endPct}%` }} />
-            {/* selection border */}
-            <div
-              className="absolute inset-y-0 border-y-2 border-gold"
-              style={{ left: `${startPct}%`, right: `${100 - endPct}%` }}
-            />
-            {/* playhead */}
-            <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-white/80" style={{ left: `${playPct}%` }} />
-            {/* handles */}
-            <div
-              onPointerDown={onPointerDownHandle("start")}
-              data-testid="trim-start"
-              className="absolute inset-y-0 flex w-4 cursor-ew-resize items-center justify-center rounded-l bg-gold"
-              style={{ left: `calc(${startPct}% - 8px)` }}
-            >
-              <span className="h-5 w-0.5 rounded bg-white" />
-            </div>
-            <div
-              onPointerDown={onPointerDownHandle("end")}
-              data-testid="trim-end"
-              className="absolute inset-y-0 flex w-4 cursor-ew-resize items-center justify-center rounded-r bg-gold"
-              style={{ left: `calc(${endPct}% - 8px)` }}
-            >
-              <span className="h-5 w-0.5 rounded bg-white" />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>
-              In{" "}
-              <span className="font-medium text-navy" data-testid="trim-start-label">
-                {fmt(startSec)}
-              </span>
-            </span>
-            <span>Clip length {fmt(Math.max(0, endSec - startSec))}</span>
-            <span>
-              Out{" "}
-              <span className="font-medium text-navy" data-testid="trim-end-label">
-                {fmt(endSec)}
-              </span>
-            </span>
-          </div>
-
-          {/* Fine-tune controls: nudge, exact entry, or snap to the current frame. */}
-          <div className="space-y-2 rounded-md border border-gray-200 bg-parchment/40 p-3">
-            {(
-              [
-                { label: "In", value: startSec, apply: applyStart, testid: "in" },
-                { label: "Out", value: endSec, apply: applyEnd, testid: "out" },
-              ] as const
-            ).map((row) => (
-              <div key={row.label} className="flex flex-wrap items-center gap-1.5">
-                <span className="w-7 text-xs font-medium text-gray-500">{row.label}</span>
-                <button type="button" onClick={() => row.apply(row.value - 1)} className={NUDGE}>
-                  −1s
-                </button>
-                <button type="button" onClick={() => row.apply(row.value - 0.1)} className={NUDGE}>
-                  −0.1
-                </button>
-                <input
-                  type="number"
-                  step={0.1}
-                  min={0}
-                  value={Number(row.value.toFixed(1))}
-                  onChange={(e) => row.apply(Number(e.target.value))}
-                  data-testid={`trim-${row.testid}-input`}
-                  className="w-20 rounded border border-gray-300 px-2 py-1 text-center text-sm"
-                />
-                <span className="text-xs text-gray-400">s</span>
-                <button type="button" onClick={() => row.apply(row.value + 0.1)} className={NUDGE}>
-                  +0.1
-                </button>
-                <button type="button" onClick={() => row.apply(row.value + 1)} className={NUDGE}>
-                  +1s
-                </button>
-                <button type="button" onClick={() => row.apply(playhead)} className={`${NUDGE} ml-auto`}>
-                  Set to playhead
-                </button>
-              </div>
-            ))}
-          </div>
+          <TrimTrack
+            duration={duration}
+            startSec={startSec}
+            endSec={endSec}
+            playhead={playhead}
+            posterUrl={asset.posterUrl}
+            onScrubStart={() => videoRef.current?.pause()}
+            onScrub={onScrub}
+            onScrubEnd={onScrubEnd}
+            onApplyStart={applyStart}
+            onApplyEnd={applyEnd}
+          />
           <p className="text-xs text-gray-400">
             Drag the handles or use the controls above. Learners can’t skip ahead until they’ve watched the clip.
           </p>

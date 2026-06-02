@@ -6,57 +6,7 @@ import { findDictionaryTerms } from "@parvaordo/core/dictionary-text";
 import { saveVideoProgressAction } from "@/app/(app)/ocia/lessons/[id]/actions";
 import { useDictionary } from "@/src/components/ocia/dictionary/dictionary-provider";
 import type { PlayerWord } from "@/src/components/ocia/video-player";
-
-// ── YouTube IFrame Player API (minimal typing; we don't depend on @types/youtube) ──
-interface YTPlayer {
-  getCurrentTime(): number;
-  getDuration(): number;
-  seekTo(seconds: number, allowSeekAhead: boolean): void;
-  playVideo(): void;
-  pauseVideo(): void;
-  destroy(): void;
-}
-interface YTPlayerEvent {
-  target: YTPlayer;
-  data?: number;
-}
-interface YTNamespace {
-  Player: new (
-    el: HTMLElement,
-    opts: {
-      videoId: string;
-      host?: string;
-      playerVars?: Record<string, unknown>;
-      events?: { onReady?: (e: YTPlayerEvent) => void; onStateChange?: (e: YTPlayerEvent) => void };
-    },
-  ) => YTPlayer;
-  PlayerState: { PLAYING: number; ENDED: number };
-}
-declare global {
-  interface Window {
-    YT?: YTNamespace;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
-// Load the IFrame API script once per page and resolve when YT.Player is constructable.
-let ytApiPromise: Promise<void> | null = null;
-function loadYouTubeApi(): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  if (window.YT?.Player) return Promise.resolve();
-  if (ytApiPromise) return ytApiPromise;
-  ytApiPromise = new Promise<void>((resolve) => {
-    const prev = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      prev?.();
-      resolve();
-    };
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
-  });
-  return ytApiPromise;
-}
+import { loadYouTubeApi, type YTPlayer } from "@/src/lib/youtube-iframe-api";
 
 /**
  * Seek-enforcing YouTube player — the external-source counterpart to {@link VideoPlayer}.

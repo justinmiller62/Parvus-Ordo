@@ -236,3 +236,38 @@ test("catechist video picker offers a YouTube source with a live preview", async
   await page.getByTestId("delete-lesson-btn").click();
   await page.waitForURL(/\/ocia\/lessons$/);
 });
+
+// po-ob5m: a YouTube source now gets the IFrame-API trimmer (not a play-in-full embed).
+// The live scrub drives the cross-origin YouTube IFrame API (offline-blocked, like
+// YouTube playback), but the trim track, handles, and fine-tune controls render and
+// update from the asset's known duration purely client-side — so the trim-window UX
+// (the part that authors start_ms/end_ms) IS covered here against a seeded asset.
+test("catechist trims a YouTube source with the IFrame trimmer", async ({ page }) => {
+  page.on("dialog", (d) => d.accept());
+  await page.goto("/dev/login?email=e2e-admin@parvaordo.test");
+  await page.goto("/ocia/lessons");
+  await page.getByRole("button", { name: "New lesson" }).click();
+  await page.waitForURL(/\/ocia\/lessons\/[0-9a-f-]+\/edit$/);
+
+  await page.getByRole("button", { name: "Video" }).click();
+  await page.getByRole("button", { name: "Edit" }).first().click();
+  await expect(page.getByRole("heading", { name: "Edit Video" })).toBeVisible();
+
+  // Select the seeded YouTube asset → the IFrame trimmer mounts (replacing the old
+  // static "plays in full" embed), and the shared trim track renders from its duration.
+  await page.getByTestId("video-asset-select").selectOption({ label: "OCIA YouTube Sample (YouTube)" });
+  await expect(page.getByTestId("youtube-trimmer")).toBeVisible();
+  await expect(page.getByTestId("trim-track")).toBeVisible();
+  await expect(page.getByTestId("trim-start")).toBeVisible();
+  await expect(page.getByTestId("trim-end")).toBeVisible();
+
+  // Set the in-point via the numeric control → the window label reflects it (the pure
+  // trim-window math runs without the IFrame API; the live seek just no-ops offline).
+  await page.getByTestId("trim-in-input").fill("30");
+  await page.getByTestId("trim-in-input").blur();
+  await expect(page.getByTestId("trim-start-label")).toHaveText("0:30");
+
+  await page.getByRole("button", { name: "Close editor" }).click();
+  await page.getByTestId("delete-lesson-btn").click();
+  await page.waitForURL(/\/ocia\/lessons$/);
+});

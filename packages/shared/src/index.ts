@@ -361,6 +361,60 @@ export function clipResumeSeconds(maxReachedMs: number): number {
   return Number.isFinite(maxReachedMs) && maxReachedMs > 0 ? maxReachedMs / 1000 : 0;
 }
 
+// ─── Video trim-window math (pure; the editor side that AUTHORS the clip window) ─
+//
+// Both trimmers project a dragged [start, end] selection onto the lesson item's
+// { start_ms, end_ms } the seek-enforcing players above then enforce. The Bunny
+// trimmer scrubs a <video>; the YouTube trimmer scrubs the IFrame Player API — but
+// the window math is identical and lives here so it's shared + unit-tested (the
+// YouTube IFrame trimmer can't be exercised offline in e2e, so this IS its safety
+// net). An out-point that reaches the end stores end_ms as null (= full video).
+
+/** Minimum selectable gap between the in- and out-points (seconds). */
+export const TRIM_MIN_GAP_SEC = 0.5;
+/** How close to the duration the out-point counts as "the end" → store end_ms null. */
+export const TRIM_FULL_EPSILON_SEC = 0.05;
+
+/** Clamp a proposed in-point to [0, endSec − min gap]. */
+export function clampTrimStart(value: number, endSec: number, minGap = TRIM_MIN_GAP_SEC): number {
+  return Math.max(0, Math.min(value, endSec - minGap));
+}
+
+/**
+ * Clamp a proposed out-point to [startSec + min gap, duration]. When the duration
+ * isn't known yet (0), fall back to the requested value bounded only by the in-point
+ * gap — the live media will re-clamp once it reports its length.
+ */
+export function clampTrimEnd(value: number, startSec: number, duration: number, minGap = TRIM_MIN_GAP_SEC): number {
+  const hi = duration > 0 ? duration : value;
+  return Math.max(startSec + minGap, Math.min(value, hi));
+}
+
+/** Whether the out-point reaches the end (→ store end_ms as null = full video). */
+export function isFullTrimWindow(endSec: number, duration: number, epsilon = TRIM_FULL_EPSILON_SEC): boolean {
+  return duration > 0 && endSec >= duration - epsilon;
+}
+
+/** Project a [startSec, endSec] selection onto the lesson-item content fields (ms). */
+export function trimWindowToMs(
+  startSec: number,
+  endSec: number,
+  duration: number,
+): { start_ms: number; end_ms: number | null } {
+  return {
+    start_ms: Math.round(startSec * 1000),
+    end_ms: isFullTrimWindow(endSec, duration) ? null : Math.round(endSec * 1000),
+  };
+}
+
+/** Format seconds as m:ss for trim labels; clamps negative / non-finite to 0:00. */
+export function formatTimecode(totalSeconds: number): string {
+  let sec = totalSeconds;
+  if (!Number.isFinite(sec) || sec < 0) sec = 0;
+  const whole = Math.floor(sec);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+}
+
 // ─── Server-side video-watch completion gate (pure) ───────────────────────────
 //
 // COMPLETION (not seek-enforcement) is what moved server-side: a video lesson item may

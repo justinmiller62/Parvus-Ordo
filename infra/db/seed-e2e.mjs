@@ -23,6 +23,7 @@ if (!URL) {
 const E2E_DIOCESE = "0e2e0000-0000-0000-0000-000000000001";
 const E2E_PARISH = "0e2e0000-0000-0000-0000-0000000000a1";
 const E2E_VIDEO = "0e2e0000-0000-0000-0000-0000000000b1";
+const E2E_YT_VIDEO = "0e2e0000-0000-0000-0000-0000000000b2";
 const E2E_VIDEO_LESSON = "0e2e0000-0000-0000-0000-0000000000c1";
 const E2E_QUIZ_LESSON = "0e2e0000-0000-0000-0000-0000000000c2";
 const E2E_COHORT = "0e2e0000-0000-0000-0000-0000000000e1";
@@ -155,6 +156,23 @@ await client.query(
       'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8',
       'ready', 600000, 'completed', $3, $4::jsonb)`,
   [E2E_VIDEO, E2E_PARISH, WORDS.map((w) => w.word).join(" "), JSON.stringify(WORDS)],
+);
+
+// ── A ready YouTube-provider library asset (po-ob5m) ─────────────────────────
+// Lets the editor's YouTube IFrame trimmer be exercised offline: it appears in the
+// asset picker and its duration_ms sizes the trim track without the cross-origin
+// IFrame API (which can't load in an offline e2e — same block as YouTube playback).
+// Ingesting a real YouTube video reaches youtube.com, so a seeded asset is how the
+// trimmer UI gets e2e coverage. Standalone (no lesson item references it).
+await client.query(
+  `INSERT INTO assets
+     (id, scope, parish_id, created_by, kind, title, provider, provider_asset_id, playback_url,
+      status, duration_ms, transcription_status, transcript_text, transcript_json)
+   VALUES ($1, 'parish', $2, (SELECT id FROM users WHERE email = 'e2e-admin@parvaordo.test'),
+      'video', 'OCIA YouTube Sample', 'youtube', 'dQw4w9WgXcQ',
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      'ready', 213000, 'completed', '', '[]'::jsonb)`,
+  [E2E_YT_VIDEO, E2E_PARISH],
 );
 
 // ── Lessons (each a published v1) ────────────────────────────────────────────
