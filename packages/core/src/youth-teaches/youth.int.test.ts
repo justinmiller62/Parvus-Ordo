@@ -21,7 +21,13 @@ import {
   mintMcpToken,
   reorderProjectSlides,
   saveCorpusPassage,
-  setProjectStatus,
+  approveProject,
+  InvalidProjectTransition,
+  markProjectReady,
+  reopenProject,
+  resetProjectToDrafting,
+  submitProject,
+  transitionProject,
   updateScriptDraft,
   validateMcpToken,
 } from "@parvaordo/core";
@@ -150,13 +156,21 @@ describe("youth-teaches (integration)", () => {
     expect(Array.isArray(p!.savedPassages)).toBe(true);
   });
 
-  it("setProjectStatus flips the status, including review states", async () => {
-    await setProjectStatus(HS, projectId, "ready_to_record");
+  it("project lifecycle: enforces legal transitions and rejects illegal jumps", async () => {
+    await resetProjectToDrafting(HS, projectId); // known start, independent of prior tests
+    await markProjectReady(HS, projectId); // drafting → ready_to_record
     expect((await getProject(HS, projectId))!.status).toBe("ready_to_record");
-    await setProjectStatus(HS, projectId, "approved");
+    await submitProject(HS, projectId); // ready_to_record → submitted
+    expect((await getProject(HS, projectId))!.status).toBe("submitted");
+    await approveProject(HS, projectId); // submitted → approved
     expect((await getProject(HS, projectId))!.status).toBe("approved");
-    await setProjectStatus(HS, projectId, "rejected");
-    expect((await getProject(HS, projectId))!.status).toBe("rejected");
+
+    // Illegal: an approved project cannot be re-submitted — guard throws, status unchanged.
+    await expect(submitProject(HS, projectId)).rejects.toThrow(InvalidProjectTransition);
+    expect((await getProject(HS, projectId))!.status).toBe("approved");
+
+    await reopenProject(HS, projectId); // approved → ready_to_record (replace the recording)
+    expect((await getProject(HS, projectId))!.status).toBe("ready_to_record");
   });
 
   it("callYouthTool rejects an unknown tool", async () => {
@@ -225,6 +239,7 @@ describe("youth-teaches (integration)", () => {
   });
 
   it("createRecording flips the project to submitted + getLatestRecording returns it", async () => {
+    await transitionProject(HS, projectId, "ready_to_record"); // createRecording submits, which requires ready_to_record
     const rec = await createRecording(HS, {
       projectId,
       bunnyVideoId: "guid-int",

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { scriptStats } from "./projects";
+import { canTransitionProject, scriptStats } from "./projects";
 import { YOUTH_MCP_TOOLS } from "./mcp";
 import { uploadRecordingToBunny } from "./recordings";
 import { presignSlideUrl, putSlide } from "./r2";
@@ -19,6 +19,35 @@ describe("scriptStats", () => {
 
   it("collapses irregular whitespace", () => {
     expect(scriptStats("a\n\nb   c\td").words).toBe(4);
+  });
+});
+
+describe("canTransitionProject (lifecycle guard)", () => {
+  it("allows the forward lifecycle edges", () => {
+    expect(canTransitionProject("drafting", "ready_to_record")).toBe(true);
+    expect(canTransitionProject("ready_to_record", "submitted")).toBe(true);
+    expect(canTransitionProject("submitted", "approved")).toBe(true);
+    expect(canTransitionProject("submitted", "rejected")).toBe(true);
+  });
+
+  it("allows reopening a submitted/approved/rejected project for re-recording", () => {
+    expect(canTransitionProject("submitted", "ready_to_record")).toBe(true);
+    expect(canTransitionProject("approved", "ready_to_record")).toBe(true);
+    expect(canTransitionProject("rejected", "ready_to_record")).toBe(true);
+  });
+
+  it("rejects illegal jumps", () => {
+    expect(canTransitionProject("drafting", "submitted")).toBe(false);
+    expect(canTransitionProject("drafting", "approved")).toBe(false);
+    expect(canTransitionProject("ready_to_record", "approved")).toBe(false);
+    expect(canTransitionProject("approved", "submitted")).toBe(false);
+    expect(canTransitionProject("rejected", "approved")).toBe(false);
+    expect(canTransitionProject("approved", "rejected")).toBe(false);
+  });
+
+  it("does not treat a same-state edge as a forward transition (transitionProject handles it as a no-op)", () => {
+    expect(canTransitionProject("drafting", "drafting")).toBe(false);
+    expect(canTransitionProject("submitted", "submitted")).toBe(false);
   });
 });
 
