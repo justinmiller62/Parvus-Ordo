@@ -21,6 +21,9 @@ export * from "./ocia/answers";
 export * from "./ocia/progress";
 export * from "./ocia/feedback";
 
+// cohorts — student grouping, scheduling, gating, learning paths (keystone)
+export * from "./cohorts";
+
 // media / asset manager
 export * from "./media";
 

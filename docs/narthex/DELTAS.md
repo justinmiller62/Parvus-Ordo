@@ -56,7 +56,7 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | HIGH | ☐ Lesson-level progress status + Due/Completed split + "All caught up!" | per-item progress exists but not aggregated/surfaced |
 | HIGH | ☐ Sequential locking + skip_sequence | depends on cohorts |
 | MED | ☐ "My Answers"/review + "My Schedule" calendar | depends on review mode + schedule |
-| (depends on the Cohorts/Scheduling slice — Slice 4) |
+| (Cohorts/Scheduling keystone landed in po-mf1 — `getStudentLessons` supplies the gating; this is now a UI-wiring task, no longer blocked) |
 
 ## auth-onboarding + home-dashboard
 | Sev | Delta | Notes |
@@ -69,3 +69,17 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | MED | ☑ Per-parish signup/apply toggle | done — `parishes.applications_enabled` + admin toggle; diocese-level cascade deferred |
 | LOW | ☑ `login_lookup` loads ALL memberships | resolved — multi-parish chooser/switcher + hostname (slug) resolution |
 | N/A | home is a role-router by design | dashboard-as-page is an enhancement to ratify |
+
+## cohorts + scheduling (keystone — po-mf1)
+The keystone slice of cohorts.md + the Cohorts list of schedule-calendar.md. Provides the
+write/read model + pure gating the student surfaces depend on.
+| Sev | Delta | Notes |
+| --- | --- | --- |
+| HIGH | ☑ Cohort CRUD + roster + schedule (auto-generate/add/edit/remove) | `core/cohorts`; auto-generate is a single transaction (Narthex did two); cross-parish roster add blocked |
+| HIGH | ☑ Pure gating single source of truth | `core/cohorts/gating` (release/due/hidden/locked) + `dates` (tz-immune calendar math); resolves Narthex's `'2000-01-01'` vs `−6d` split → first-no-start = always-released; unit-tested |
+| HIGH | ☑ Student read model (`getStudentLessons`) | cohort/release/sequential/path gating, schedule-ordered; **unblocks student-lesson-list + the sequential-lock in student-lesson-view** (their PAGES remain follow-ups) |
+| HIGH | ☑ Learning paths (per-cohort lesson sub-sequences + membership) | `core/cohorts/learning-paths`; destructive set-lessons in one txn |
+| MED | ☑ Cohorts UI (list + 5-tab detail) | `/ocia/cohorts` + `/ocia/cohorts/[id]` (Lessons/Schedule/Students/Learning Paths/Settings); nav wired live |
+| MED | ☑ Single completion signal | sequential lock = lesson's live-version items all complete (`lesson_item_progress`); teacher progress = answered/total questions — no new `engagement_events` table |
+| MED | ☑ Dropped `cohort_schedule.discussion_location` flag | fixed: 0022 adds `time_override`/`location_override`; effective time/location = `COALESCE(override, cohort default)` |
+| — | ☐ Unified Calendar + iCal (deferred) | the calendar half of schedule-calendar.md (`calendar_events`+`observed_date`, `calendar_sources`, SSRF-proxied iCal/RRULE, react-big-calendar, Calendar tab) is a noted follow-up `phase=port` bead; carries the remaining two flagged fixes (`observed_date`, leaked `service_role` key) |
