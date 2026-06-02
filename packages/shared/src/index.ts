@@ -51,6 +51,15 @@ export function normalizeSacredText(text: string): string {
   return out;
 }
 
+// ─── Form-input string normalization (used by core data-access modules) ───────
+
+/** Trim a maybe-absent string; empty or whitespace-only collapses to `null`
+ *  (so optional fields persist as SQL NULL rather than an empty string). */
+export const orNull = (s?: string | null): string | null => (s && s.trim() ? s.trim() : null);
+
+/** Trim a maybe-absent string to a (possibly empty) string — never null/undefined. */
+export const trimOrEmpty = (s?: string | null): string => (s ?? "").trim();
+
 /**
  * Brand tokens resolved per request. The cascade is
  * default Parvus Ordo -> diocese -> parish (most specific wins).
