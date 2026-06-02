@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./auth": "./src/auth/index.ts",
     "./branding": "./src/branding/index.ts",
+    "./calendar-types": "./src/calendar/types.ts",
     "./dictionary-text": "./src/dictionary/normalize.ts"
   },
   "scripts": {

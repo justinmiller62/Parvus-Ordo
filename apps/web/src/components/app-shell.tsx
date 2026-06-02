@@ -70,7 +70,7 @@ function topNav(role: Role | null): NavItem[] {
 const CATECHIST_MODULES: NavItem[] = [
   { href: "/ocia/media", label: "Media", Icon: Film, live: true },
   { href: "/ocia/applicants", label: "Applicants", Icon: UserPlus, live: true },
-  { label: "Calendar", Icon: Calendar },
+  { href: "/ocia/calendar", label: "Calendar", Icon: Calendar, live: true },
   { href: "/ocia/cohorts", label: "Cohorts", Icon: Users, live: true },
   { href: "/dictionary", label: "Dictionary", Icon: BookOpenCheck, live: true },
   { href: "/prayers", label: "Prayers", Icon: Heart, live: true },
@@ -80,7 +80,7 @@ const CATECHIST_MODULES: NavItem[] = [
 ];
 
 const LEARNER_MODULES: NavItem[] = [
-  { label: "Calendar", Icon: Calendar },
+  { href: "/ocia/calendar", label: "Calendar", Icon: Calendar, live: true },
   { href: "/dictionary", label: "Dictionary", Icon: BookOpenCheck, live: true },
   { href: "/prayers", label: "Prayers", Icon: Heart, live: true },
   { label: "Announcements", Icon: Megaphone },
