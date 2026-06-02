@@ -1,0 +1,28 @@
+# Parvus Ordo — scriptorium scribes (Doctors & scholars of the Church)
+# Led by St. Isidore of Seville, patron saint of programmers.
+# Apply on bootstrap: cp ops/gascity/scribe-namepool.txt \
+#   ~/Desktop/parva-ordo-city/.gc/system/packs/gastown/agents/polecat/namepool.txt
+isidore
+jerome
+bede
+augustine
+aquinas
+albert
+bonaventure
+anselm
+ambrose
+gregory
+hildegard
+boethius
+benedict
+scholastica
+columba
+patrick
+brigid
+cassiodorus
+alcuin
+gertrude
+catherine
+teresa
+hilda
+caedmon

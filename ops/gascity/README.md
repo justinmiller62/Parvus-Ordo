@@ -47,3 +47,19 @@ gc start                                            # launch the supervisor
 - **The gate is currently supervisor-enforced** (a human suspends the refinery and confirms approvals).
   TODO before unattended runs: make it **structural** — dependency-block the refinery merge bead on the
   four `verdict-approve` review beads so it cannot merge unreviewed.
+
+## Scriptorium naming (Parvus Ordo ↔ gastown)
+We talk in parish terms; `gc` commands use the gastown identifiers.
+| Parvus Ordo | gastown id | Role |
+| --- | --- | --- |
+| Rector | mayor | coordinates the work |
+| Scribe | gastown.polecat | writes the code (instances = scholar-saints, `scribe-namepool.txt`) |
+| Censor | the 4 reviewers | examine the manuscript before merge |
+| Sacristan | gastown.refinery | admits approved work into the codebase |
+| Sentinel | gastown.witness | watches over the work |
+| Deacon | gastown.deacon | patrols / upkeep |
+| Sexton | the dog pool | menial chores |
+
+Scribe instance names come from the pack's `namepool.txt`, which `gc` regenerates — so the saint names
+take effect on a fresh city start (after a reboot), not mid-run. Re-apply with the `cp` in
+`scribe-namepool.txt`.
