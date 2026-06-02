@@ -15,8 +15,8 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | MED | ☑ Engagement telemetry absent | now emitted from the player (see engagement-dashboard below): `lesson_start` (beacon) + `step_complete`/`answer_submit`(+correct)/`lesson_complete` (server actions, via `after()`) |
 | MED | ☑ Student question + feedback forms on completion step | `student_questions`/`student_feedback` mutations + UI absent |
 | MED | ☑ Review mode (`?review=true`) | read-only answers list; not built |
-| MED | ☐ Sequential cohort lock | blocks lessons w/o prior `lesson_complete`; depends on cohorts slice |
-| MED | ☐ Dictionary term highlighting + modal (reading + transcript) | no dictionary subsystem |
+| MED | ☑ Sequential cohort lock | server-enforced at the lesson view + advance (po-exda); gating resolved by `getStudentLessons` (cohorts slice) |
+| MED | ☑ Dictionary term highlighting + modal (reading + transcript) | po-6y7j — highlighting + definition modal ported |
 | LOW | ☐ Step count N vs N+1 (feedback step) | cosmetic |
 
 ## video-pipeline (happy path faithful)
@@ -28,7 +28,7 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | HIGH | ☑ Orphan asset cleanup on upload failure | failed TUS/createUpload leaves the asset row behind |
 | HIGH/MED | ☑ YouTube ingest (backend, po-w4u0) | `ingestYouTubeAsset` (core/media/youtube.ts): a YouTube video is an external asset modeled as `kind:'video'` + `provider:'youtube'` (provider is free-text → NO asset_kind enum change, NO migration) with `provider_asset_id`=video id, `playback_url`=watch URL, `status:'ready'`. Captions imported into the SAME `transcript_json` (TranscriptWord[], per-segment) so transcript/segmentation/gating stay source-agnostic. Outbound youtube.com calls REUSE the SSRF-safe `fetchFeed` guard (HTTPS-only, host allowlist, private-IP, size/time). Best-effort: no captions / fetch error → `transcription_status:'failed'` (retryable), asset still created. v1 uses the watch-page-scrape track path; an InnerTube fallback for caption-restricted videos is a deferred hardening follow-up. The teacher picker is the SIBLING bead po-l595 (blocked-by this) |
 | MED | ☑ Transcript download (`[m:ss]` 10s grouping) | no export |
-| MED | ☐ Student-own / teacher-parish RLS on progress | `lesson_item_progress` parish-isolated but not row-owned |
+| MED | ☑ Student-own / teacher-parish RLS on progress | po-s6vb — app-level student-ownership of `lesson_item_progress` documented + tested |
 | LOW | ☐ Provider duration authoritative over transcriber | `setTranscript` COALESCE can overwrite |
 | LOW | ☐ Webhook+Queue for transcode/transcribe (vs client poll + in-request) | scaling debt; `infra/workers` not created |
 
@@ -55,7 +55,7 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | HIGH | ☑ Cohort/schedule/release gating | learner branch now calls `getStudentLessons` instead of `getPublishedLessons` (which listed every published parish lesson — the over-exposure leak); only schedule-released lessons appear |
 | HIGH | ☑ Progress status + Due/Completed split + "All caught up!" | `partitionStudentLessons` buckets by status; per-lesson badge (Not started / In progress / Completed); empty `due` on a non-empty list → `lesson-all-caught-up`; collapsed-by-default Completed section |
 | HIGH | ☑ Sequential locking (list side) + skip_sequence | locked rows render visibly locked (`lesson-locked`: lock icon, non-link). The read model already resolves `locked` incl. skip_sequence. The lock card uses a GENERIC "Complete the previous lesson first" message — the blocking lesson's title isn't surfaced by the read model and re-deriving it would re-implement gating, so it's intentionally omitted (vs Narthex's titled message) |
-| HIGH | ☐ Sequential-lock SERVER enforcement (deep-link) | NOT this surface — lives on the lesson VIEW page (sibling bead student-lesson-view) |
+| HIGH | ☑ Sequential-lock SERVER enforcement (deep-link) | po-exda — enforced server-side at the lesson view + advance |
 | MED | ☑ "My Answers" review surface (po-65xa) / ☑ "My Schedule" (po-d98g) | My Answers surface at `/ocia/my-answers` lists answered lessons (`getStudentAnsweredLessons`, live-version answers only so the review reliably shows them) linking into the existing review mode (`?review=1`); learner nav entry added. The "My Schedule" calendar half LANDED in **po-d98g** — a student sees their cohort schedule as the Cohort Schedule overlay on the unified Calendar page (no separate view) |
 | _Tests_ | unit (`partitionStudentLessons` split/order/all-caught-up) + int (`cohorts.int` over-exposure contrast: a `getPublishedLessons` lesson is absent from `getStudentLessons` for a not-enrolled / pre-release student) + e2e (`student-lessons.spec`: learner sees the empty state, the two published e2e lessons don't leak). Populated Due/Completed/locked RENDERING is covered by the unit/int layer rather than e2e to avoid mutating the shared e2e seed (its student has no cohort_members/schedule). | |
 
@@ -85,8 +85,8 @@ copyable Markdown bundle. `core.buildWeeklyExport` (RLS-scoped, set-based — co
 | MED | ☑ Discussion template (Narthex gap) | Parvus Ordo has no parish-level template; it lives on `lesson_versions.discussion_template`. Honored only when the week resolves to a **single distinct lesson** across all paths; multi-lesson weeks use the system default (which itself says to weave themes). `SYSTEM_DEFAULT_DISCUSSION_TEMPLATE` authored for the port (original text not in repo) |
 | MED | ☑ Reading HTML→plain text upgraded | block tags → newlines, `<li>` → bullets, common entities decoded (Narthex's `tag→''` glued words & left entities); `<p>Hi</p>`→`Hi` preserved |
 | LOW | ☑ Video blocks excluded | Narthex parity (no Bunny/Groq work needed). Enriching the export with transcripts from the media/asset manager is a noted enhancement, not a port requirement |
-| MED | ☐ Entry point (cohort detail page) | Narthex reached this from per-week rows on the cohort detail page; Parvus Ordo has no cohort-management UI yet, so the export is currently reached by direct URL (e2e navigates directly). Wire per-week "Export" links + a "Back to cohort" target when the Cohorts/Scheduling slice lands |
-| LOW | ☐ Programmatic `/api/v1` export | not built (no external consumer needs it for parity); `renderWeeklyExportMarkdown(buildWeeklyExport(...))` is the one-liner if one appears — must add the catechist/admin gate |
+| MED | ☑ Entry point (cohort detail page) | po-3wni — per-week "Export" links wired on the cohort detail page |
+| LOW | ☑ Programmatic `/api/v1` export | po-c7co — programmatic weekly export endpoint with catechist/admin gate |
 
 ## cohorts + scheduling (keystone — po-mf1)
 The keystone slice of cohorts.md + the Cohorts list of schedule-calendar.md. Provides the
