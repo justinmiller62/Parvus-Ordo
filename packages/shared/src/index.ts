@@ -356,3 +356,99 @@ export function validateRecordingUpload(sizeBytes: number): RecordingUploadRejec
   }
   return null;
 }
+
+// ─── Systems-admin: parish slug, lifecycle status, branding (RFC-004) ─────────
+
+// Labels reserved at the apex (never a parish slug). Mirrors RESERVED_LABELS in the core
+// hostname resolver (packages/core/src/platform/hostname.ts) — keep the two aligned; those
+// labels always resolve to the apex, so a parish can never own them as a subdomain.
+const RESERVED_SLUGS = new Set(["www", "app"]);
+// Lowercase alphanumeric segments joined by single hyphens — no leading/trailing/double
+// hyphen (so "holyspirit-austin" is valid; "-x", "x-", "a--b", "Holy" are not).
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SLUG_MIN = 3;
+const SLUG_MAX = 63; // DNS label limit (the slug is also a subdomain label)
+
+/**
+ * Validate a parish slug's SHAPE (RFC-004 §6.1): lowercase a–z/0–9 in hyphen-joined
+ * segments, {@link SLUG_MIN}–{@link SLUG_MAX} chars, and not a reserved label. The slug
+ * is both the parish subdomain and part of its globally-unique slug-city identity (e.g.
+ * "holyspirit-austin"); global UNIQUENESS is enforced at the write layer, this checks
+ * format only. Pure — used by core provisioning AND the admin UI so both reject the same.
+ */
+export function isValidSlug(slug: string): boolean {
+  if (slug.length < SLUG_MIN || slug.length > SLUG_MAX) return false;
+  if (!SLUG_RE.test(slug)) return false;
+  return !RESERVED_SLUGS.has(slug);
+}
+
+/** Parish lifecycle states (RFC-004 §8): provisioned `pending_setup` → `active` on setup
+ *  completion, `suspended`/reactivated thereafter. */
+export const PARISH_STATUSES = ["pending_setup", "active", "suspended"] as const;
+export type ParishStatus = (typeof PARISH_STATUSES)[number];
+
+// Allowed forward transitions; same-state is treated as an idempotent no-op (allowed).
+const PARISH_STATUS_TRANSITIONS: Record<ParishStatus, readonly ParishStatus[]> = {
+  pending_setup: ["active", "suspended"],
+  active: ["suspended"],
+  suspended: ["active"],
+};
+
+/** Whether a parish may move `from` → `to` (RFC-004 §8). Same-state is an allowed no-op. */
+export function canTransitionParishStatus(from: ParishStatus, to: ParishStatus): boolean {
+  return from === to || PARISH_STATUS_TRANSITIONS[from].includes(to);
+}
+
+/** Versioned, all-optional brand overrides (RFC-004 §7). `v` pins the schema for forward
+ *  migration; every field is optional so a tier overrides only what it sets. */
+export interface BrandConfig {
+  v: 1;
+  displayName?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
+  colors?: {
+    primary?: string;
+    accent?: string;
+    onPrimary?: string;
+  };
+  loginTagline?: string;
+  emailFromName?: string;
+}
+
+/**
+ * Resolve the effective brand by per-field most-specific-wins cascade (RFC-004 §7):
+ * system defaults ← diocese.brand ← parish.brand. Each field takes the most-specific tier
+ * that DEFINES it; `colors` merges per sub-field the same way, so a parish can override
+ * just `primary` and still inherit the diocese `accent`. Absent tiers are skipped (a
+ * parish with no brand inherits diocese, then system). Pure; the result omits fields no
+ * tier defines. (An empty-string value is intentional and wins — only undefined defers.)
+ */
+export function resolveBrand(system: BrandConfig, diocese?: BrandConfig, parish?: BrandConfig): BrandConfig {
+  const tiers = [system, diocese, parish].filter((t): t is BrandConfig => Boolean(t));
+  // Least → most specific; the most-specific tier that DEFINES a field wins.
+  const pick = <T>(get: (b: BrandConfig) => T | undefined): T | undefined =>
+    tiers.reduce<T | undefined>((acc, t) => get(t) ?? acc, undefined);
+
+  const out: BrandConfig = { v: 1 };
+  const displayName = pick((b) => b.displayName);
+  if (displayName !== undefined) out.displayName = displayName;
+  const logoUrl = pick((b) => b.logoUrl);
+  if (logoUrl !== undefined) out.logoUrl = logoUrl;
+  const faviconUrl = pick((b) => b.faviconUrl);
+  if (faviconUrl !== undefined) out.faviconUrl = faviconUrl;
+  const loginTagline = pick((b) => b.loginTagline);
+  if (loginTagline !== undefined) out.loginTagline = loginTagline;
+  const emailFromName = pick((b) => b.emailFromName);
+  if (emailFromName !== undefined) out.emailFromName = emailFromName;
+
+  const primary = pick((b) => b.colors?.primary);
+  const accent = pick((b) => b.colors?.accent);
+  const onPrimary = pick((b) => b.colors?.onPrimary);
+  if (primary !== undefined || accent !== undefined || onPrimary !== undefined) {
+    out.colors = {};
+    if (primary !== undefined) out.colors.primary = primary;
+    if (accent !== undefined) out.colors.accent = accent;
+    if (onPrimary !== undefined) out.colors.onPrimary = onPrimary;
+  }
+  return out;
+}
