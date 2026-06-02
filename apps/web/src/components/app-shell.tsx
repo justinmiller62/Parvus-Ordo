@@ -110,6 +110,13 @@ function studioNav(role: Role | null): NavItem[] {
   ];
 }
 
+// Dictionary & Prayers are OCIA tools deliberately kept at top-level routes (/dictionary,
+// /prayers) for now because they may be promoted to GLOBAL tools later. This list is the
+// single revert point — drop a path to promote that tool back to a standalone route. (po-s2lm)
+const OCIA_ADJACENT_PATHS = ["/dictionary", "/prayers"];
+const isOciaAdjacent = (pathname: string): boolean =>
+  OCIA_ADJACENT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+
 export function AppShell({
   brandName,
   displayName,
@@ -132,7 +139,11 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const activeParishName = memberships?.find((m) => m.parishId === activeParishId)?.parishName;
   const pathname = usePathname();
-  const inOcia = pathname === "/ocia" || pathname.startsWith("/ocia/");
+  // OCIA users on the top-level OCIA tools (/dictionary, /prayers) stay inside the OCIA shell so they
+  // aren't popped out to the bare global nav; non-OCIA members keep their normal nav (no staff-only OCIA
+  // links). Real /ocia* access is gated by ocia/layout.tsx. (po-s2lm)
+  const inOcia =
+    pathname === "/ocia" || pathname.startsWith("/ocia/") || (ociaEligible(role) && isOciaAdjacent(pathname));
   const inStudio = pathname === "/parvus-studio" || pathname.startsWith("/parvus-studio/");
   const items = inStudio ? studioNav(role) : inOcia ? ociaNav(role) : topNav(role);
 
