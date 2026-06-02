@@ -69,3 +69,20 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | MED | ☑ Per-parish signup/apply toggle | done — `parishes.applications_enabled` + admin toggle; diocese-level cascade deferred |
 | LOW | ☑ `login_lookup` loads ALL memberships | resolved — multi-parish chooser/switcher + hostname (slug) resolution |
 | N/A | home is a role-router by design | dashboard-as-page is an enhancement to ratify |
+
+## weekly-export (ported — `po-et5`)
+Teacher Weekly Export: per-path week lesson material + path-filtered answers/questions/feedback →
+copyable Markdown bundle. `core.buildWeeklyExport` (RLS-scoped, set-based — collapses Narthex's N+1)
++ pure `assembleWeeklyExport`/`renderWeeklyExportMarkdown`/`htmlToPlainText`; RSC page at
+`/ocia/cohorts/:cohortId/week/:weekNumber/export` with a `'use client'` copy panel. No migration needed
+(cohorts/learning_paths/members/path_lessons/answers/student_questions/student_feedback all exist).
+| Sev | Delta / decision | Notes |
+| --- | --- | --- |
+| HIGH | ☑ Cross-tenant isolation | answers/SQ/SF/cohort/path tables are parish-isolated by RLS via `getDb(parishId)`; integration test asserts another parish gets an empty export for the same cohort |
+| HIGH | ☑ Teacher-only gate at the boundary | RSC page redirects non-`catechist`/`admin`/`super_admin` to `/ocia` — same posture as the student-responses inbox (`feedback.ts` relies on RLS for isolation; role is gated at the page). Any future `/api/v1` export endpoint MUST reproduce this gate |
+| MED | ☑ Versioning semantics (Narthex gap) | each path's week lesson resolves to its **live** version (`lessons.live_version_id`) for material/questions; answers match that live version's question items. Offline lesson (no live version) → path skipped like a missing one. Answers to superseded versions aren't shown (they're not the current lesson) |
+| MED | ☑ Discussion template (Narthex gap) | Parvus Ordo has no parish-level template; it lives on `lesson_versions.discussion_template`. Honored only when the week resolves to a **single distinct lesson** across all paths; multi-lesson weeks use the system default (which itself says to weave themes). `SYSTEM_DEFAULT_DISCUSSION_TEMPLATE` authored for the port (original text not in repo) |
+| MED | ☑ Reading HTML→plain text upgraded | block tags → newlines, `<li>` → bullets, common entities decoded (Narthex's `tag→''` glued words & left entities); `<p>Hi</p>`→`Hi` preserved |
+| LOW | ☑ Video blocks excluded | Narthex parity (no Bunny/Groq work needed). Enriching the export with transcripts from the media/asset manager is a noted enhancement, not a port requirement |
+| MED | ☐ Entry point (cohort detail page) | Narthex reached this from per-week rows on the cohort detail page; Parvus Ordo has no cohort-management UI yet, so the export is currently reached by direct URL (e2e navigates directly). Wire per-week "Export" links + a "Back to cohort" target when the Cohorts/Scheduling slice lands |
+| LOW | ☐ Programmatic `/api/v1` export | not built (no external consumer needs it for parity); `renderWeeklyExportMarkdown(buildWeeklyExport(...))` is the one-liner if one appears — must add the catechist/admin gate |
