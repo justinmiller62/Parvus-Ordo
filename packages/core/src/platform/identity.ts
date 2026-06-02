@@ -94,3 +94,22 @@ export function pickActiveMembership(
   }
   return memberships.length === 1 ? memberships[0]! : null;
 }
+
+/**
+ * Authorize an iOS bearer-token request against the user's CURRENT memberships.
+ *
+ * The app token is bound to a parish at mint time; `boundParishId` is that claim. We
+ * re-check it against live memberships on every request (authenticateApiRequest re-reads
+ * the DB via lookupAppUser each call), so a user removed from the bound parish loses API
+ * access on their next request — the revocation / deactivated-user cutoff a 30-day,
+ * non-revocable token otherwise lacks (po-u79). Returns the live membership (whose role
+ * is authoritative for the request), or null when the token carries no parish or the
+ * user is no longer a member of it — the caller then returns 401.
+ */
+export function authorizeApiToken(
+  boundParishId: string | null | undefined,
+  memberships: ParishMembership[],
+): ParishMembership | null {
+  if (!boundParishId) return null;
+  return memberships.find((x) => x.parishId === boundParishId) ?? null;
+}
