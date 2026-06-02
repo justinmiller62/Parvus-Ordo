@@ -121,11 +121,18 @@ export default async function LessonPage({
           <h1 className="mt-3 font-heading text-2xl text-navy">{isPreview ? "End of preview" : "Lesson complete"}</h1>
           <p className="mt-1 text-gray-500">{lesson.title}</p>
           <div className="mt-6 flex justify-center gap-3">
-            <Link href={isPreview ? `/ocia/lessons/${id}/edit${sp.v ? `?v=${sp.v}` : ""}` : "/ocia"} className={PRIMARY_BTN}>
+            <Link
+              href={isPreview ? `/ocia/lessons/${id}/edit${sp.v ? `?v=${sp.v}` : ""}` : "/ocia"}
+              className={PRIMARY_BTN}
+            >
               {isPreview ? "Back to editor" : "Back to OCIA Home"}
             </Link>
             {total > 0 ? (
-              <Link href={isPreview ? hrefFor(0) : `/ocia/lessons/${id}?review=1`} className={BACK_BTN} data-testid="my-answers">
+              <Link
+                href={isPreview ? hrefFor(0) : `/ocia/lessons/${id}?review=1`}
+                className={BACK_BTN}
+                data-testid="my-answers"
+              >
                 {isPreview ? "Restart preview" : "My Answers"}
               </Link>
             ) : null}
@@ -146,7 +153,9 @@ export default async function LessonPage({
   const rawChoices = Array.isArray(item.content.choices)
     ? (item.content.choices as Array<string | { label: string; correct?: boolean }>)
     : [];
-  const choices = rawChoices.map((c) => (typeof c === "string" ? { label: c, correct: false } : { label: c.label, correct: !!c.correct }));
+  const choices = rawChoices.map((c) =>
+    typeof c === "string" ? { label: c, correct: false } : { label: c.label, correct: !!c.correct },
+  );
   const savedAnswer = answers[item.id] ?? "";
   const expected = String(item.content.expected_answer ?? "");
 
@@ -191,9 +200,7 @@ export default async function LessonPage({
 
   // Resume position for the active student video step.
   const savedMaxReached =
-    isActive && item.kind === "video"
-      ? await getItemMaxReached(identity.parishId, identity.userId, item.id)
-      : 0;
+    isActive && item.kind === "video" ? await getItemMaxReached(identity.parishId, identity.userId, item.id) : 0;
 
   const primaryLabel = item.kind === "question" ? "Submit & Continue" : isLast ? "Finish" : "Continue";
 
@@ -227,7 +234,13 @@ export default async function LessonPage({
               </div>
             ) : (
               <div className="rounded-md bg-cream/20 px-3 py-2 text-sm text-navy">
-                {expected ? <span><span className="font-medium">Expected answer:</span> {expected}</span> : <span className="italic text-gray-400">Open-ended response</span>}
+                {expected ? (
+                  <span>
+                    <span className="font-medium">Expected answer:</span> {expected}
+                  </span>
+                ) : (
+                  <span className="italic text-gray-400">Open-ended response</span>
+                )}
               </div>
             )
           ) : !isActive ? (
@@ -279,7 +292,10 @@ export default async function LessonPage({
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-8">
-      <Link href={isPreview ? `/ocia/lessons/${id}/edit${sp.v ? `?v=${sp.v}` : ""}` : "/ocia/lessons"} className="text-sm text-gray-400 hover:text-navy">
+      <Link
+        href={isPreview ? `/ocia/lessons/${id}/edit${sp.v ? `?v=${sp.v}` : ""}` : "/ocia/lessons"}
+        className="text-sm text-gray-400 hover:text-navy"
+      >
         ← {isPreview ? "Editor" : "Lessons"}
       </Link>
 

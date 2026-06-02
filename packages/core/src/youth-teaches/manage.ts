@@ -15,7 +15,11 @@ export interface ParishYouthProject {
 /** Every youth project in the parish (catechist/admin oversight list). */
 export async function listParishYouthProjects(parishId: string): Promise<ParishYouthProject[]> {
   const { rows } = await getDb(parishId).query<{
-    id: string; title: string; status: string; teen_name: string | null; topic_title: string | null;
+    id: string;
+    title: string;
+    status: string;
+    teen_name: string | null;
+    topic_title: string | null;
   }>(
     `SELECT p.id, p.title, p.status, u.display_name AS teen_name, t.title AS topic_title
        FROM youth_projects p
@@ -23,7 +27,13 @@ export async function listParishYouthProjects(parishId: string): Promise<ParishY
        LEFT JOIN youth_topics t ON t.id = p.topic_id
       ORDER BY p.created_at DESC`,
   );
-  return rows.map((r) => ({ id: r.id, title: r.title, status: r.status, teenName: r.teen_name, topicTitle: r.topic_title }));
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    status: r.status,
+    teenName: r.teen_name,
+    topicTitle: r.topic_title,
+  }));
 }
 
 /** Parish members with the studio role — the assignable teens. */
@@ -59,7 +69,14 @@ export async function createYouthTopic(parishId: string, input: NewYouthTopic): 
   const { rows } = await getDb(parishId).query<{ id: string }>(
     `INSERT INTO youth_topics (parish_id, category, title, common_misconception, correct_teaching, age_band)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-    [parishId, input.category, input.title, input.commonMisconception ?? null, input.correctTeaching ?? null, input.ageBand ?? null],
+    [
+      parishId,
+      input.category,
+      input.title,
+      input.commonMisconception ?? null,
+      input.correctTeaching ?? null,
+      input.ageBand ?? null,
+    ],
   );
   return { id: rows[0]!.id };
 }

@@ -19,7 +19,9 @@ let questionItemId: string;
 let readingItemId: string;
 
 beforeAll(async () => {
-  const u = await getDb(HOLY_SPIRIT).query<{ id: string }>("SELECT id FROM users WHERE email = 'student@parvaordo.test'");
+  const u = await getDb(HOLY_SPIRIT).query<{ id: string }>(
+    "SELECT id FROM users WHERE email = 'student@parvaordo.test'",
+  );
   studentId = u.rows[0]!.id;
 
   const lv = await getDb(HOLY_SPIRIT).query<{ live_version_id: string }>(

@@ -31,14 +31,33 @@ const orNull = (s?: string | null) => (s && s.trim() ? s.trim() : null);
 export async function listPrayers(parishId: string): Promise<PrayerItem[]> {
   const db = getDb(parishId);
   const [{ rows: universal }, { rows: overrides }, { rows: submissions }] = await Promise.all([
-    db.query<{ id: string; title: string; prayer_text: string; latin_text: string | null; category: string | null; context: string | null; attribution: string | null }>(
+    db.query<{
+      id: string;
+      title: string;
+      prayer_text: string;
+      latin_text: string | null;
+      category: string | null;
+      context: string | null;
+      attribution: string | null;
+    }>(
       `SELECT id, title, prayer_text, latin_text, category, context, attribution
          FROM prayer_entries WHERE status = 'approved' ORDER BY display_order, title`,
     ),
-    db.query<{ entry_id: string; override_text: string | null; override_context: string | null; override_notes: string | null }>(
-      "SELECT entry_id, override_text, override_context, override_notes FROM prayer_overrides",
-    ),
-    db.query<{ id: string; title: string; prayer_text: string; latin_text: string | null; category: string | null; context: string | null; attribution: string | null }>(
+    db.query<{
+      entry_id: string;
+      override_text: string | null;
+      override_context: string | null;
+      override_notes: string | null;
+    }>("SELECT entry_id, override_text, override_context, override_notes FROM prayer_overrides"),
+    db.query<{
+      id: string;
+      title: string;
+      prayer_text: string;
+      latin_text: string | null;
+      category: string | null;
+      context: string | null;
+      attribution: string | null;
+    }>(
       `SELECT id, title, prayer_text, latin_text, category, context, attribution
          FROM prayer_submissions WHERE status = 'pending' ORDER BY title`,
     ),
@@ -80,14 +99,27 @@ export async function listPrayers(parishId: string): Promise<PrayerItem[]> {
 }
 
 /** Create a parish prayer submission (pending). Null if title/text empty. */
-export async function createPrayerSubmission(parishId: string, submittedBy: string, input: NewPrayerInput): Promise<{ id: string } | null> {
+export async function createPrayerSubmission(
+  parishId: string,
+  submittedBy: string,
+  input: NewPrayerInput,
+): Promise<{ id: string } | null> {
   const title = input.title.trim();
   const text = input.prayerText.trim();
   if (!title || !text) return null;
   const { rows } = await getDb(parishId).query<{ id: string }>(
     `INSERT INTO prayer_submissions (parish_id, title, prayer_text, latin_text, category, context, attribution, submitted_by)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-    [parishId, title, text, orNull(input.latinText), orNull(input.category), orNull(input.context), orNull(input.attribution), submittedBy],
+    [
+      parishId,
+      title,
+      text,
+      orNull(input.latinText),
+      orNull(input.category),
+      orNull(input.context),
+      orNull(input.attribution),
+      submittedBy,
+    ],
   );
   return { id: rows[0]!.id };
 }
@@ -96,7 +128,16 @@ export async function updatePrayerSubmission(parishId: string, id: string, input
   await getDb(parishId).query(
     `UPDATE prayer_submissions SET title=$3, prayer_text=$4, latin_text=$5, category=$6, context=$7, attribution=$8
       WHERE id=$1 AND parish_id=$2`,
-    [id, parishId, input.title.trim(), input.prayerText.trim(), orNull(input.latinText), orNull(input.category), orNull(input.context), orNull(input.attribution)],
+    [
+      id,
+      parishId,
+      input.title.trim(),
+      input.prayerText.trim(),
+      orNull(input.latinText),
+      orNull(input.category),
+      orNull(input.context),
+      orNull(input.attribution),
+    ],
   );
 }
 
@@ -105,7 +146,11 @@ export async function deletePrayerSubmission(parishId: string, id: string): Prom
 }
 
 /** Upsert a per-parish override of a universal prayer (text/context). */
-export async function upsertPrayerOverride(parishId: string, entryId: string, o: { text?: string | null; context?: string | null; notes?: string | null }): Promise<void> {
+export async function upsertPrayerOverride(
+  parishId: string,
+  entryId: string,
+  o: { text?: string | null; context?: string | null; notes?: string | null },
+): Promise<void> {
   await getDb(parishId).query(
     `INSERT INTO prayer_overrides (parish_id, entry_id, override_text, override_context, override_notes)
      VALUES ($1,$2,$3,$4,$5)

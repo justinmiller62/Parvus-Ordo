@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  listMyProjects,
-  listParishYouthProjects,
-  listYouthTeens,
-  listYouthTopics,
-} from "@parvaordo/core";
+import { listMyProjects, listParishYouthProjects, listYouthTeens, listYouthTopics } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { createProjectAction, createTopicAction, deleteProjectAction } from "./actions";
 
@@ -17,9 +12,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className="rounded bg-navy/10 px-2 py-1 text-xs font-medium text-navy">
-      {STATUS_LABEL[status] ?? status}
-    </span>
+    <span className="rounded bg-navy/10 px-2 py-1 text-xs font-medium text-navy">{STATUS_LABEL[status] ?? status}</span>
   );
 }
 
@@ -89,30 +82,50 @@ export default async function YouthTeachesHome() {
         {teens.length === 0 ? (
           <p className="text-sm text-gray-500">
             No studio creators in this parish yet. Invite one from the{" "}
-            <Link href="/" className="text-burgundy underline">Dashboard</Link> (Invite a member → “Studio”) before assigning a project.
+            <Link href="/" className="text-burgundy underline">
+              Dashboard
+            </Link>{" "}
+            (Invite a member → “Studio”) before assigning a project.
           </p>
         ) : (
           <form action={createProjectAction} className="space-y-3" data-testid="yt-create-project">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="teenUserId">Studio creator</label>
+              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="teenUserId">
+                Studio creator
+              </label>
               <select id="teenUserId" name="teenUserId" required className={inputClass} data-testid="yt-teen-select">
                 {teens.map((t) => (
-                  <option key={t.userId} value={t.userId}>{t.displayName}</option>
+                  <option key={t.userId} value={t.userId}>
+                    {t.displayName}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="topicId">Topic (optional)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="topicId">
+                Topic (optional)
+              </label>
               <select id="topicId" name="topicId" className={inputClass} data-testid="yt-topic-select">
                 <option value="">— none —</option>
                 {topics.map((t) => (
-                  <option key={t.id} value={t.id}>{t.category} · {t.title}</option>
+                  <option key={t.id} value={t.id}>
+                    {t.category} · {t.title}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="title">Project title</label>
-              <input id="title" name="title" required className={inputClass} data-testid="yt-title-input" placeholder="What Catholics actually believe about the Real Presence" />
+              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="title">
+                Project title
+              </label>
+              <input
+                id="title"
+                name="title"
+                required
+                className={inputClass}
+                data-testid="yt-title-input"
+                placeholder="What Catholics actually believe about the Real Presence"
+              />
             </div>
             <button
               type="submit"
@@ -131,27 +144,46 @@ export default async function YouthTeachesHome() {
         <form action={createTopicAction} className="mt-3 space-y-3" data-testid="yt-create-topic">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="t-category">Category</label>
+              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="t-category">
+                Category
+              </label>
               <input id="t-category" name="category" required className={inputClass} placeholder="Sacraments" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="t-ageBand">Age band</label>
+              <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="t-ageBand">
+                Age band
+              </label>
               <input id="t-ageBand" name="ageBand" className={inputClass} placeholder="high_school" />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="t-title">Title</label>
-            <input id="t-title" name="title" required className={inputClass} placeholder="What Catholics actually believe about the Real Presence" />
+            <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="t-title">
+              Title
+            </label>
+            <input
+              id="t-title"
+              name="title"
+              required
+              className={inputClass}
+              placeholder="What Catholics actually believe about the Real Presence"
+            />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="t-misconception">Common misconception</label>
+            <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="t-misconception">
+              Common misconception
+            </label>
             <input id="t-misconception" name="commonMisconception" className={inputClass} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="t-correct">Correct teaching</label>
+            <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="t-correct">
+              Correct teaching
+            </label>
             <input id="t-correct" name="correctTeaching" className={inputClass} />
           </div>
-          <button type="submit" className="rounded-md border border-gold bg-gold/10 px-3 py-1.5 text-sm font-medium text-gold-dark hover:bg-gold/20">
+          <button
+            type="submit"
+            className="rounded-md border border-gold bg-gold/10 px-3 py-1.5 text-sm font-medium text-gold-dark hover:bg-gold/20"
+          >
             Add topic
           </button>
         </form>
@@ -176,7 +208,8 @@ export default async function YouthTeachesHome() {
                   <span>
                     <span className="block font-medium text-navy">{p.title}</span>
                     <span className="block text-sm text-gray-500">
-                      {p.teenName ?? "Unassigned"}{p.topicTitle ? ` · ${p.topicTitle}` : ""}
+                      {p.teenName ?? "Unassigned"}
+                      {p.topicTitle ? ` · ${p.topicTitle}` : ""}
                     </span>
                   </span>
                   <StatusBadge status={p.status} />

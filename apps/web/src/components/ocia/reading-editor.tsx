@@ -5,15 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { Bold, Heading2, Italic, List, ListOrdered, Quote } from "lucide-react";
 import type { ReactNode } from "react";
 
-function ToolbarButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
+function ToolbarButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
@@ -33,7 +25,8 @@ export function ReadingEditor({ html, onChange }: { html: string; onChange: (htm
     immediatelyRender: false, // App Router SSR safety
     editorProps: {
       attributes: {
-        class: "min-h-[110px] px-3 py-2 text-sm text-gray-900 focus:outline-none [&_p]:my-2 [&_h2]:text-lg [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-gold [&_blockquote]:pl-3 [&_blockquote]:italic",
+        class:
+          "min-h-[110px] px-3 py-2 text-sm text-gray-900 focus:outline-none [&_p]:my-2 [&_h2]:text-lg [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-gold [&_blockquote]:pl-3 [&_blockquote]:italic",
       },
     },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
@@ -56,13 +49,22 @@ export function ReadingEditor({ html, onChange }: { html: string; onChange: (htm
         >
           <Heading2 className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        <ToolbarButton
+          active={editor.isActive("bulletList")}
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+        >
           <List className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        <ToolbarButton
+          active={editor.isActive("orderedList")}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        >
           <ListOrdered className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        <ToolbarButton
+          active={editor.isActive("blockquote")}
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        >
           <Quote className="h-4 w-4" />
         </ToolbarButton>
       </div>

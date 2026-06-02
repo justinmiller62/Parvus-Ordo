@@ -11,11 +11,7 @@ import { ApplyForm } from "./apply-form";
  * the apex it shows a picker of parishes accepting applications, and selecting one
  * carries `?parish=<id>`.
  */
-export default async function ApplyPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ parish?: string }>;
-}) {
+export default async function ApplyPage({ searchParams }: { searchParams: Promise<{ parish?: string }> }) {
   const brand = await getBrand();
   const sp = await searchParams;
   const host = (await headers()).get("host");
@@ -24,7 +20,14 @@ export default async function ApplyPage({
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-md text-center">
-        <Image src={brand.logoSrc} alt={brand.name} width={120} height={178} priority className="mx-auto h-auto w-24 rounded-lg" />
+        <Image
+          src={brand.logoSrc}
+          alt={brand.name}
+          width={120}
+          height={178}
+          priority
+          className="mx-auto h-auto w-24 rounded-lg"
+        />
         <p className="mt-3 mb-6 font-heading text-sm tracking-wide text-burgundy">{brand.tagline}</p>
         {await renderBody(parishId)}
       </div>

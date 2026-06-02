@@ -23,10 +23,15 @@ await c.connect();
 // Tear down prior demo rows (children first).
 await c.query("DELETE FROM youth_recordings WHERE project_id = $1", [PROJECT]);
 await c.query("DELETE FROM youth_mcp_audit_log WHERE project_id = $1", [PROJECT]);
-await c.query("DELETE FROM youth_mcp_tokens WHERE teen_user_id IN (SELECT id FROM users WHERE email = $1)", [SARAH_EMAIL]);
+await c.query("DELETE FROM youth_mcp_tokens WHERE teen_user_id IN (SELECT id FROM users WHERE email = $1)", [
+  SARAH_EMAIL,
+]);
 await c.query("DELETE FROM youth_projects WHERE id = $1", [PROJECT]);
 await c.query("DELETE FROM youth_topics WHERE id = $1", [TOPIC]);
-await c.query("DELETE FROM memberships WHERE parish_id = $1 AND user_id IN (SELECT id FROM users WHERE email = $2)", [HOLY_SPIRIT, SARAH_EMAIL]);
+await c.query("DELETE FROM memberships WHERE parish_id = $1 AND user_id IN (SELECT id FROM users WHERE email = $2)", [
+  HOLY_SPIRIT,
+  SARAH_EMAIL,
+]);
 
 // Sarah (studio at Holy Spirit).
 const { rows } = await c.query(

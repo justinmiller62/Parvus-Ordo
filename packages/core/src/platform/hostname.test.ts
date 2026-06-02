@@ -15,7 +15,10 @@ describe("resolveParishRef", () => {
       expect(resolveParishRef("holy-spirit.parvusordo.com", base)).toEqual({ kind: "slug", slug: "holy-spirit" });
     });
     it("a host not under the base domain is a custom domain", () => {
-      expect(resolveParishRef("holyspiritlockhaven.org", base)).toEqual({ kind: "custom", domain: "holyspiritlockhaven.org" });
+      expect(resolveParishRef("holyspiritlockhaven.org", base)).toEqual({
+        kind: "custom",
+        domain: "holyspiritlockhaven.org",
+      });
     });
     it("deeper sub-subdomains are not parish slugs (→ apex)", () => {
       expect(resolveParishRef("a.b.parvusordo.com", base)).toEqual({ kind: "apex" });
@@ -25,15 +28,27 @@ describe("resolveParishRef", () => {
   describe("environment portability — same slug, every base domain", () => {
     it("resolves holy-spirit by slug in local/dev/stage/prod", () => {
       expect(resolveParishRef("holy-spirit.localhost", "localhost")).toEqual({ kind: "slug", slug: "holy-spirit" });
-      expect(resolveParishRef("holy-spirit.dev.parvusordo.com", "dev.parvusordo.com")).toEqual({ kind: "slug", slug: "holy-spirit" });
-      expect(resolveParishRef("holy-spirit.stage.parvusordo.com", "stage.parvusordo.com")).toEqual({ kind: "slug", slug: "holy-spirit" });
-      expect(resolveParishRef("holy-spirit.parvusordo.com", "parvusordo.com")).toEqual({ kind: "slug", slug: "holy-spirit" });
+      expect(resolveParishRef("holy-spirit.dev.parvusordo.com", "dev.parvusordo.com")).toEqual({
+        kind: "slug",
+        slug: "holy-spirit",
+      });
+      expect(resolveParishRef("holy-spirit.stage.parvusordo.com", "stage.parvusordo.com")).toEqual({
+        kind: "slug",
+        slug: "holy-spirit",
+      });
+      expect(resolveParishRef("holy-spirit.parvusordo.com", "parvusordo.com")).toEqual({
+        kind: "slug",
+        slug: "holy-spirit",
+      });
     });
   });
 
   describe("normalization", () => {
     it("strips the port", () => {
-      expect(resolveParishRef("holy-spirit.localhost:3000", "localhost")).toEqual({ kind: "slug", slug: "holy-spirit" });
+      expect(resolveParishRef("holy-spirit.localhost:3000", "localhost")).toEqual({
+        kind: "slug",
+        slug: "holy-spirit",
+      });
     });
     it("is case-insensitive", () => {
       expect(resolveParishRef("Holy-Spirit.LOCALHOST", "localhost")).toEqual({ kind: "slug", slug: "holy-spirit" });

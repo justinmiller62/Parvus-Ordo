@@ -51,7 +51,7 @@ export function VideoEditor({
   const [duration, setDuration] = useState(asset?.durationMs ? asset.durationMs / 1000 : 0);
   const [startSec, setStartSec] = useState(((content.start_ms as number) ?? 0) / 1000);
   const [endSec, setEndSec] = useState(
-    content.end_ms == null ? asset?.durationMs ? asset.durationMs / 1000 : 0 : (content.end_ms as number) / 1000,
+    content.end_ms == null ? (asset?.durationMs ? asset.durationMs / 1000 : 0) : (content.end_ms as number) / 1000,
   );
   const [playhead, setPlayhead] = useState(0);
 
@@ -82,17 +82,25 @@ export function VideoEditor({
 
   const propagate = useCallback(
     (s: number, e: number, full: boolean) => {
-      onChange({ ...content, asset_id: assetId, start_ms: Math.round(s * 1000), end_ms: full ? null : Math.round(e * 1000) });
+      onChange({
+        ...content,
+        asset_id: assetId,
+        start_ms: Math.round(s * 1000),
+        end_ms: full ? null : Math.round(e * 1000),
+      });
     },
     [onChange, content, assetId],
   );
 
-  const timeFromX = useCallback((clientX: number): number => {
-    const rect = trackRef.current?.getBoundingClientRect();
-    if (!rect || rect.width === 0 || duration === 0) return 0;
-    const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    return pct * duration;
-  }, [duration]);
+  const timeFromX = useCallback(
+    (clientX: number): number => {
+      const rect = trackRef.current?.getBoundingClientRect();
+      if (!rect || rect.width === 0 || duration === 0) return 0;
+      const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      return pct * duration;
+    },
+    [duration],
+  );
 
   // HLS can't seek on every pointer-move without thrashing the segment loader, so
   // we throttle the preview scrub (~8/s) and do one precise seek on release.
@@ -222,7 +230,11 @@ export function VideoEditor({
             className="relative h-14 touch-none select-none overflow-hidden rounded-md border border-gray-200 bg-navy/5"
             style={
               asset.posterUrl
-                ? { backgroundImage: `url(${asset.posterUrl})`, backgroundSize: "auto 100%", backgroundRepeat: "repeat-x" }
+                ? {
+                    backgroundImage: `url(${asset.posterUrl})`,
+                    backgroundSize: "auto 100%",
+                    backgroundRepeat: "repeat-x",
+                  }
                 : undefined
             }
           >
@@ -230,7 +242,10 @@ export function VideoEditor({
             <div className="absolute inset-y-0 left-0 bg-black/45" style={{ width: `${startPct}%` }} />
             <div className="absolute inset-y-0 right-0 bg-black/45" style={{ width: `${100 - endPct}%` }} />
             {/* selection border */}
-            <div className="absolute inset-y-0 border-y-2 border-gold" style={{ left: `${startPct}%`, right: `${100 - endPct}%` }} />
+            <div
+              className="absolute inset-y-0 border-y-2 border-gold"
+              style={{ left: `${startPct}%`, right: `${100 - endPct}%` }}
+            />
             {/* playhead */}
             <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-white/80" style={{ left: `${playPct}%` }} />
             {/* handles */}
@@ -254,11 +269,17 @@ export function VideoEditor({
 
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span>
-              In <span className="font-medium text-navy" data-testid="trim-start-label">{fmt(startSec)}</span>
+              In{" "}
+              <span className="font-medium text-navy" data-testid="trim-start-label">
+                {fmt(startSec)}
+              </span>
             </span>
             <span>Clip length {fmt(Math.max(0, endSec - startSec))}</span>
             <span>
-              Out <span className="font-medium text-navy" data-testid="trim-end-label">{fmt(endSec)}</span>
+              Out{" "}
+              <span className="font-medium text-navy" data-testid="trim-end-label">
+                {fmt(endSec)}
+              </span>
             </span>
           </div>
 
@@ -272,8 +293,12 @@ export function VideoEditor({
             ).map((row) => (
               <div key={row.label} className="flex flex-wrap items-center gap-1.5">
                 <span className="w-7 text-xs font-medium text-gray-500">{row.label}</span>
-                <button type="button" onClick={() => row.apply(row.value - 1)} className={NUDGE}>−1s</button>
-                <button type="button" onClick={() => row.apply(row.value - 0.1)} className={NUDGE}>−0.1</button>
+                <button type="button" onClick={() => row.apply(row.value - 1)} className={NUDGE}>
+                  −1s
+                </button>
+                <button type="button" onClick={() => row.apply(row.value - 0.1)} className={NUDGE}>
+                  −0.1
+                </button>
                 <input
                   type="number"
                   step={0.1}
@@ -284,15 +309,21 @@ export function VideoEditor({
                   className="w-20 rounded border border-gray-300 px-2 py-1 text-center text-sm"
                 />
                 <span className="text-xs text-gray-400">s</span>
-                <button type="button" onClick={() => row.apply(row.value + 0.1)} className={NUDGE}>+0.1</button>
-                <button type="button" onClick={() => row.apply(row.value + 1)} className={NUDGE}>+1s</button>
+                <button type="button" onClick={() => row.apply(row.value + 0.1)} className={NUDGE}>
+                  +0.1
+                </button>
+                <button type="button" onClick={() => row.apply(row.value + 1)} className={NUDGE}>
+                  +1s
+                </button>
                 <button type="button" onClick={() => row.apply(playhead)} className={`${NUDGE} ml-auto`}>
                   Set to playhead
                 </button>
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400">Drag the handles or use the controls above. Learners can’t skip ahead until they’ve watched the clip.</p>
+          <p className="text-xs text-gray-400">
+            Drag the handles or use the controls above. Learners can’t skip ahead until they’ve watched the clip.
+          </p>
 
           {/* Cut the physical clip (so the native player only sees this window). */}
           {onGenerateClip ? (

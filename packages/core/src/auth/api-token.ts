@@ -19,7 +19,10 @@ export interface ApiTokenClaims {
 }
 
 /** Mint a 30-day API token. `nowMs` is injectable for tests. */
-export async function signApiToken(claims: ApiTokenClaims, nowMs: number = Date.now()): Promise<{ jwt: string; expiresAt: string }> {
+export async function signApiToken(
+  claims: ApiTokenClaims,
+  nowMs: number = Date.now(),
+): Promise<{ jwt: string; expiresAt: string }> {
   const iat = Math.floor(nowMs / 1000);
   const exp = iat + TTL_DAYS * 24 * 60 * 60;
   const jwt = await new SignJWT({ email: claims.email })

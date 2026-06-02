@@ -39,7 +39,13 @@ describe("clips (stub processor)", () => {
       playbackUrl: "https://cdn.example/src/playlist.m3u8",
       status: "ready",
     });
-    const clipId = await requestClip({ parishId: HOLY_SPIRIT, createdBy: by, sourceAssetId: source, startMs: 1000, endMs: 5000 });
+    const clipId = await requestClip({
+      parishId: HOLY_SPIRIT,
+      createdBy: by,
+      sourceAssetId: source,
+      startMs: 1000,
+      endMs: 5000,
+    });
     const clip = await getAsset(HOLY_SPIRIT, clipId);
     expect(clip?.sourceAssetId).toBe(source);
     expect(clip?.clipStartMs).toBe(1000);
@@ -62,8 +68,20 @@ describe("clips (stub processor)", () => {
 
   it("deleting a source cascades to its clips", async () => {
     const by = await userId("admin@parvaordo.test");
-    const source = await createAsset({ parishId: HOLY_SPIRIT, createdBy: by, kind: "video", title: "Cascade", status: "ready" });
-    const clipId = await requestClip({ parishId: HOLY_SPIRIT, createdBy: by, sourceAssetId: source, startMs: 0, endMs: 2000 });
+    const source = await createAsset({
+      parishId: HOLY_SPIRIT,
+      createdBy: by,
+      kind: "video",
+      title: "Cascade",
+      status: "ready",
+    });
+    const clipId = await requestClip({
+      parishId: HOLY_SPIRIT,
+      createdBy: by,
+      sourceAssetId: source,
+      startMs: 0,
+      endMs: 2000,
+    });
     await deleteAsset(HOLY_SPIRIT, source);
     expect(await getAsset(HOLY_SPIRIT, clipId)).toBeNull(); // FK ON DELETE CASCADE
   });

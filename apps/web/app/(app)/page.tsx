@@ -36,8 +36,7 @@ export default async function HomePage() {
 
       {!parishId ? (
         <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          You&apos;re signed in as <strong>{authed.email}</strong>, but no parish is assigned to this
-          account yet.
+          You&apos;re signed in as <strong>{authed.email}</strong>, but no parish is assigned to this account yet.
         </div>
       ) : (
         <>
@@ -57,15 +56,10 @@ export default async function HomePage() {
           </dl>
 
           <section className="mt-6">
-            <h2 className="text-sm font-semibold text-gray-400">
-              Ministries &amp; councils ({ministries.length})
-            </h2>
+            <h2 className="text-sm font-semibold text-gray-400">Ministries &amp; councils ({ministries.length})</h2>
             <ul className="mt-2 flex flex-wrap gap-2">
               {ministries.map((m) => (
-                <li
-                  key={m.id}
-                  className="rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-sm text-navy"
-                >
+                <li key={m.id} className="rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-sm text-navy">
                   {m.name}
                 </li>
               ))}
@@ -86,9 +80,7 @@ export default async function HomePage() {
                   </span>
                   <span>
                     <span className="block font-medium text-navy">OCIA</span>
-                    <span className="block text-sm text-gray-500">
-                      Order of Christian Initiation of Adults
-                    </span>
+                    <span className="block text-sm text-gray-500">Order of Christian Initiation of Adults</span>
                   </span>
                 </Link>
               ) : null}

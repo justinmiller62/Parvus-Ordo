@@ -186,9 +186,7 @@ export async function getManageLessons(
   if (opts.scope) result = result.filter((l) => l.scope === opts.scope);
   if (opts.status) result = result.filter((l) => l.status === opts.status);
   result.sort((a, b) =>
-    opts.sort === "updated"
-      ? b.updatedAt.localeCompare(a.updatedAt)
-      : a.title.localeCompare(b.title),
+    opts.sort === "updated" ? b.updatedAt.localeCompare(a.updatedAt) : a.title.localeCompare(b.title),
   );
   return result;
 }
@@ -216,9 +214,10 @@ export async function getLessonForEdit(
     version_number: number;
     published_at: string | null;
     updated_at: string;
-  }>("SELECT id, version_number, published_at, updated_at FROM lesson_versions WHERE lesson_id = $1 ORDER BY version_number DESC", [
-    lessonId,
-  ]);
+  }>(
+    "SELECT id, version_number, published_at, updated_at FROM lesson_versions WHERE lesson_id = $1 ORDER BY version_number DESC",
+    [lessonId],
+  );
 
   const versions: VersionSummary[] = vrows.map((v) => ({
     id: v.id,
@@ -265,11 +264,7 @@ export async function getLessonForEdit(
 
 // ── Mutations ────────────────────────────────────────────────────────────────
 
-export async function createLesson(params: {
-  parishId: string;
-  createdBy: string;
-  title?: string;
-}): Promise<string> {
+export async function createLesson(params: { parishId: string; createdBy: string; title?: string }): Promise<string> {
   return withTenant(params.parishId, async (q) => {
     const [lesson] = await q<{ id: string }>(
       "INSERT INTO lessons (scope, parish_id, created_by) VALUES ('parish', $1, $2) RETURNING id",
@@ -293,19 +288,21 @@ export async function ensureDraft(parishId: string, lessonId: string): Promise<s
     );
     if (existing[0]) return existing[0].id;
 
-    const [lrow] = await q<{ live_version_id: string | null }>(
-      "SELECT live_version_id FROM lessons WHERE id = $1",
-      [lessonId],
-    );
+    const [lrow] = await q<{ live_version_id: string | null }>("SELECT live_version_id FROM lessons WHERE id = $1", [
+      lessonId,
+    ]);
     const [latest] = await q<{ id: string }>(
       "SELECT id FROM lesson_versions WHERE lesson_id = $1 ORDER BY version_number DESC LIMIT 1",
       [lessonId],
     );
     const sourceId = lrow?.live_version_id ?? latest?.id;
-    const [src] = await q<{ title: string; description: string | null; scope: string; parish_id: string | null; diocese_id: string | null }>(
-      "SELECT title, description, scope, parish_id, diocese_id FROM lesson_versions WHERE id = $1",
-      [sourceId],
-    );
+    const [src] = await q<{
+      title: string;
+      description: string | null;
+      scope: string;
+      parish_id: string | null;
+      diocese_id: string | null;
+    }>("SELECT title, description, scope, parish_id, diocese_id FROM lesson_versions WHERE id = $1", [sourceId]);
     const countRows = await q<{ n: number }>(
       "SELECT COALESCE(MAX(version_number), 0) + 1 AS n FROM lesson_versions WHERE lesson_id = $1",
       [lessonId],
@@ -389,13 +386,11 @@ export async function updateVersionMeta(params: {
 
 /** Publish a version and make it live (also used to "make live" / roll back an
  *  already-published version). */
-export async function publishVersion(params: {
-  parishId: string;
-  lessonId: string;
-  versionId: string;
-}): Promise<void> {
+export async function publishVersion(params: { parishId: string; lessonId: string; versionId: string }): Promise<void> {
   await withTenant(params.parishId, async (q) => {
-    await q("UPDATE lesson_versions SET published_at = COALESCE(published_at, now()) WHERE id = $1", [params.versionId]);
+    await q("UPDATE lesson_versions SET published_at = COALESCE(published_at, now()) WHERE id = $1", [
+      params.versionId,
+    ]);
     await q("UPDATE lessons SET live_version_id = $1 WHERE id = $2", [params.versionId, params.lessonId]);
   });
 }
@@ -413,11 +408,7 @@ export async function deleteLesson(parishId: string, lessonId: string): Promise<
 
 /** Delete a single version (discard a draft, or remove a historical version).
  *  Refuses to delete the live version or the lesson's only version. */
-export async function deleteVersion(params: {
-  parishId: string;
-  lessonId: string;
-  versionId: string;
-}): Promise<void> {
+export async function deleteVersion(params: { parishId: string; lessonId: string; versionId: string }): Promise<void> {
   await withTenant(params.parishId, async (q) => {
     const live = await q<{ live_version_id: string | null }>("SELECT live_version_id FROM lessons WHERE id = $1", [
       params.lessonId,

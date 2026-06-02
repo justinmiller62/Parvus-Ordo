@@ -30,7 +30,12 @@ export function InviteForm({ roles }: { roles: Role[] }) {
           data-testid="invite-email"
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
-        <select name="role" defaultValue="studio" data-testid="invite-role" className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+        <select
+          name="role"
+          defaultValue="studio"
+          data-testid="invite-role"
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+        >
           {roles.map((r) => (
             <option key={r} value={r}>
               {ROLE_LABELS[r]}
@@ -47,9 +52,13 @@ export function InviteForm({ roles }: { roles: Role[] }) {
         </button>
       </div>
       {state.ok ? (
-        <p className="mt-2 text-sm text-green-700" data-testid="invite-success">{state.message}</p>
+        <p className="mt-2 text-sm text-green-700" data-testid="invite-success">
+          {state.message}
+        </p>
       ) : state.error ? (
-        <p className="mt-2 text-sm text-rose" data-testid="invite-error">{state.error}</p>
+        <p className="mt-2 text-sm text-rose" data-testid="invite-error">
+          {state.error}
+        </p>
       ) : null}
     </form>
   );

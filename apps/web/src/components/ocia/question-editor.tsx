@@ -53,7 +53,10 @@ export function QuestionEditor({
                 choices:
                   choices.length >= 2
                     ? choices
-                    : [{ label: "", correct: true }, { label: "", correct: false }],
+                    : [
+                        { label: "", correct: true },
+                        { label: "", correct: false },
+                      ],
               })
             }
           />
@@ -74,7 +77,9 @@ export function QuestionEditor({
               />
               <input
                 value={c.label}
-                onChange={(e) => patch({ choices: choices.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })}
+                onChange={(e) =>
+                  patch({ choices: choices.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })
+                }
                 placeholder={`Choice ${i + 1}`}
                 className={INPUT}
               />

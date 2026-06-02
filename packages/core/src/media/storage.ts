@@ -54,7 +54,12 @@ class StubStorage implements StorageProvider {
   readonly name = "stub";
   async createUpload(): Promise<VideoUpload> {
     const id = `stub-${Date.now().toString(36)}`;
-    return { providerAssetId: id, target: { kind: "stub", url: `/api/dev/upload/${id}` }, playbackUrl: SAMPLE_HLS, posterUrl: "" };
+    return {
+      providerAssetId: id,
+      target: { kind: "stub", url: `/api/dev/upload/${id}` },
+      playbackUrl: SAMPLE_HLS,
+      posterUrl: "",
+    };
   }
   async videoStatus(): Promise<VideoStatus> {
     // Stub "transcodes" instantly so the upload flow can complete offline.
@@ -110,14 +115,23 @@ class BunnyStorage implements StorageProvider {
     const signature = createHash("sha256").update(`${this.libraryId}${this.apiKey}${expires}${guid}`).digest("hex");
     return {
       providerAssetId: guid,
-      target: { kind: "tus", endpoint: "https://video.bunnycdn.com/tusupload", libraryId: this.libraryId, videoId: guid, signature, expires },
+      target: {
+        kind: "tus",
+        endpoint: "https://video.bunnycdn.com/tusupload",
+        libraryId: this.libraryId,
+        videoId: guid,
+        signature,
+        expires,
+      },
       playbackUrl: this.playbackUrl(guid),
       posterUrl: this.posterUrl(guid),
     };
   }
 
   async videoStatus(guid: string): Promise<VideoStatus> {
-    const res = await fetch(`${this.base}/${guid}`, { headers: { AccessKey: this.apiKey, Accept: "application/json" } });
+    const res = await fetch(`${this.base}/${guid}`, {
+      headers: { AccessKey: this.apiKey, Accept: "application/json" },
+    });
     if (!res.ok) throw new Error(`Bunny videoStatus failed: ${res.status}`);
     const v = (await res.json()) as { status: number; encodeProgress: number; length: number };
     return mapBunnyStatus(v.status, v.encodeProgress, v.length);

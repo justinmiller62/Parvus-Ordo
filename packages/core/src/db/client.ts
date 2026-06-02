@@ -51,19 +51,13 @@ export function getDb(parishId: string | null): TenantDb {
   };
 }
 
-export type TenantQuery = <R = Record<string, unknown>>(
-  sql: string,
-  params?: unknown[],
-) => Promise<R[]>;
+export type TenantQuery = <R = Record<string, unknown>>(sql: string, params?: unknown[]) => Promise<R[]>;
 
 /**
  * Run multiple statements in one tenant-scoped transaction (RLS active). Use when
  * a mutation needs several statements atomically — e.g. reordering positions.
  */
-export async function withTenant<T>(
-  parishId: string | null,
-  fn: (q: TenantQuery) => Promise<T>,
-): Promise<T> {
+export async function withTenant<T>(parishId: string | null, fn: (q: TenantQuery) => Promise<T>): Promise<T> {
   const client = await getPool().connect();
   try {
     await client.query("BEGIN");

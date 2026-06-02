@@ -35,10 +35,11 @@ async function requireBuilder(): Promise<{ parishId: string; userId: string }> {
 
 // Edits may only touch a parish-owned DRAFT (unpublished) version.
 async function assertDraft(parishId: string, versionId: string): Promise<void> {
-  const { rows } = await getDb(parishId).query<{ published_at: string | null; scope: string; parish_id: string | null }>(
-    "SELECT published_at, scope, parish_id FROM lesson_versions WHERE id = $1",
-    [versionId],
-  );
+  const { rows } = await getDb(parishId).query<{
+    published_at: string | null;
+    scope: string;
+    parish_id: string | null;
+  }>("SELECT published_at, scope, parish_id FROM lesson_versions WHERE id = $1", [versionId]);
   const v = rows[0];
   if (!v || v.scope !== "parish" || v.parish_id !== parishId || v.published_at !== null) {
     redirect("/ocia/lessons");
@@ -49,7 +50,14 @@ function defaultContent(kind: LessonItemKind, format?: string): Record<string, u
   if (kind === "reading") return { html: "" };
   if (kind === "question") {
     return format === "multiple_choice"
-      ? { prompt: "", format: "multiple_choice", choices: [{ label: "", correct: true }, { label: "", correct: false }] }
+      ? {
+          prompt: "",
+          format: "multiple_choice",
+          choices: [
+            { label: "", correct: true },
+            { label: "", correct: false },
+          ],
+        }
       : { prompt: "", format: "open_ended" };
   }
   if (kind === "video") return { asset_id: null, start_ms: 0, end_ms: null };

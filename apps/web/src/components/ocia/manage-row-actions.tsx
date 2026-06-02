@@ -23,15 +23,28 @@ export function ManageRowActions({
 
   return (
     <div className="flex shrink-0 items-center gap-0.5">
-      <Link href={`/ocia/lessons/${lessonId}?preview=1`} title="Preview as student" className={`${ICON} hover:text-navy`}>
+      <Link
+        href={`/ocia/lessons/${lessonId}?preview=1`}
+        title="Preview as student"
+        className={`${ICON} hover:text-navy`}
+      >
         <Eye className="h-4 w-4" />
       </Link>
-      <Link href={`/ocia/lessons/${lessonId}/responses`} title="Student questions & feedback" className={`${ICON} hover:text-navy`}>
+      <Link
+        href={`/ocia/lessons/${lessonId}/responses`}
+        title="Student questions & feedback"
+        className={`${ICON} hover:text-navy`}
+      >
         <MessageSquare className="h-4 w-4" />
       </Link>
       {editable && status === "published" ? (
         <button
-          onClick={() => startTransition(async () => { await unpublishLessonFromListAction(lessonId); router.refresh(); })}
+          onClick={() =>
+            startTransition(async () => {
+              await unpublishLessonFromListAction(lessonId);
+              router.refresh();
+            })
+          }
           disabled={pending}
           className="rounded px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-50"
         >

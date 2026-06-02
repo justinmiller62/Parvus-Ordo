@@ -27,7 +27,13 @@ export default async function EditLessonPage({
   // Ready videos this parish can drop into a lesson (for the video item's trimmer).
   const videoAssets: VideoAssetOption[] = (await listAssets(parishId, { kind: "video" }))
     .filter((a) => a.status === "ready" && a.playbackUrl)
-    .map((a) => ({ id: a.id, title: a.title, durationMs: a.durationMs, playbackUrl: a.playbackUrl!, posterUrl: a.posterUrl }));
+    .map((a) => ({
+      id: a.id,
+      title: a.title,
+      durationMs: a.durationMs,
+      playbackUrl: a.playbackUrl!,
+      posterUrl: a.posterUrl,
+    }));
 
   // Processing state of each video item's cut clip (drives the green/gray dot).
   const clipStatuses: Record<string, ClipStatus> = {};
@@ -39,11 +45,22 @@ export default async function EditLessonPage({
       continue;
     }
     const clip = await getAsset(parishId, clipId);
-    clipStatuses[it.id] = !clip ? "none" : clip.status === "ready" ? "ready" : clip.status === "failed" ? "failed" : "processing";
+    clipStatuses[it.id] = !clip
+      ? "none"
+      : clip.status === "ready"
+        ? "ready"
+        : clip.status === "failed"
+          ? "failed"
+          : "processing";
   }
 
   // Re-mount when the selected version changes so local edit state re-initialises.
   return (
-    <LessonBuilder key={lesson.selected.versionId} lesson={lesson} videoAssets={videoAssets} clipStatuses={clipStatuses} />
+    <LessonBuilder
+      key={lesson.selected.versionId}
+      lesson={lesson}
+      videoAssets={videoAssets}
+      clipStatuses={clipStatuses}
+    />
   );
 }

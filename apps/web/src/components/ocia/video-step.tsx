@@ -74,7 +74,13 @@ export function VideoStep({
         ) : (
           <span />
         )}
-        <button type="button" onClick={submit} disabled={!watched || pending} data-testid="wizard-next" className={PRIMARY_BTN}>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!watched || pending}
+          data-testid="wizard-next"
+          className={PRIMARY_BTN}
+        >
           {watched ? "Continue" : "Watch to continue"}
           {watched ? <ArrowRight className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
         </button>

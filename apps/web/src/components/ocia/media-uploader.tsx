@@ -6,7 +6,12 @@ import * as tus from "tus-js-client";
 import { Upload } from "lucide-react";
 import type { UploadTarget } from "@parvaordo/core";
 import { extractAudioWav } from "@/src/lib/audio-extract";
-import { createVideoUploadAction, deleteAssetAction, markUploadedAction, pollStatusAction } from "@/app/(app)/ocia/media/actions";
+import {
+  createVideoUploadAction,
+  deleteAssetAction,
+  markUploadedAction,
+  pollStatusAction,
+} from "@/app/(app)/ocia/media/actions";
 import { UploadProgress, type Stage, type StageState } from "./upload-progress";
 
 const INITIAL: Stage[] = [
@@ -16,7 +21,11 @@ const INITIAL: Stage[] = [
   { key: "ready", label: "Ready", state: "pending" },
 ];
 
-function tusUpload(file: File, target: Extract<UploadTarget, { kind: "tus" }>, onPct: (p: number) => void): Promise<void> {
+function tusUpload(
+  file: File,
+  target: Extract<UploadTarget, { kind: "tus" }>,
+  onPct: (p: number) => void,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const up = new tus.Upload(file, {
       endpoint: target.endpoint,

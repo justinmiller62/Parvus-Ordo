@@ -85,7 +85,10 @@ describe("youth-teaches (integration)", () => {
 
   it("appends a saved corpus passage", async () => {
     await saveCorpusPassage(HS, projectId, "CCC 1374", "key paragraph");
-    const { rows } = await getDb(HS).query<{ saved_passages: unknown }>("SELECT saved_passages FROM youth_projects WHERE id = $1", [projectId]);
+    const { rows } = await getDb(HS).query<{ saved_passages: unknown }>(
+      "SELECT saved_passages FROM youth_projects WHERE id = $1",
+      [projectId],
+    );
     expect(JSON.stringify(rows[0]!.saved_passages)).toContain("CCC 1374");
   });
 
@@ -153,7 +156,11 @@ describe("youth-teaches (integration)", () => {
       correctTeaching: "regeneration",
       ageBand: "high_school",
     });
-    const proj = await createYouthProject(HS, { teenUserId: teenId, title: "Baptism project (int)", topicId: topic.id });
+    const proj = await createYouthProject(HS, {
+      teenUserId: teenId,
+      title: "Baptism project (int)",
+      topicId: topic.id,
+    });
     const all = await listParishYouthProjects(HS);
     const row = all.find((p) => p.id === proj.id);
     expect(row?.teenName).toBe("Youth Int");
@@ -199,7 +206,9 @@ describe("youth-teaches (integration)", () => {
     expect(rec.projectStatus).toBe("submitted");
     const latest = await getLatestRecording(HS, projectId);
     expect(latest?.bunnyVideoId).toBe("guid-int");
-    const status = await getDb(HS).query<{ status: string }>("SELECT status FROM youth_projects WHERE id = $1", [projectId]);
+    const status = await getDb(HS).query<{ status: string }>("SELECT status FROM youth_projects WHERE id = $1", [
+      projectId,
+    ]);
     expect(status.rows[0]!.status).toBe("submitted");
   });
 

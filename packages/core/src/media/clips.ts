@@ -50,7 +50,10 @@ class StubClipProcessor implements ClipProcessor {
 // 'processing' (gray) until then.
 class HttpClipProcessor implements ClipProcessor {
   readonly name = "http";
-  constructor(private readonly endpoint: string, private readonly callbackBase: string) {}
+  constructor(
+    private readonly endpoint: string,
+    private readonly callbackBase: string,
+  ) {}
   async process(job: ClipJob): Promise<void> {
     const res = await fetch(this.endpoint, {
       method: "POST",
@@ -65,7 +68,12 @@ class HttpClipProcessor implements ClipProcessor {
       }),
     });
     if (!res.ok) {
-      await updateAssetStatus({ parishId: job.parishId, id: job.clipAssetId, status: "failed", error: `cut enqueue failed: ${res.status}` });
+      await updateAssetStatus({
+        parishId: job.parishId,
+        id: job.clipAssetId,
+        status: "failed",
+        error: `cut enqueue failed: ${res.status}`,
+      });
       throw new Error(`clip cut enqueue failed: ${res.status}`);
     }
   }
@@ -105,7 +113,13 @@ export async function requestClip(opts: {
     clipStartMs: opts.startMs,
     clipEndMs: opts.endMs,
   });
-  await getClipProcessor().process({ parishId: opts.parishId, clipAssetId: clipId, source, startMs: opts.startMs, endMs: opts.endMs });
+  await getClipProcessor().process({
+    parishId: opts.parishId,
+    clipAssetId: clipId,
+    source,
+    startMs: opts.startMs,
+    endMs: opts.endMs,
+  });
   return clipId;
 }
 

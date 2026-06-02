@@ -45,7 +45,10 @@ export default async function PeoplePage() {
                   <p className="font-medium text-navy">
                     {m.displayName}
                     {invitationId ? (
-                      <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700" data-testid="pending-badge">
+                      <span
+                        className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700"
+                        data-testid="pending-badge"
+                      >
                         Pending
                       </span>
                     ) : null}
@@ -62,7 +65,10 @@ export default async function PeoplePage() {
                       data-testid={`rename-input-${m.email}`}
                       className="w-40 rounded-md border border-gray-300 px-2 py-1 text-xs text-navy focus:border-gold focus:outline-none"
                     />
-                    <button type="submit" className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">
+                    <button
+                      type="submit"
+                      className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                    >
                       Rename
                     </button>
                   </form>
@@ -70,17 +76,29 @@ export default async function PeoplePage() {
 
                 <div className="flex items-center gap-2">
                   {isSelf ? (
-                    <span className="rounded bg-navy/10 px-2 py-1 text-xs font-medium text-navy">{ROLE_LABELS[m.role]} (you)</span>
+                    <span className="rounded bg-navy/10 px-2 py-1 text-xs font-medium text-navy">
+                      {ROLE_LABELS[m.role]} (you)
+                    </span>
                   ) : (
                     <>
                       <form action={setRoleAction} className="flex items-center gap-1">
                         <input type="hidden" name="userId" value={m.userId} />
-                        <select name="role" defaultValue={m.role} className={selectClass} data-testid={`role-select-${m.email}`}>
+                        <select
+                          name="role"
+                          defaultValue={m.role}
+                          className={selectClass}
+                          data-testid={`role-select-${m.email}`}
+                        >
                           {invitableRoles.map((r) => (
-                            <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                            <option key={r} value={r}>
+                              {ROLE_LABELS[r]}
+                            </option>
                           ))}
                         </select>
-                        <button type="submit" className="rounded-md border border-gold bg-gold/10 px-2 py-1 text-xs font-medium text-gold-dark hover:bg-gold/20">
+                        <button
+                          type="submit"
+                          className="rounded-md border border-gold bg-gold/10 px-2 py-1 text-xs font-medium text-gold-dark hover:bg-gold/20"
+                        >
                           Update
                         </button>
                       </form>
@@ -88,14 +106,23 @@ export default async function PeoplePage() {
                         <form action={revokeInvitationAction}>
                           <input type="hidden" name="invitationId" value={invitationId} />
                           <input type="hidden" name="userId" value={m.userId} />
-                          <button type="submit" className="rounded-md border border-amber-300 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50" title="Revoke invitation">
+                          <button
+                            type="submit"
+                            className="rounded-md border border-amber-300 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                            title="Revoke invitation"
+                          >
                             Revoke
                           </button>
                         </form>
                       ) : (
                         <form action={removeMemberAction}>
                           <input type="hidden" name="userId" value={m.userId} />
-                          <button type="submit" data-testid={`remove-${m.email}`} className="rounded-md border border-rose/40 px-2 py-1 text-xs font-medium text-rose hover:bg-rose/10" title="Remove from parish">
+                          <button
+                            type="submit"
+                            data-testid={`remove-${m.email}`}
+                            className="rounded-md border border-rose/40 px-2 py-1 text-xs font-medium text-rose hover:bg-rose/10"
+                            title="Remove from parish"
+                          >
                             Remove
                           </button>
                         </form>

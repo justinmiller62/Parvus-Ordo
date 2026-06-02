@@ -160,10 +160,7 @@ export async function getAsset(parishId: string, id: string): Promise<Asset | nu
   return rows[0] ? rowToAsset(rows[0]) : null;
 }
 
-export async function listAssets(
-  parishId: string,
-  opts: { kind?: AssetKind } = {},
-): Promise<Asset[]> {
+export async function listAssets(parishId: string, opts: { kind?: AssetKind } = {}): Promise<Asset[]> {
   // The library lists SOURCE assets only — cut clips are internal (referenced by
   // lesson items), never user-managed here.
   const where: string[] = ["source_asset_id IS NULL"];

@@ -81,10 +81,10 @@ export async function inviteMember(input: InviteInput, caller: InviteCaller): Pr
     let id = existing[0]?.id ?? null;
     const fresh = !id;
     if (!id) {
-      const ins = await q<{ id: string }>(
-        "INSERT INTO users (email, display_name) VALUES ($1, $2) RETURNING id",
-        [email, displayName],
-      );
+      const ins = await q<{ id: string }>("INSERT INTO users (email, display_name) VALUES ($1, $2) RETURNING id", [
+        email,
+        displayName,
+      ]);
       id = ins[0]!.id;
     }
     // RLS scopes this SELECT/INSERT to caller.parishId (app.parish_id is set).

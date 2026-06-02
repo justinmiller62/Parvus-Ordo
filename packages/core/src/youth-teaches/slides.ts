@@ -68,7 +68,11 @@ export async function reorderProjectSlides(parishId: string, projectId: string, 
   await withTenant(parishId, async (q) => {
     await q("UPDATE youth_slides SET slide_order = slide_order + 1000 WHERE project_id = $1", [projectId]);
     for (let i = 0; i < orderedIds.length; i++) {
-      await q("UPDATE youth_slides SET slide_order = $3 WHERE id = $1 AND project_id = $2", [orderedIds[i], projectId, i + 1]);
+      await q("UPDATE youth_slides SET slide_order = $3 WHERE id = $1 AND project_id = $2", [
+        orderedIds[i],
+        projectId,
+        i + 1,
+      ]);
     }
   });
 }

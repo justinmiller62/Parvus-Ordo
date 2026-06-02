@@ -1,0 +1,15 @@
+# Generated / vendored — keep the formatter off anything we don't hand-edit.
+pnpm-lock.yaml
+node_modules/
+.next/
+out/
+dist/
+build/
+.turbo/
+coverage/
+next-env.d.ts
+
+# Prose & operational templates. Prettier's markdown pass rewrites emphasis style
+# and inserts blank lines — needless churn for docs and the ops/gascity agent
+# prompt templates. Scope the formatter to code; authors own the prose.
+*.md

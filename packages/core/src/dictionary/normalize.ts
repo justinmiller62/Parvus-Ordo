@@ -44,7 +44,11 @@ export function buildDictIndex(terms: DictTermInput[]): DictIndex {
 }
 
 /** Longest matching phrase starting at word index `i`, or null. */
-export function matchPhraseAt(words: string[], i: number, index: DictIndex): { headword: string; length: number } | null {
+export function matchPhraseAt(
+  words: string[],
+  i: number,
+  index: DictIndex,
+): { headword: string; length: number } | null {
   if (!index.firstWords.has(words[i] ?? "")) return null;
   for (const phrase of index.phrases) {
     const parts = phrase.split(" ");

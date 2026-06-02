@@ -3,7 +3,12 @@ import { canInviteRole, getParishApplyInfo, listOciaApplicants, INVITABLE_ROLES 
 import type { Role } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 import { InviteForm } from "./invite-form";
-import { convertApplicantAction, deleteApplicantAction, dismissApplicantAction, toggleApplicationsAction } from "./actions";
+import {
+  convertApplicantAction,
+  deleteApplicantAction,
+  dismissApplicantAction,
+  toggleApplicationsAction,
+} from "./actions";
 
 const STATUS_BADGE: Record<string, string> = {
   pending: "bg-gold/15 text-gold-dark",
@@ -63,7 +68,9 @@ export default async function ApplicantsPage() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-navy">
                     {a.fullName}
-                    <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${STATUS_BADGE[a.status] ?? ""}`}>{a.status}</span>
+                    <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${STATUS_BADGE[a.status] ?? ""}`}>
+                      {a.status}
+                    </span>
                   </p>
                   <p className="truncate text-xs text-gray-400">{a.email}</p>
                 </div>

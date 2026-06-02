@@ -37,7 +37,12 @@ export async function validateMcpToken(token: string): Promise<McpSession | null
   return r ? { parishId: r.parish_id, teenUserId: r.teen_user_id } : null;
 }
 
-async function logMcpTool(parishId: string, projectId: string | null, toolName: string, params: unknown): Promise<void> {
+async function logMcpTool(
+  parishId: string,
+  projectId: string | null,
+  toolName: string,
+  params: unknown,
+): Promise<void> {
   await getDb(parishId).query(
     "INSERT INTO youth_mcp_audit_log (parish_id, project_id, tool_name, params) VALUES ($1, $2, $3, $4::jsonb)",
     [parishId, projectId, toolName, JSON.stringify(params ?? {})],
@@ -53,12 +58,19 @@ export const YOUTH_MCP_TOOLS = [
   },
   {
     name: "get_project_details",
-    description: "Get a project's details: title, topic, age band, current script text, the common misconception, and the correct teaching.",
-    inputSchema: { type: "object", properties: { project_id: { type: "string" } }, required: ["project_id"], additionalProperties: false },
+    description:
+      "Get a project's details: title, topic, age band, current script text, the common misconception, and the correct teaching.",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: { type: "string" } },
+      required: ["project_id"],
+      additionalProperties: false,
+    },
   },
   {
     name: "update_script_draft",
-    description: "Replace the project's script draft with new text. Returns the new word count and estimated speaking time.",
+    description:
+      "Replace the project's script draft with new text. Returns the new word count and estimated speaking time.",
     inputSchema: {
       type: "object",
       properties: { project_id: { type: "string" }, new_text: { type: "string" } },
@@ -95,7 +107,11 @@ export const YOUTH_MCP_TOOLS = [
 ] as const;
 
 /** Dispatch an MCP tool call within a validated session; logs every call. */
-export async function callYouthTool(session: McpSession, name: string, args: Record<string, unknown>): Promise<unknown> {
+export async function callYouthTool(
+  session: McpSession,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
   const { parishId, teenUserId } = session;
   switch (name) {
     case "list_my_projects": {
@@ -111,7 +127,10 @@ export async function callYouthTool(session: McpSession, name: string, args: Rec
     }
     case "update_script_draft": {
       const projectId = String(args.project_id);
-      await logMcpTool(parishId, projectId, name, { project_id: projectId, new_text_length: String(args.new_text ?? "").length });
+      await logMcpTool(parishId, projectId, name, {
+        project_id: projectId,
+        new_text_length: String(args.new_text ?? "").length,
+      });
       return updateScriptDraft(parishId, projectId, String(args.new_text ?? ""));
     }
     case "save_corpus_passage": {

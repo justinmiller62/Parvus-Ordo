@@ -19,7 +19,10 @@ export function ApplyForm({ parishId, parishName }: { parishId: string; parishNa
 
   if (state.ok) {
     return (
-      <div className="rounded-xl border border-navy/10 bg-cream/40 p-6 text-center shadow-sm" data-testid="apply-received">
+      <div
+        className="rounded-xl border border-navy/10 bg-cream/40 p-6 text-center shadow-sm"
+        data-testid="apply-received"
+      >
         <h1 className="text-xl text-navy">Application received</h1>
         <p className="mt-3 text-sm text-navy/70">
           Thank you for your interest in {parishName}. A member of our team will be in touch soon.
@@ -35,31 +38,32 @@ export function ApplyForm({ parishId, parishName }: { parishId: string; parishNa
 
       <input type="hidden" name="parishId" value={parishId} />
       {/* Honeypot — hidden from humans, tempting to bots. */}
-      <input
-        type="text"
-        name="company"
-        tabIndex={-1}
-        autoComplete="off"
-        className="hidden"
-        aria-hidden="true"
-      />
+      <input type="text" name="company" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
 
       <div className="space-y-4">
         <div>
-          <label className={LABEL} htmlFor="fullName">Full name</label>
+          <label className={LABEL} htmlFor="fullName">
+            Full name
+          </label>
           <input id="fullName" name="fullName" required data-testid="apply-name" className={INPUT} />
         </div>
         <div>
-          <label className={LABEL} htmlFor="email">Email</label>
+          <label className={LABEL} htmlFor="email">
+            Email
+          </label>
           <input id="email" name="email" type="email" required data-testid="apply-email" className={INPUT} />
         </div>
         <div>
-          <label className={LABEL} htmlFor="phone">Phone <span className="text-navy/40">(optional)</span></label>
+          <label className={LABEL} htmlFor="phone">
+            Phone <span className="text-navy/40">(optional)</span>
+          </label>
           <input id="phone" name="phone" className={INPUT} />
         </div>
 
         <div className="border-t border-navy/10 pt-4">
-          <label className={LABEL} htmlFor="baptized">Have you been baptized?</label>
+          <label className={LABEL} htmlFor="baptized">
+            Have you been baptized?
+          </label>
           <select
             id="baptized"
             name="baptized"
@@ -109,7 +113,9 @@ export function ApplyForm({ parishId, parishName }: { parishId: string; parishNa
       </div>
 
       {state.error ? (
-        <p className="mt-4 rounded-md bg-rose/10 px-3 py-2 text-sm text-rose" data-testid="apply-error">{state.error}</p>
+        <p className="mt-4 rounded-md bg-rose/10 px-3 py-2 text-sm text-rose" data-testid="apply-error">
+          {state.error}
+        </p>
       ) : null}
 
       <button

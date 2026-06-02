@@ -39,7 +39,16 @@ interface FormState {
 }
 
 function emptyForm(): FormState {
-  return { headword: "", variants: "", definition: "", greekWord: "", greekDefinition: "", hebrewWord: "", hebrewDefinition: "", firstCenturyContext: "" };
+  return {
+    headword: "",
+    variants: "",
+    definition: "",
+    greekWord: "",
+    greekDefinition: "",
+    hebrewWord: "",
+    hebrewDefinition: "",
+    firstCenturyContext: "",
+  };
 }
 function formFrom(e: DictItem): FormState {
   return {
@@ -140,16 +149,32 @@ export function DictionaryClient({ entries, canEdit }: { entries: DictItem[]; ca
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-navy">{cap(e.headword)}</span>
                         {e.pronunciation ? <span className="text-xs text-gray-400">/{e.pronunciation}/</span> : null}
-                        {e.isLocal ? <span className="rounded bg-gold/20 px-1.5 text-xs font-medium text-gold-dark">Parish</span> : null}
-                        {e.category ? <span className="rounded bg-navy/10 px-1.5 text-xs text-navy capitalize">{e.category}</span> : null}
-                        {e.greekWord ? <span className="rounded bg-blue-50 px-1.5 text-xs text-blue-700">Greek</span> : null}
-                        {e.hebrewWord ? <span className="rounded bg-amber-50 px-1.5 text-xs text-amber-700">Hebrew</span> : null}
+                        {e.isLocal ? (
+                          <span className="rounded bg-gold/20 px-1.5 text-xs font-medium text-gold-dark">Parish</span>
+                        ) : null}
+                        {e.category ? (
+                          <span className="rounded bg-navy/10 px-1.5 text-xs text-navy capitalize">{e.category}</span>
+                        ) : null}
+                        {e.greekWord ? (
+                          <span className="rounded bg-blue-50 px-1.5 text-xs text-blue-700">Greek</span>
+                        ) : null}
+                        {e.hebrewWord ? (
+                          <span className="rounded bg-amber-50 px-1.5 text-xs text-amber-700">Hebrew</span>
+                        ) : null}
                       </span>
-                      <span className="mt-0.5 block truncate text-sm text-gray-500">{normalizeSacredText(e.definition).slice(0, 100)}</span>
+                      <span className="mt-0.5 block truncate text-sm text-gray-500">
+                        {normalizeSacredText(e.definition).slice(0, 100)}
+                      </span>
                     </button>
                     {canEdit ? (
                       <span className="flex flex-col gap-1 pt-1 opacity-0 group-hover:opacity-100">
-                        <button type="button" onClick={() => setEditing(e)} className="text-gray-400 hover:text-navy" title="Edit" aria-label="Edit">
+                        <button
+                          type="button"
+                          onClick={() => setEditing(e)}
+                          className="text-gray-400 hover:text-navy"
+                          title="Edit"
+                          aria-label="Edit"
+                        >
                           <Pencil className="h-4 w-4" />
                         </button>
                         {e.isLocal ? (
@@ -181,19 +206,38 @@ export function DictionaryClient({ entries, canEdit }: { entries: DictItem[]; ca
 
 function DetailModal({ entry, onClose }: { entry: DictItem; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose} data-testid="dict-modal">
-      <div className="max-h-[85vh] w-full max-w-lg overflow-auto rounded-lg bg-white p-5" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+      data-testid="dict-modal"
+    >
+      <div
+        className="max-h-[85vh] w-full max-w-lg overflow-auto rounded-lg bg-white p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-2 flex items-start justify-between">
           <h3 className="font-heading text-xl text-navy">{cap(entry.headword)}</h3>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-navy"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-navy">
+            <X className="h-5 w-5" />
+          </button>
         </div>
         <Section title="Definition">{normalizeSacredText(entry.definition)}</Section>
         {entry.overrideNote ? <p className="text-xs italic text-gray-400">(parish note) {entry.overrideNote}</p> : null}
-        {entry.greekWord || entry.greekDefinition ? <Section title="Greek">{[entry.greekWord, entry.greekDefinition].filter(Boolean).join(" — ")}</Section> : null}
-        {entry.hebrewWord || entry.hebrewDefinition ? <Section title="Hebrew">{[entry.hebrewWord, entry.hebrewDefinition].filter(Boolean).join(" — ")}</Section> : null}
-        {entry.firstCenturyContext ? <Section title="First-century context">{normalizeSacredText(entry.firstCenturyContext)}</Section> : null}
-        {entry.catechismReferences?.length ? <Section title="Catechism">{entry.catechismReferences.join(", ")}</Section> : null}
-        {entry.scriptureReferences?.length ? <Section title="Scripture">{entry.scriptureReferences.join(", ")}</Section> : null}
+        {entry.greekWord || entry.greekDefinition ? (
+          <Section title="Greek">{[entry.greekWord, entry.greekDefinition].filter(Boolean).join(" — ")}</Section>
+        ) : null}
+        {entry.hebrewWord || entry.hebrewDefinition ? (
+          <Section title="Hebrew">{[entry.hebrewWord, entry.hebrewDefinition].filter(Boolean).join(" — ")}</Section>
+        ) : null}
+        {entry.firstCenturyContext ? (
+          <Section title="First-century context">{normalizeSacredText(entry.firstCenturyContext)}</Section>
+        ) : null}
+        {entry.catechismReferences?.length ? (
+          <Section title="Catechism">{entry.catechismReferences.join(", ")}</Section>
+        ) : null}
+        {entry.scriptureReferences?.length ? (
+          <Section title="Scripture">{entry.scriptureReferences.join(", ")}</Section>
+        ) : null}
       </div>
     </div>
   );
@@ -213,14 +257,19 @@ function EditModal({ entry, onClose }: { entry: DictItem | "new"; onClose: () =>
   const isUniversal = !isNew && !entry.isLocal; // editing a universal entry → creates an override
   const [f, setF] = useState<FormState>(isNew ? emptyForm() : formFrom(entry));
   const [pending, startTransition] = useTransition();
-  const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
-  const input = "w-full rounded-md border border-navy/15 px-2 py-1.5 text-sm text-navy focus:border-gold focus:outline-none";
+  const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setF({ ...f, [k]: e.target.value });
+  const input =
+    "w-full rounded-md border border-navy/15 px-2 py-1.5 text-sm text-navy focus:border-gold focus:outline-none";
 
   function save() {
     if (!f.headword.trim() || !f.definition.trim()) return;
     const sub = {
       headword: f.headword,
-      variants: f.variants.split(",").map((s) => s.trim()).filter(Boolean),
+      variants: f.variants
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
       definition: f.definition,
       greekWord: f.greekWord,
       greekDefinition: f.greekDefinition,
@@ -244,22 +293,81 @@ function EditModal({ entry, onClose }: { entry: DictItem | "new"; onClose: () =>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[85vh] w-full max-w-lg space-y-2 overflow-auto rounded-lg bg-white p-5" onClick={(e) => e.stopPropagation()} data-testid="dict-edit">
+      <div
+        className="max-h-[85vh] w-full max-w-lg space-y-2 overflow-auto rounded-lg bg-white p-5"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="dict-edit"
+      >
         <h3 className="font-heading text-lg text-navy">{isNew ? "Add entry" : "Edit entry"}</h3>
-        {isUniversal ? <p className="text-xs text-gray-400">Editing a universal entry creates a parish override.</p> : null}
-        <input className={input} placeholder="Headword" value={f.headword} onChange={set("headword")} disabled={isUniversal} data-testid="dict-form-headword" />
-        {!isUniversal ? <input className={input} placeholder="Variants (comma-separated)" value={f.variants} onChange={set("variants")} /> : null}
-        <textarea className={input} placeholder="Definition" rows={3} value={f.definition} onChange={set("definition")} data-testid="dict-form-definition" />
+        {isUniversal ? (
+          <p className="text-xs text-gray-400">Editing a universal entry creates a parish override.</p>
+        ) : null}
+        <input
+          className={input}
+          placeholder="Headword"
+          value={f.headword}
+          onChange={set("headword")}
+          disabled={isUniversal}
+          data-testid="dict-form-headword"
+        />
+        {!isUniversal ? (
+          <input
+            className={input}
+            placeholder="Variants (comma-separated)"
+            value={f.variants}
+            onChange={set("variants")}
+          />
+        ) : null}
+        <textarea
+          className={input}
+          placeholder="Definition"
+          rows={3}
+          value={f.definition}
+          onChange={set("definition")}
+          data-testid="dict-form-definition"
+        />
         <div className="grid grid-cols-2 gap-2">
-          {!isUniversal ? <input className={input} placeholder="Greek word" value={f.greekWord} onChange={set("greekWord")} /> : null}
-          <input className={input} placeholder="Greek definition" value={f.greekDefinition} onChange={set("greekDefinition")} />
-          {!isUniversal ? <input className={input} placeholder="Hebrew word" value={f.hebrewWord} onChange={set("hebrewWord")} /> : null}
-          <input className={input} placeholder="Hebrew definition" value={f.hebrewDefinition} onChange={set("hebrewDefinition")} />
+          {!isUniversal ? (
+            <input className={input} placeholder="Greek word" value={f.greekWord} onChange={set("greekWord")} />
+          ) : null}
+          <input
+            className={input}
+            placeholder="Greek definition"
+            value={f.greekDefinition}
+            onChange={set("greekDefinition")}
+          />
+          {!isUniversal ? (
+            <input className={input} placeholder="Hebrew word" value={f.hebrewWord} onChange={set("hebrewWord")} />
+          ) : null}
+          <input
+            className={input}
+            placeholder="Hebrew definition"
+            value={f.hebrewDefinition}
+            onChange={set("hebrewDefinition")}
+          />
         </div>
-        <textarea className={input} placeholder="First-century context" rows={2} value={f.firstCenturyContext} onChange={set("firstCenturyContext")} />
+        <textarea
+          className={input}
+          placeholder="First-century context"
+          rows={2}
+          value={f.firstCenturyContext}
+          onChange={set("firstCenturyContext")}
+        />
         <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onClose} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600">Cancel</button>
-          <button type="button" onClick={save} disabled={pending} data-testid="dict-form-save" className="rounded-md bg-burgundy px-3 py-1.5 text-sm font-medium text-cream hover:bg-rose disabled:opacity-50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={pending}
+            data-testid="dict-form-save"
+            className="rounded-md bg-burgundy px-3 py-1.5 text-sm font-medium text-cream hover:bg-rose disabled:opacity-50"
+          >
             {pending ? "Saving…" : "Save"}
           </button>
         </div>

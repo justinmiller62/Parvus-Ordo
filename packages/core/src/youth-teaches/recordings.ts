@@ -18,9 +18,18 @@ export async function createRecording(
     `INSERT INTO youth_recordings
        (parish_id, project_id, bunny_video_id, playback_url, duration_seconds, slide_advance_count)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-    [parishId, input.projectId, input.bunnyVideoId, input.playbackUrl, input.durationSeconds ?? null, input.slideAdvanceCount ?? null],
+    [
+      parishId,
+      input.projectId,
+      input.bunnyVideoId,
+      input.playbackUrl,
+      input.durationSeconds ?? null,
+      input.slideAdvanceCount ?? null,
+    ],
   );
-  await getDb(parishId).query("UPDATE youth_projects SET status = 'submitted', updated_at = now() WHERE id = $1", [input.projectId]);
+  await getDb(parishId).query("UPDATE youth_projects SET status = 'submitted', updated_at = now() WHERE id = $1", [
+    input.projectId,
+  ]);
   return { recordingId: rows[0]!.id, playbackUrl: input.playbackUrl, projectStatus: "submitted" };
 }
 
@@ -60,7 +69,11 @@ export async function getLatestRecording(
   parishId: string,
   projectId: string,
 ): Promise<{ id: string; playbackUrl: string | null; bunnyVideoId: string | null } | null> {
-  const { rows } = await getDb(parishId).query<{ id: string; playback_url: string | null; bunny_video_id: string | null }>(
+  const { rows } = await getDb(parishId).query<{
+    id: string;
+    playback_url: string | null;
+    bunny_video_id: string | null;
+  }>(
     "SELECT id, playback_url, bunny_video_id FROM youth_recordings WHERE project_id = $1 ORDER BY created_at DESC LIMIT 1",
     [projectId],
   );
