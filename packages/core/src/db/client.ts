@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 
 /**
  * getDb(parishId) — the single connection chokepoint (Architecture §7).
@@ -27,6 +27,18 @@ export interface TenantDb {
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<{ rows: T[] }>;
 }
 
+/**
+ * Roll back, swallowing the rollback error so we never mask the original throw —
+ * but log it first. A failed ROLLBACK means the connection returns to the pool stuck
+ * mid-transaction; this is the single multi-tenant chokepoint, so that silent pool
+ * corruption must stay observable rather than vanishing into `.catch(() => {})`. (po-rt2)
+ */
+async function rollbackQuietly(client: PoolClient, context: string): Promise<void> {
+  await client.query("ROLLBACK").catch((rollbackErr) => {
+    console.error(`db chokepoint (${context}): ROLLBACK failed; connection may be poisoned`, rollbackErr);
+  });
+}
+
 export function getDb(parishId: string | null): TenantDb {
   return {
     async query<T = Record<string, unknown>>(sql: string, params: unknown[] = []) {
@@ -42,7 +54,7 @@ export function getDb(parishId: string | null): TenantDb {
         await client.query("COMMIT");
         return { rows: result.rows as T[] };
       } catch (err) {
-        await client.query("ROLLBACK").catch(() => {});
+        await rollbackQuietly(client, "getDb");
         throw err;
       } finally {
         client.release();
@@ -75,7 +87,7 @@ export async function withTenant<T>(
     await client.query("COMMIT");
     return result;
   } catch (err) {
-    await client.query("ROLLBACK").catch(() => {});
+    await rollbackQuietly(client, "withTenant");
     throw err;
   } finally {
     client.release();
