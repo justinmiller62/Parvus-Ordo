@@ -35,3 +35,22 @@ export async function requireAdmin(redirectTo = "/"): Promise<StaffContext> {
   if (!id?.parishId || !id.userId || !isAdmin(id.role)) redirect(redirectTo);
   return { parishId: id.parishId, userId: id.userId };
 }
+
+/** The acting super-admin: just the user id (the platform admin plane is cross-tenant, so
+ *  there is no active parish to return — unlike StaffContext). */
+export interface SuperAdminContext {
+  userId: string;
+}
+
+/**
+ * Require a platform SUPER-ADMIN (the `users.is_super_admin` flag — RFC-004 §6). Unlike
+ * requireStaff/requireAdmin this needs NO active parish: the admin plane manages every parish
+ * cross-tenant. Returns {userId} (the audited actor passed to packages/core platform/admin), or
+ * redirects to `redirectTo` ("/" — nav hiding is not enforcement, so every (admin) page AND every
+ * admin Server Action calls this). The core layer re-asserts is_super_admin against the DB too.
+ */
+export async function requireSuperAdmin(redirectTo = "/"): Promise<SuperAdminContext> {
+  const id = (await getViewer())?.identity;
+  if (!id?.userId || !id.isSuperAdmin) redirect(redirectTo);
+  return { userId: id.userId };
+}
