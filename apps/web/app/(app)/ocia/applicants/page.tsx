@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { canInviteRole, getParishApplyInfo, listOciaApplicants, INVITABLE_ROLES } from "@parvaordo/core";
-import type { Role } from "@parvaordo/shared";
+import { isStaff, type Role } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 import { InviteForm } from "./invite-form";
 import {
@@ -20,7 +20,7 @@ export default async function ApplicantsPage() {
   const v = await getViewer();
   const role = v?.identity?.role;
   const parishId = v?.identity?.parishId;
-  if (!parishId || !(role === "admin" || role === "catechist" || role === "super_admin")) redirect("/ocia");
+  if (!parishId || !isStaff(role)) redirect("/ocia");
 
   const [applicants, info] = await Promise.all([listOciaApplicants(parishId), getParishApplyInfo(parishId)]);
   const invitableRoles = INVITABLE_ROLES.filter((r) => canInviteRole(role ?? null, r)) as Role[];

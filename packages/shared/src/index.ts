@@ -9,6 +9,20 @@ export type Role = "super_admin" | "admin" | "catechist" | "catechumen_candidate
 /** Roles a super-admin may mimic via "view as" (never super-admin itself). */
 export const IMPERSONATABLE_ROLES: Role[] = ["admin", "catechist", "catechumen_candidate", "studio", "parish_member"];
 
+/**
+ * Content-managing parish staff: diocese/parish admins + catechists. The "can they edit
+ * dictionary/prayers, build OCIA lessons, manage media, review studio work?" set — one
+ * rule consumed by Server Actions, route handlers, pages, and the app shell so the client
+ * can never drift from the server guards. Studio creators, OCIA learners, and plain parish
+ * members are NOT staff.
+ */
+export const STAFF_ROLES: Role[] = ["super_admin", "admin", "catechist"];
+// A type guard (not just boolean) so a `if (!isStaff(role)) redirect()` guard narrows
+// `role` to the staff subset afterward — the narrowing the inline disjunctions gave.
+export function isStaff(role: Role | null | undefined): role is "super_admin" | "admin" | "catechist" {
+  return role === "super_admin" || role === "admin" || role === "catechist";
+}
+
 /** Human display labels for roles. */
 export const ROLE_LABELS: Record<Role, string> = {
   super_admin: "Diocese Admin",

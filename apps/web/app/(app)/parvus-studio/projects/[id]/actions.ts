@@ -1,5 +1,6 @@
 "use server";
 
+import { isStaff } from "@parvaordo/shared";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
@@ -62,8 +63,7 @@ export async function deleteRecordingAction(projectId: string): Promise<void> {
 export async function reviewProjectAction(projectId: string, decision: "approved" | "rejected"): Promise<void> {
   const v = await getViewer();
   const role = v?.identity?.role;
-  const isStaff = role === "catechist" || role === "admin" || role === "super_admin";
-  if (!v?.identity?.parishId || !isStaff) redirect("/");
+  if (!v?.identity?.parishId || !isStaff(role)) redirect("/");
   await (decision === "approved" ? approveProject : rejectProject)(v.identity.parishId, projectId);
   revalidatePath(`/parvus-studio/projects/${projectId}`);
 }

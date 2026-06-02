@@ -1,5 +1,6 @@
 "use server";
 
+import { isStaff } from "@parvaordo/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createLesson, deleteLesson, forkLesson, removeClipsForLesson, unpublishLesson } from "@parvaordo/core";
@@ -9,7 +10,7 @@ async function requireBuilder(): Promise<{ parishId: string; userId: string }> {
   const v = await getViewer();
   const role = v?.identity?.role;
   const parishId = v?.identity?.parishId;
-  if (!parishId || !(role === "catechist" || role === "admin" || role === "super_admin")) {
+  if (!parishId || !isStaff(role)) {
     redirect("/ocia");
   }
   return { parishId, userId: v!.identity!.userId };

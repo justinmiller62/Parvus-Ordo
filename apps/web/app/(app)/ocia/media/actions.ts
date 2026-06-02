@@ -1,5 +1,6 @@
 "use server";
 
+import { isStaff } from "@parvaordo/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -19,7 +20,7 @@ async function requireBuilder(): Promise<{ parishId: string; userId: string }> {
   const role = v?.identity?.role;
   const parishId = v?.identity?.parishId;
   const userId = v?.identity?.userId;
-  if (!parishId || !userId || !(role === "catechist" || role === "admin" || role === "super_admin")) {
+  if (!parishId || !userId || !isStaff(role)) {
     redirect("/ocia");
   }
   return { parishId, userId };

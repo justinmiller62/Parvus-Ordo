@@ -1,3 +1,4 @@
+import { isStaff } from "@parvaordo/shared";
 import { NextResponse } from "next/server";
 import { getAsset, getTranscription, setTranscript, setTranscriptionStatus, transcribeChunked } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
@@ -17,7 +18,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ assetId
   const viewer = await getViewer();
   const role = viewer?.identity?.role;
   const parishId = viewer?.identity?.parishId;
-  if (!parishId || !(role === "catechist" || role === "admin" || role === "super_admin")) {
+  if (!parishId || !isStaff(role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const asset = await getAsset(parishId, assetId);

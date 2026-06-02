@@ -1,3 +1,4 @@
+import { isStaff } from "@parvaordo/shared";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { listMyProjects, listParishYouthProjects, listYouthTeens, listYouthTopics } from "@parvaordo/core";
@@ -22,9 +23,8 @@ export default async function YouthTeachesHome() {
   const viewer = await getViewer();
   if (!viewer?.identity?.parishId || !viewer.identity.userId) redirect("/login");
   const { parishId, userId, role } = viewer.identity;
-  const isStaff = role === "catechist" || role === "admin" || role === "super_admin";
 
-  if (!isStaff) {
+  if (!isStaff(role)) {
     const projects = await listMyProjects(parishId, userId);
     return (
       <div className="mx-auto max-w-3xl space-y-5">

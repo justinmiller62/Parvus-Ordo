@@ -1,3 +1,4 @@
+import { isStaff } from "@parvaordo/shared";
 import { redirect } from "next/navigation";
 import { getLatestRecording, getProject, getProjectDetails, listProjectSlides, presignSlideUrl } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
@@ -11,7 +12,6 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
   if (!viewer?.identity?.parishId) redirect("/login");
   const parishId = viewer.identity.parishId;
   const role = viewer.identity.role;
-  const isStaff = role === "catechist" || role === "admin" || role === "super_admin";
 
   const [project, details, recording, slides] = await Promise.all([
     getProject(parishId, id),
@@ -57,7 +57,7 @@ export default async function YouthProjectPage({ params }: { params: Promise<{ i
         recordingUrl={recording?.playbackUrl ?? null}
       />
 
-      {isStaff && recording ? (
+      {isStaff(role) && recording ? (
         <section className="rounded-lg border border-gray-200 bg-white p-4" data-testid="yt-review">
           <h2 className="mb-2 text-sm font-semibold text-navy">Review</h2>
           {project.status === "submitted" ? (

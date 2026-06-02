@@ -11,7 +11,7 @@ import {
   setApplicationsEnabled,
   softDeleteApplicant,
 } from "@parvaordo/core";
-import type { Role } from "@parvaordo/shared";
+import { isStaff, type Role } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 
 interface Reviewer {
@@ -26,7 +26,7 @@ async function requireReviewer(): Promise<Reviewer> {
   const role = v?.identity?.role;
   const parishId = v?.identity?.parishId;
   const userId = v?.identity?.userId;
-  if (!parishId || !userId || !(role === "admin" || role === "catechist" || role === "super_admin")) {
+  if (!parishId || !userId || !isStaff(role)) {
     redirect("/ocia");
   }
   return { parishId, userId, role };

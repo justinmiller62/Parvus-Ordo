@@ -1,3 +1,4 @@
+import { isStaff } from "@parvaordo/shared";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, BookOpen, HelpCircle, MessageSquare, Sparkles } from "lucide-react";
@@ -67,7 +68,7 @@ export default async function WeeklyExportPage({
   const parishId = viewer?.identity?.parishId;
   // Teacher-only view of student responses — same gate as the student-responses
   // inbox (ocia/lessons/[id]/responses). Students/learners are redirected away.
-  if (!parishId || !(role === "catechist" || role === "admin" || role === "super_admin")) redirect("/ocia");
+  if (!parishId || !isStaff(role)) redirect("/ocia");
 
   const week = Number.parseInt(weekNumber ?? "1", 10);
   const validWeek = Number.isInteger(week) && week >= 1;

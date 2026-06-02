@@ -1,3 +1,4 @@
+import { isStaff } from "@parvaordo/shared";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getLessonDetail, getStudentFeedback, getStudentQuestions, type StudentMessage } from "@parvaordo/core";
@@ -25,7 +26,7 @@ export default async function ResponsesPage({ params }: { params: Promise<{ id: 
   const viewer = await getViewer();
   const role = viewer?.identity?.role;
   const parishId = viewer?.identity?.parishId;
-  if (!parishId || !(role === "catechist" || role === "admin" || role === "super_admin")) redirect("/ocia");
+  if (!parishId || !isStaff(role)) redirect("/ocia");
 
   const [lesson, questions, feedback] = await Promise.all([
     getLessonDetail(parishId, id),
