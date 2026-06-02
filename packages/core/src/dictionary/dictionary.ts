@@ -1,4 +1,4 @@
-import { getDb } from "../db/client";
+import { getDb, type TenantDb } from "../db/client";
 
 // Dictionary data access. Three layers: global dictionary_entries (universal,
 // approved), per-parish dictionary_overrides (wide-column field overrides), and
@@ -52,17 +52,50 @@ interface EntryRow {
   category: string | null;
 }
 
+// The approved universal glossary (dictionary_entries) has no parish_id and its RLS
+// policy exposes every approved row to every tenant (0019_dictionary.sql), so the same
+// bytes are re-read and re-sorted per request for each parish. It changes only via
+// owner/seed/MCP writes (no in-app path), so we cache the set process-locally and let
+// per-parish overrides/submissions layer on top each request. This holds only public
+// global data — never per-parish state — so it's rebuildable, not authoritative tenant
+// state (stays within the statelessness rules). Writers call invalidateDictionaryCache();
+// the TTL is the backstop for those out-of-process writes.
+/** Backstop TTL for the cached global glossary, in ms. Out-of-process owner/seed/MCP
+ * writes that forget to invalidate still surface within this window. */
+export const DICTIONARY_CACHE_TTL_MS = 5 * 60 * 1000;
+
+let universalCache: { rows: EntryRow[]; expiresAt: number } | null = null;
+
+/** Drop the cached global glossary so the next listDictionary re-reads it. Call from the
+ * owner/seed/MCP path after writing dictionary_entries. */
+export function invalidateDictionaryCache(): void {
+  universalCache = null;
+}
+
+/** The approved universal entries, from the process-local cache when warm. The data is
+ * identical for every tenant, so any tenant connection fetches the same global set; a
+ * brief cold-start stampede across concurrent requests is acceptable for this low-churn
+ * reference data. */
+async function getUniversalEntries(db: TenantDb, nowMs: number): Promise<EntryRow[]> {
+  if (universalCache && nowMs < universalCache.expiresAt) return universalCache.rows;
+  const { rows } = await db.query<EntryRow>(
+    `SELECT id, headword, variants, pronunciation, definition, greek_word, greek_definition,
+            hebrew_word, hebrew_definition, first_century_context, catechism_references,
+            scripture_references, category
+       FROM dictionary_entries WHERE status = 'approved' ORDER BY headword`,
+  );
+  universalCache = { rows, expiresAt: nowMs + DICTIONARY_CACHE_TTL_MS };
+  return rows;
+}
+
 /** The full glossary a parish sees: approved universal entries (with this parish's
  * overrides applied) + the parish's pending submissions (deduped; universal wins). */
-export async function listDictionary(parishId: string): Promise<DictionaryItem[]> {
+export async function listDictionary(parishId: string, nowMs: number = Date.now()): Promise<DictionaryItem[]> {
   const db = getDb(parishId);
-  const [{ rows: universal }, { rows: overrides }, { rows: submissions }] = await Promise.all([
-    db.query<EntryRow>(
-      `SELECT id, headword, variants, pronunciation, definition, greek_word, greek_definition,
-              hebrew_word, hebrew_definition, first_century_context, catechism_references,
-              scripture_references, category
-         FROM dictionary_entries WHERE status = 'approved' ORDER BY headword`,
-    ),
+  // Universal set comes from the shared cache (warm: no query); the two per-parish reads
+  // run fresh, in parallel with a cold-cache universal fetch.
+  const [universal, { rows: overrides }, { rows: submissions }] = await Promise.all([
+    getUniversalEntries(db, nowMs),
     db.query<{
       entry_id: string;
       override_definition: string | null;
