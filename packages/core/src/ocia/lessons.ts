@@ -262,6 +262,34 @@ export async function getLessonForEdit(
   };
 }
 
+/**
+ * Whether a lesson version may be edited: it must be a parish-owned DRAFT — scope
+ * 'parish', belonging to THIS parish, and not yet published. This is the single source
+ * of the edit-gate rule (the web edit actions delegate to it); it extends
+ * getLessonForEdit's `editable` (scope/parish ownership) with the unpublished-draft
+ * requirement. The parish_id check is defense in depth: getDb already RLS-scopes the
+ * read, but global/diocese versions are RLS-readable yet never parish-editable.
+ */
+export async function isEditableDraft(parishId: string, versionId: string): Promise<boolean> {
+  const { rows } = await getDb(parishId).query<{
+    published_at: string | null;
+    scope: ContentScope;
+    parish_id: string | null;
+  }>("SELECT published_at, scope, parish_id FROM lesson_versions WHERE id = $1", [versionId]);
+  const v = rows[0];
+  return !!v && v.scope === "parish" && v.parish_id === parishId && v.published_at === null;
+}
+
+/** Read a single lesson item's content JSON (tenant-scoped), or `{}` if it doesn't
+ *  exist. Used by the edit shim to merge content updates and find a prior cut clip. */
+export async function getLessonItemContent(parishId: string, itemId: string): Promise<Record<string, unknown>> {
+  const { rows } = await getDb(parishId).query<{ content: Record<string, unknown> }>(
+    "SELECT content FROM lesson_items WHERE id = $1",
+    [itemId],
+  );
+  return rows[0]?.content ?? {};
+}
+
 // ── Mutations ────────────────────────────────────────────────────────────────
 
 export async function createLesson(params: { parishId: string; createdBy: string; title?: string }): Promise<string> {
