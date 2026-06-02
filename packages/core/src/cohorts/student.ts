@@ -176,3 +176,27 @@ export async function getStudentLessons(parishId: string, studentId: string): Pr
   out.sort((a, b) => compareDates(a.discussionDate, b.discussionDate) || (a.weekNumber ?? 0) - (b.weekNumber ?? 0));
   return out;
 }
+
+export interface StudentLessonSections {
+  /** Still to do — anything not yet completed (not_started or started), locked
+   *  lessons included. Input order (schedule order) is preserved. */
+  due: StudentLesson[];
+  /** Finished — every live item of the lesson is complete. */
+  completed: StudentLesson[];
+}
+
+/**
+ * Split the gated lesson list into the "Due" and "Completed" sections the student
+ * list renders. This is presentation-only: it never re-derives gating (release,
+ * sequential lock, path intersection already happened in getStudentLessons) — it
+ * just buckets by status while preserving schedule order. An empty `due` with a
+ * non-empty overall list is the "All caught up!" state.
+ */
+export function partitionStudentLessons(lessons: StudentLesson[]): StudentLessonSections {
+  const due: StudentLesson[] = [];
+  const completed: StudentLesson[] = [];
+  for (const lesson of lessons) {
+    (lesson.status === "completed" ? completed : due).push(lesson);
+  }
+  return { due, completed };
+}

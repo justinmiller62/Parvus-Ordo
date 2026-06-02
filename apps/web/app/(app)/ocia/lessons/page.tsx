@@ -1,9 +1,16 @@
 import { isStaff } from "@parvaordo/shared";
 import Link from "next/link";
-import { getManageLessons, getPublishedLessons, type ContentScope, type LessonStatus } from "@parvaordo/core";
+import {
+  getManageLessons,
+  getStudentLessons,
+  partitionStudentLessons,
+  type ContentScope,
+  type LessonStatus,
+} from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
 import { ManageRowActions } from "@/src/components/ocia/manage-row-actions";
 import { createLessonAction, forkLessonAction } from "./actions";
+import { StudentLessons } from "./student-lessons";
 
 const SCOPE_BADGE: Record<string, string> = {
   global: "bg-gold/20 text-gold-dark",
@@ -39,33 +46,15 @@ export default async function LessonsPage({
   const role = viewer?.identity?.role ?? null;
   const canBuild = isStaff(role);
 
-  // Learners: a simple list of published lessons they can take.
+  // Learners: the gated "My Lessons" list — only lessons released to them via their
+  // cohort schedule. getStudentLessons applies release/sequential/learning-path gating
+  // and schedule ordering; the page just splits Due/Completed and renders. This replaces
+  // the old getPublishedLessons() call, which over-exposed every published parish lesson.
   if (!canBuild) {
-    const lessons = parishId ? await getPublishedLessons(parishId) : [];
-    return (
-      <div className="mx-auto max-w-3xl">
-        <h1 className="mb-4 font-heading text-2xl text-navy">My Lessons</h1>
-        {lessons.length === 0 ? (
-          <p className="text-sm text-gray-500">No lessons available yet.</p>
-        ) : (
-          <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
-            {lessons.map((l) => (
-              <li key={l.id}>
-                <Link
-                  href={`/ocia/lessons/${l.id}`}
-                  className="flex items-center justify-between px-4 py-3 text-sm transition hover:bg-parchment"
-                >
-                  <span className="text-navy">{l.title}</span>
-                  <span className={`ml-3 rounded-full px-2 py-0.5 text-xs font-medium ${SCOPE_BADGE[l.scope]}`}>
-                    {l.scope}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    );
+    const studentId = viewer?.identity?.userId ?? null;
+    const lessons = parishId && studentId ? await getStudentLessons(parishId, studentId) : [];
+    const { due, completed } = partitionStudentLessons(lessons);
+    return <StudentLessons due={due} completed={completed} />;
   }
 
   // Builders: the manage list with sort + filter by type/status, fork, and new.

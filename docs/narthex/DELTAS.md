@@ -49,14 +49,15 @@ Status: ☐ open · ☑ fixed. Update as we close them.
 | MED | ☑ In-row Delete + real confirm dialog | `deleteLesson` exists; replace native confirm |
 | LOW | ☐ `lesson_order` selected but unused | drop or wire |
 
-## student-lesson-list (largely un-ported)
+## student-lesson-list (list surface ported — `po-dzwc`; calendar/review deferred)
 | Sev | Delta | Notes |
 | --- | --- | --- |
-| HIGH | ☐ Cohort/schedule/release gating | lists ALL published parish lessons unconditionally (over-exposure) |
-| HIGH | ☐ Lesson-level progress status + Due/Completed split + "All caught up!" | per-item progress exists but not aggregated/surfaced |
-| HIGH | ☐ Sequential locking + skip_sequence | depends on cohorts |
-| MED | ☐ "My Answers"/review + "My Schedule" calendar | depends on review mode + schedule |
-| (Cohorts/Scheduling keystone landed in po-mf1 — `getStudentLessons` supplies the gating; this is now a UI-wiring task, no longer blocked) |
+| HIGH | ☑ Cohort/schedule/release gating | learner branch now calls `getStudentLessons` instead of `getPublishedLessons` (which listed every published parish lesson — the over-exposure leak); only schedule-released lessons appear |
+| HIGH | ☑ Progress status + Due/Completed split + "All caught up!" | `partitionStudentLessons` buckets by status; per-lesson badge (Not started / In progress / Completed); empty `due` on a non-empty list → `lesson-all-caught-up`; collapsed-by-default Completed section |
+| HIGH | ☑ Sequential locking (list side) + skip_sequence | locked rows render visibly locked (`lesson-locked`: lock icon, non-link). The read model already resolves `locked` incl. skip_sequence. The lock card uses a GENERIC "Complete the previous lesson first" message — the blocking lesson's title isn't surfaced by the read model and re-deriving it would re-implement gating, so it's intentionally omitted (vs Narthex's titled message) |
+| HIGH | ☐ Sequential-lock SERVER enforcement (deep-link) | NOT this surface — lives on the lesson VIEW page (sibling bead student-lesson-view) |
+| MED | ☐ "My Answers"/review affordances + "My Schedule" calendar | review-mode links + the react-big-calendar "My Schedule" view deferred to a follow-up; completed lessons link to the player |
+| _Tests_ | unit (`partitionStudentLessons` split/order/all-caught-up) + int (`cohorts.int` over-exposure contrast: a `getPublishedLessons` lesson is absent from `getStudentLessons` for a not-enrolled / pre-release student) + e2e (`student-lessons.spec`: learner sees the empty state, the two published e2e lessons don't leak). Populated Due/Completed/locked RENDERING is covered by the unit/int layer rather than e2e to avoid mutating the shared e2e seed (its student has no cohort_members/schedule). | |
 
 ## auth-onboarding + home-dashboard
 | Sev | Delta | Notes |
