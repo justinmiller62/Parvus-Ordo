@@ -220,3 +220,36 @@ describe("manage sort + filter", () => {
     expect(stamps).toEqual([...stamps].sort((a, b) => b.localeCompare(a)));
   });
 });
+
+// po-edu — getManageLessons picks the latest version per lesson with a correlated
+// LATERAL (WHERE lesson_id = ? ORDER BY version_number DESC LIMIT 1) and tests for a
+// draft with EXISTS (WHERE lesson_id = ? AND published_at IS NULL). Both must stay index
+// scans as content libraries grow — these specs pin the supporting indexes in place.
+describe("manage-list supporting indexes (scalability, po-edu)", () => {
+  async function lessonVersionIndexDefs(): Promise<string[]> {
+    const { rows } = await getDb(HOLY_SPIRIT).query<{ indexdef: string }>(
+      "SELECT indexdef FROM pg_indexes WHERE tablename = 'lesson_versions'",
+    );
+    return rows.map((r) => r.indexdef);
+  }
+
+  it("serves the latest-version LATERAL from a (lesson_id, version_number) index", async () => {
+    // The UNIQUE (lesson_id, version_number) constraint index answers
+    // ORDER BY version_number DESC LIMIT 1 with a backward index scan — no per-lesson sort.
+    const defs = await lessonVersionIndexDefs();
+    expect(defs.some((d) => /\(lesson_id, version_number\b/.test(d))).toBe(true);
+  });
+
+  it("covers the has-draft EXISTS with a partial (lesson_id) WHERE published_at IS NULL index", async () => {
+    const defs = await lessonVersionIndexDefs();
+    expect(defs.some((d) => /\(lesson_id\) WHERE \(published_at IS NULL\)/.test(d))).toBe(true);
+  });
+
+  it("keeps no redundant standalone (lesson_id) index — the composite supersedes it", async () => {
+    // A full index keyed on lesson_id alone duplicates the leading column of the composite
+    // above; it adds write cost on every version/draft insert for no read benefit.
+    const defs = await lessonVersionIndexDefs();
+    const redundant = defs.filter((d) => /USING btree \(lesson_id\)\s*$/.test(d));
+    expect(redundant).toEqual([]);
+  });
+});

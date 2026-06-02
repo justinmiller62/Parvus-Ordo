@@ -1,0 +1,23 @@
+-- 0021_lesson_versions_drop_redundant_lesson_id_idx — drop a superseded index.
+--
+-- getManageLessons (packages/core/src/ocia/lessons.ts) builds the manage list by
+-- picking the latest version per lesson with a correlated LATERAL
+--   (WHERE lesson_id = ? ORDER BY version_number DESC LIMIT 1)
+-- and testing for a draft with
+--   EXISTS (WHERE lesson_id = ? AND published_at IS NULL).
+-- Both already run as index scans — no per-lesson sort, no seq scan — so they stay
+-- cheap as content libraries grow (verified with EXPLAIN, enable_seqscan off):
+--   • the LATERAL    -> Index Scan Backward using the UNIQUE (lesson_id, version_number)
+--                       constraint index (a btree serves ORDER BY ... DESC LIMIT 1 by
+--                       scanning backward; a dedicated DESC index would be a duplicate).
+--   • the has_draft  -> Index Only Scan using lesson_versions_one_draft, the partial
+--     EXISTS           unique index on (lesson_id) WHERE published_at IS NULL.
+--
+-- That composite UNIQUE index leads with lesson_id, so it answers every lesson_id lookup
+-- (and the lessons -> lesson_versions FK cascade) that the standalone single-column index
+-- lesson_versions_lesson_id_idx (lesson_id) did. The single-column index is therefore
+-- pure overhead: one more index to maintain on every version/draft insert with no read
+-- benefit. Drop it. (Plain DROP INDEX — DROP INDEX CONCURRENTLY cannot run inside the
+-- migration's transaction; an index drop is a brief catalog-only operation.) (po-edu)
+
+DROP INDEX lesson_versions_lesson_id_idx;
