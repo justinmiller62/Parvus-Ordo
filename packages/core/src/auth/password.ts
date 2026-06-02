@@ -39,7 +39,11 @@ async function workosAuthenticate(extra: Record<string, string>): Promise<string
  * Google/SSO accounts have no password; use authenticateWithCode for those.) */
 export async function authenticateWithPassword(email: string, password: string): Promise<PasswordLoginResult | null> {
   const verified = await workosAuthenticate({ grant_type: "password", email: email.trim().toLowerCase(), password });
-  return resolveLogin(verified ?? email);
+  // Resolve ONLY the WorkOS-verified email. Never fall back to the request-body
+  // email: workosAuthenticate returns null when WorkOS rejects the credentials, and
+  // a `?? email` fallback would mint a token for any parish email + any password
+  // (account takeover). authenticateWithCode passes `verified` for the same reason.
+  return resolveLogin(verified);
 }
 
 /** Exchange a WorkOS authorization code (from the hosted OAuth / Google flow) for
