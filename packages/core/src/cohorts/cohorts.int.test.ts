@@ -11,6 +11,7 @@ import {
   getCohortStudents,
   getDb,
   getPathDetail,
+  getPublishedLessons,
   getStudentLessons,
   listCohortCards,
   listParishStudents,
@@ -311,5 +312,43 @@ describe("cohorts — teacher Students-tab progress (integration)", () => {
     const me = progress.find((p) => p.userId === student)!;
     expect(me.total).toBe(2); // two lessons have questions
     expect(me.completed).toBe(1); // only the fully-answered lesson counts
+  });
+});
+
+describe("cohorts — student list closes the over-exposure leak (integration)", () => {
+  // The legacy learner list called getPublishedLessons() and rendered EVERY published
+  // parish lesson unconditionally. The fix routes the learner through getStudentLessons,
+  // which only surfaces lessons the student's cohort schedule has released to them.
+  // These two tests pin the leak shut: a lesson getPublishedLessons WOULD have shown is
+  // absent from the gated list when the student isn't entitled to it yet.
+  it("a not-enrolled student does NOT see a published lesson that getPublishedLessons returns", async () => {
+    const { lessonId } = await seedLesson(HS, "overexpose-unenrolled", [{ kind: "reading", content: { html: "x" } }]);
+    const loner = await makeStudent(HS, "cohort-int-overexpose-a@test.local");
+
+    const published = await getPublishedLessons(HS);
+    expect(published.map((l) => l.id)).toContain(lessonId); // the legacy path WOULD have shown it
+
+    const gated = await getStudentLessons(HS, loner);
+    expect(gated.map((l) => l.lessonId)).not.toContain(lessonId); // the gated path hides it
+    expect(gated).toEqual([]); // not in any cohort → nothing at all
+  });
+
+  it("an enrolled student before a lesson's release date does NOT see it (drip), though it is published", async () => {
+    const { lessonId } = await seedLesson(HS, "overexpose-future", [{ kind: "reading", content: { html: "y" } }]);
+    const cohort = (await createCohort(HS, NAME + "Overexpose"))!;
+    const student = await makeStudent(HS, "cohort-int-overexpose-b@test.local");
+    await toggleMember(HS, cohort, student, true);
+    // Scheduled, but with a release date far in the future → not released to the student yet.
+    await owner.query(
+      `INSERT INTO cohort_schedule (parish_id, cohort_id, lesson_id, discussion_date, release_date, week_number)
+       VALUES ($1, $2, $3, '2099-01-06', '2099-01-01', 1)`,
+      [HS, cohort, lessonId],
+    );
+
+    const published = await getPublishedLessons(HS);
+    expect(published.map((l) => l.id)).toContain(lessonId); // still published parish-wide
+
+    const gated = await getStudentLessons(HS, student);
+    expect(gated.map((l) => l.lessonId)).not.toContain(lessonId); // hidden until its release date passes
   });
 });
