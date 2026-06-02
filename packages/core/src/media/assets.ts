@@ -160,6 +160,26 @@ export async function getAsset(parishId: string, id: string): Promise<Asset | nu
   return rows[0] ? rowToAsset(rows[0]) : null;
 }
 
+/**
+ * Resolve an asset's owning parish by id, pre-tenant-context, via the SECURITY DEFINER
+ * `asset_parish_id` lookup (migration 0022). `assets` is RLS-scoped, so a tenant-scoped
+ * read can't find an asset before we know its parish; this narrow definer lookup bypasses
+ * RLS to return the true owner — mirroring validateMcpToken / resolve_parish_id.
+ *
+ * Lets the clip cut-service callback derive the parish from the asset itself instead of
+ * trusting a client-supplied parishId (po-k92). Returns null for an unknown id or a
+ * non-parish-scoped asset (global/diocese assets have a NULL parish_id; clips are always
+ * parish-scoped).
+ */
+export async function getAssetParishId(assetId: string): Promise<string | null> {
+  if (!assetId) return null;
+  const { rows } = await getDb(null).query<{ parish_id: string | null }>(
+    "SELECT asset_parish_id($1::uuid) AS parish_id",
+    [assetId],
+  );
+  return rows[0]?.parish_id ?? null;
+}
+
 export async function listAssets(parishId: string, opts: { kind?: AssetKind } = {}): Promise<Asset[]> {
   // The library lists SOURCE assets only — cut clips are internal (referenced by
   // lesson items), never user-managed here.

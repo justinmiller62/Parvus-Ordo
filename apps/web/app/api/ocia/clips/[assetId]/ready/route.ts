@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { updateAssetStatus } from "@parvaordo/core";
+import { getAssetParishId, updateAssetStatus } from "@parvaordo/core";
 
 export const runtime = "nodejs";
 
@@ -15,7 +15,8 @@ function secretsMatch(provided: string, expected: string): boolean {
 
 // Callback hit by the clip cut-service (Cloudflare Container) when a clip finishes
 // (or fails). Authenticated by a shared secret since it isn't a logged-in user.
-// The container supplies the parish (from the job) so the RLS-scoped update works.
+// The owning parish is derived from the asset row (po-k92), so the RLS-scoped update
+// lands on the right tenant without trusting the caller to supply it.
 export async function POST(req: Request, { params }: { params: Promise<{ assetId: string }> }) {
   const { assetId } = await params;
 
@@ -40,13 +41,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ assetId
     durationMs?: number;
     error?: string;
   };
-  if (!body.parishId) return NextResponse.json({ error: "parishId required" }, { status: 400 });
+  // Derive the parish from the asset row itself rather than trusting body.parishId
+  // (po-k92): `assets` is RLS-scoped, so getAssetParishId uses a SECURITY DEFINER lookup
+  // to find the true owner. Unknown asset → 404. A body.parishId that disagrees with the
+  // real owner signals a buggy/compromised cutter job: log it, but proceed against the
+  // authoritative parish (the old code silently no-op'd against the wrong tenant instead).
+  const parishId = await getAssetParishId(assetId);
+  if (!parishId) return NextResponse.json({ error: "asset not found" }, { status: 404 });
+  if (body.parishId && body.parishId !== parishId) {
+    console.warn(
+      `clip callback parishId mismatch for asset ${assetId}: body=${body.parishId} actual=${parishId}; using actual`,
+    );
+  }
 
-  // parishId comes from the (now secret-authenticated) caller. Deriving it from the
-  // asset row instead — defense-in-depth against a buggy/compromised clip-cutter job —
-  // needs a cross-tenant SECURITY DEFINER lookup and is tracked separately in po-k92.
   await updateAssetStatus({
-    parishId: body.parishId,
+    parishId,
     id: assetId,
     status: body.error ? "failed" : "ready",
     providerAssetId: body.providerAssetId ?? null,
