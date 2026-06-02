@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import {
+  isLessonLockedForStudent,
   markItemComplete,
   markVideoProgress,
   recordEngagementEvent,
@@ -91,6 +92,15 @@ export async function advanceAction(formData: FormData): Promise<void> {
   if (!ctx) redirect("/login");
 
   const lessonId = String(formData.get("lessonId") ?? "");
+
+  // Server-side sequential-lock enforcement (po-exda): refuse to advance within a lesson the
+  // cohort schedule has not unlocked for this student (skip_sequence cohorts excepted). The
+  // page blocks rendering a locked lesson, but this server action could be POSTed directly,
+  // so it re-checks the gate itself rather than trusting the client.
+  if (await isLessonLockedForStudent(ctx.parishId, ctx.userId, lessonId)) {
+    redirect("/ocia/lessons");
+  }
+
   const itemId = String(formData.get("itemId") ?? "");
   const kind = String(formData.get("kind") ?? "");
   const step = Number(formData.get("step") ?? 0);

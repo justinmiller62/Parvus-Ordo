@@ -13,6 +13,7 @@ import {
   getPathDetail,
   getPublishedLessons,
   getStudentLessons,
+  isLessonLockedForStudent,
   listCohortCards,
   listParishStudents,
   markItemComplete,
@@ -267,6 +268,33 @@ describe("cohorts — student gating read model (integration)", () => {
     lessons = await getStudentLessons(HS, student);
     expect(lessons.map((l) => l.locked)).toEqual([false, false, true]);
     expect(lessons.find((l) => l.lessonId === L[0])!.status).toBe("completed");
+  });
+
+  // The server-side deep-link gate (po-exda): isLessonLockedForStudent must match the list's
+  // per-lesson lock decision exactly, honor skip_sequence, and not sequence-lock a lesson the
+  // student has no scheduled access to. At this point L1 is complete, so L3 is still locked.
+  it("isLessonLockedForStudent gates the view/advance: mirrors the list, honors skip_sequence", async () => {
+    const lessons = await getStudentLessons(HS, student);
+    expect(lessons.length).toBeGreaterThan(0);
+    for (const l of lessons) {
+      expect(await isLessonLockedForStudent(HS, student, l.lessonId)).toBe(l.locked);
+    }
+    // A lesson outside the student's gated schedule is not sequence-locked by this gate.
+    expect(await isLessonLockedForStudent(HS, student, "00000000-0000-0000-0000-000000000000")).toBe(false);
+
+    // skip_sequence makes an otherwise sequentially-locked lesson accessible.
+    const locked = lessons.find((l) => l.locked);
+    expect(locked, "the seed leaves a sequentially-locked lesson at this point").toBeTruthy();
+    expect(await isLessonLockedForStudent(HS, student, locked!.lessonId)).toBe(true);
+    await owner.query("UPDATE cohort_schedule SET skip_sequence = true WHERE cohort_id = $1 AND lesson_id = $2", [
+      cohort,
+      locked!.lessonId,
+    ]);
+    expect(await isLessonLockedForStudent(HS, student, locked!.lessonId)).toBe(false);
+    await owner.query("UPDATE cohort_schedule SET skip_sequence = false WHERE cohort_id = $1 AND lesson_id = $2", [
+      cohort,
+      locked!.lessonId,
+    ]);
   });
 
   it("hides a future-release lesson (drip)", async () => {
