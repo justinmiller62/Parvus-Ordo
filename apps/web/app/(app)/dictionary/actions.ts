@@ -3,9 +3,9 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
-  createSubmission,
-  deleteSubmission,
-  updateSubmission,
+  createDictionarySubmission,
+  deleteDictionarySubmission,
+  updateDictionarySubmission,
   upsertOverride,
   type NewSubmissionInput,
   type OverrideInput,
@@ -24,14 +24,14 @@ async function staffCtx(): Promise<{ parishId: string; userId: string }> {
 /** Add a new term → parish submission (pending). */
 export async function addEntryAction(input: NewSubmissionInput): Promise<void> {
   const { parishId, userId } = await staffCtx();
-  await createSubmission(parishId, userId, input);
+  await createDictionarySubmission(parishId, userId, input);
   revalidatePath("/dictionary");
 }
 
 /** Edit a parish submission in place. */
 export async function editSubmissionAction(id: string, input: NewSubmissionInput): Promise<void> {
   const { parishId } = await staffCtx();
-  await updateSubmission(parishId, id, input);
+  await updateDictionarySubmission(parishId, id, input);
   revalidatePath("/dictionary");
 }
 
@@ -45,6 +45,6 @@ export async function overrideEntryAction(entryId: string, o: OverrideInput): Pr
 /** Delete a parish submission. */
 export async function deleteSubmissionAction(id: string): Promise<void> {
   const { parishId } = await staffCtx();
-  await deleteSubmission(parishId, id);
+  await deleteDictionarySubmission(parishId, id);
   revalidatePath("/dictionary");
 }

@@ -3,12 +3,12 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   closeDb,
-  createSubmission,
-  deleteSubmission,
+  createDictionarySubmission,
+  deleteDictionarySubmission,
   getDb,
   invalidateDictionaryCache,
   listDictionary,
-  updateSubmission,
+  updateDictionarySubmission,
   upsertOverride,
 } from "@parvaordo/core";
 
@@ -62,7 +62,10 @@ describe("dictionary (integration)", () => {
   });
 
   it("creates a parish submission that appears badged local", async () => {
-    const sub = await createSubmission(HS, userId, { headword: "Narthex", definition: "The entrance of a church." });
+    const sub = await createDictionarySubmission(HS, userId, {
+      headword: "Narthex",
+      definition: "The entrance of a church.",
+    });
     expect(sub).not.toBeNull();
     const e = (await listDictionary(HS)).find((x) => x.headword === "narthex");
     expect(e?.isLocal).toBe(true);
@@ -70,22 +73,22 @@ describe("dictionary (integration)", () => {
   });
 
   it("rejects an empty submission", async () => {
-    expect(await createSubmission(HS, userId, { headword: "  ", definition: "x" })).toBeNull();
-    expect(await createSubmission(HS, userId, { headword: "ok", definition: "  " })).toBeNull();
+    expect(await createDictionarySubmission(HS, userId, { headword: "  ", definition: "x" })).toBeNull();
+    expect(await createDictionarySubmission(HS, userId, { headword: "ok", definition: "  " })).toBeNull();
   });
 
   it("updates then deletes a submission", async () => {
-    const sub = (await createSubmission(HS, userId, { headword: "ambo", definition: "A lectern." }))!;
-    await updateSubmission(HS, sub.id, { headword: "ambo", definition: "The reading stand." });
+    const sub = (await createDictionarySubmission(HS, userId, { headword: "ambo", definition: "A lectern." }))!;
+    await updateDictionarySubmission(HS, sub.id, { headword: "ambo", definition: "The reading stand." });
     let e = (await listDictionary(HS)).find((x) => x.headword === "ambo");
     expect(e?.definition).toBe("The reading stand.");
-    await deleteSubmission(HS, sub.id);
+    await deleteDictionarySubmission(HS, sub.id);
     e = (await listDictionary(HS)).find((x) => x.headword === "ambo");
     expect(e).toBeUndefined();
   });
 
   it("a universal entry wins over a same-headword parish submission", async () => {
-    await createSubmission(HS, userId, { headword: "eucharist-int", definition: "should be hidden" });
+    await createDictionarySubmission(HS, userId, { headword: "eucharist-int", definition: "should be hidden" });
     const matches = (await listDictionary(HS)).filter((x) => x.headword === "eucharist-int");
     expect(matches.length).toBe(1);
     expect(matches[0]!.isLocal).toBe(false); // universal wins

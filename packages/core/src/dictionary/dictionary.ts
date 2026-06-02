@@ -181,7 +181,7 @@ const cleanVariants = (v?: string[] | null) => {
 };
 
 /** Create a parish submission (pending). Returns null if headword/definition empty. */
-export async function createSubmission(
+export async function createDictionarySubmission(
   parishId: string,
   submittedBy: string,
   input: NewSubmissionInput,
@@ -211,7 +211,7 @@ export async function createSubmission(
 }
 
 /** Edit a parish submission in place. */
-export async function updateSubmission(
+export async function updateDictionarySubmission(
   parishId: string,
   submissionId: string,
   input: NewSubmissionInput,
@@ -235,7 +235,7 @@ export async function updateSubmission(
   );
 }
 
-export async function deleteSubmission(parishId: string, submissionId: string): Promise<void> {
+export async function deleteDictionarySubmission(parishId: string, submissionId: string): Promise<void> {
   await getDb(parishId).query("DELETE FROM dictionary_submissions WHERE id = $1 AND parish_id = $2", [
     submissionId,
     parishId,
