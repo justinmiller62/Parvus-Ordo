@@ -29,7 +29,7 @@ export async function listParishMembers(parishId: string): Promise<ParishMember[
     `SELECT m.user_id, u.display_name, u.email, m.role, mn.name AS ministry_name
        FROM memberships m
        JOIN users u ON u.id = m.user_id
-       LEFT JOIN ministries mn ON mn.id = m.ministry_id
+       LEFT JOIN gather_groups mn ON mn.id = m.ministry_id
       ORDER BY u.display_name, m.role`,
   );
   return rows.map((r) => ({

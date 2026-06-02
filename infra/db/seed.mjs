@@ -26,7 +26,7 @@ const client = new Client({ connectionString: URL });
 await client.connect();
 
 // Seed runs as superuser (bypasses RLS) so it can write across parishes.
-await client.query("TRUNCATE memberships, ministries, users, parishes, dioceses RESTART IDENTITY CASCADE");
+await client.query("TRUNCATE memberships, gather_groups, users, parishes, dioceses RESTART IDENTITY CASCADE");
 
 await client.query(
   `INSERT INTO dioceses (id, name, short_code) VALUES
@@ -46,13 +46,15 @@ await client.query(
 );
 
 await client.query(
-  `INSERT INTO ministries (parish_id, name, kind) VALUES
-     ($1, 'Parish Council',       'council'),
-     ($1, 'Knights of Columbus',  'council'),
-     ($1, 'OCIA',                 'formation'),
-     ($1, 'Choir',                'liturgical'),
-     ($2, 'Parish Council',       'council'),
-     ($2, 'Altar Society',        'council')`,
+  // gather_groups (renamed from ministries in 0032). type uses the new enum: deliberative
+  // councils -> 'committee', formation/liturgical -> 'ministry' (matches the 0032 backfill).
+  `INSERT INTO gather_groups (parish_id, name, type) VALUES
+     ($1, 'Parish Council',       'committee'),
+     ($1, 'Knights of Columbus',  'committee'),
+     ($1, 'OCIA',                 'ministry'),
+     ($1, 'Choir',                'ministry'),
+     ($2, 'Parish Council',       'committee'),
+     ($2, 'Altar Society',        'committee')`,
   [HOLY_SPIRIT, ST_MONICA],
 );
 
@@ -74,7 +76,7 @@ await client.query(
   `INSERT INTO memberships (user_id, parish_id, ministry_id, role)
    SELECT u.id, $1,
           CASE WHEN u.email = 'teacher@parvaordo.test'
-               THEN (SELECT id FROM ministries WHERE parish_id = $1 AND name = 'OCIA')
+               THEN (SELECT id FROM gather_groups WHERE parish_id = $1 AND name = 'OCIA')
                ELSE NULL END,
           (CASE u.email
              WHEN 'justinmmiller62@gmail.com' THEN 'admin'
@@ -227,6 +229,6 @@ await client.query(`INSERT INTO cohorts (parish_id, name) VALUES ($1, 'OCIA 2026
 
 await client.end();
 console.log(
-  "seed complete: 2 dioceses, 3 parishes, 6 ministries, 4 users, 4 memberships, " +
+  "seed complete: 2 dioceses, 3 parishes, 6 gather_groups, 4 users, 4 memberships, " +
     "4 lessons (global/diocese/parish×2), 1 cohort",
 );
