@@ -4,11 +4,11 @@
 - **Owner:** Product Manager (product-manager)
 - **Bead:** po-h99
 - **Source spec:** `docs/specs/parvus-gather.md` (confirmed byte-identical to the Desktop copy `parvus-gather-vision.md`)
-- **Scope addition:** `requests-requestables.md` (LOCKED) — **Requests** (Requestables): an invitation-first, group-centric shared to-do primitive, folded in as a first-class Gather pillar (§4.0)
+- **Scope addition:** `requests-requestables.md` (LOCKED) — **Requests** (Requestables): a lightweight, invitation-first to-do pillar inside Gather (group request-boards + a personal inbox) (§4.0)
 - **Module:** Parvus Gather — a parish module inside the unified ParvusOrdo app, alongside OCIA, Parvus Studio, and the CMS
 - **Date:** 2026-06-02
 
-> *This PRD is the product expression (the WHAT and the WHY) of the approved spec. No technical design — no data models, permission strings, schemas, or APIs. Per the human directive (po-wisp-48n9i): build the **full module, no shortcuts**, iterative delivery in tiers **T1–T8** (T1 = foundation, P0). "Full scope" = every capability the spec marks **in** ships; the spec's **out** items (§4.15 Non-Goals) are deliberate decisions, not cuts. A net-new **Requests** capability (§4.0) — an invitation-first shared to-do primitive, locked per `requests-requestables.md` — is a first-class Gather pillar; its remaining open questions are surfaced in §7.*
+> *This PRD is the product expression (the WHAT and the WHY) of the approved spec. No technical design — no data models, permission strings, schemas, or APIs. Per the human directive (po-wisp-48n9i): build the **full module, no shortcuts**, iterative delivery in tiers **T1–T8** (T1 = foundation, P0). "Full scope" = every capability the spec marks **in** ships; the spec's **out** items (§4.15 Non-Goals) are deliberate decisions, not cuts. A net-new **Requests** capability (§4.0) — a lightweight, invitation-first to-do pillar inside Gather (group request-boards + a personal inbox), locked per `requests-requestables.md` — its two remaining open questions are in §7.*
 
 ---
 
@@ -115,13 +115,13 @@ A parish runs on its people — its committees, boards, ministries, and the even
 
 ## 4. Requirements & Scope
 
-**Full module, no shortcuts.** Requirements mirror the spec's eleven sections (4.1–4.11, numbered to match spec §1–§11 for traceability), plus the embedded Forms Engine (4.12), the roles/permissions model (4.13), older-volunteer design rules (4.14), Non-Goals (4.15), and the delivery sequence (4.16). The net-new **Requests** capability leads as **4.0** because it is foundational — most other flows create Requests. Tier labels (T1–T8) reflect the human's delivery directive.
+**Full module, no shortcuts.** Requirements mirror the spec's eleven sections (4.1–4.11, numbered to match spec §1–§11 for traceability), plus the embedded Forms Engine (4.12), the roles/permissions model (4.13), older-volunteer design rules (4.14), Non-Goals (4.15), and the delivery sequence (4.16). The net-new **Requests** capability leads as **4.0** because most Gather flows create Requests. Tier labels (T1–T8) reflect the human's delivery directive.
 
-### 4.0 Requests (Requestables) — the invitation-first shared to-do primitive *(first-class pillar; net-new beyond the base spec)*
+### 4.0 Requests (Requestables) — a lightweight, invitation-first to-do pillar *(group request-boards + personal inbox; net-new beyond the base spec)*
 
 **Plain definition:** a **Request** is a to-do that someone asks of a person or a group. A leader, another member, or a system flow asks someone to do a thing; it appears in their requests; they do it or decline; the requester can see whether it's done. Mechanically it behaves like a gentle ticket (open → assigned → worked → done, tracked) and it works **group-wide** — each group has a shared board of Requests that members are asked to take or can claim.
 
-**Tone is the whole point — non-negotiable.** These are **volunteers, not employees.** Every word a volunteer sees is an **invitation, never an order**: "request," "asked," "can you help" — *never* "task assigned," "your queue," "overdue ticket," or "action required." Completion is met with **gratitude**; reminders are **gentle nudges, never nagging**. The soft framing lives in the model itself so no one ever builds a corporate task UI on top of it. (This pairs with the older-volunteer design rules in 4.14.)
+**Tone is the whole point — non-negotiable.** These are **volunteers, not employees.** Every word a volunteer sees is an **invitation, never an order**: "request," "asked," "can you help" — *never* "task assigned," "your queue," "overdue ticket," or "action required." Completion is met with **gratitude**; reminders are **gentle nudges, never nagging**. The soft framing lives in the model itself so no one ever builds a corporate productivity UI on top of it. (This pairs with the older-volunteer design rules in 4.14.)
 
 **A Request carries exactly these — and stays this lightweight:**
 - **Requester and assignee** — who's asking, and who's asked: a single **person**, OR a **group/role** (whoever-can-help claims it).
@@ -141,7 +141,7 @@ A parish runs on its people — its committees, boards, ministries, and the even
 
 **Every Gather flow becomes a Request** (instead of each reinventing pending/assign/track logic): Request-to-Join approvals (4.2), meeting follow-ups (4.3), sign-up & shift needs (4.4 / 4.5), pending-parishioner approvals (4.9), Forms-Engine submissions to review (4.12), and staff-initiated asks. The health dashboard (4.10) reflects the same open items.
 
-*Acting on a Request updates whatever it came from via the owning flow (welcome a join-request → roster; finish a follow-up → meeting record). Built here as a first-class Gather pillar; the same shared system can serve other ParvusOrdo flows later. Remaining choices are in §7.*
+*Acting on a Request updates whatever it came from via the owning flow (welcome a join-request → roster; finish a follow-up → meeting record). It stays a lightweight pillar inside Gather — group request-boards + a personal inbox — not a separate platform. Remaining choices are in §7.*
 
 ### 4.1 Groups — the primitive *(T1, foundation, P0)*
 - Create a group: name, type (committee / board / ministry / event-team), optional parent.
@@ -292,7 +292,7 @@ Parvus Gather must feel **warm, calm, and effortless** — a welcoming parish ha
 
 **Parish-health outcomes** — reduction in "zombie" groups (identified + archived or revived); pending-parishioner approval throughput and time-to-decision; invite acceptance rate.
 
-**Built-for-older-volunteers bar (first-class)** — task success and completion time for users 60+ on core flows (find & join, claim a shift, RSVP, check in, accept a Request); declining "how do I…?" support calls; staff-on-behalf available and used; meets 44pt / one-primary-action / email-failsafe / reduced-motion / invitation-first across every primary screen.
+**Built-for-older-volunteers bar (first-class)** — success and completion time for users 60+ on core flows (find & join, claim a shift, RSVP, check in, accept a Request); declining "how do I…?" support calls; staff-on-behalf available and used; meets 44pt / one-primary-action / email-failsafe / reduced-motion / invitation-first across every primary screen.
 
 ---
 
