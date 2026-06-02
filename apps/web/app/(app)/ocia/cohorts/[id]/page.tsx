@@ -8,6 +8,7 @@ import {
   getPublishedLessons,
   listParishStudents,
   listPaths,
+  scheduleEntryToCalendarEvent,
 } from "@parvaordo/core";
 import { isAdmin, isStaff } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
@@ -37,12 +38,16 @@ export default async function CohortDetailPage({ params }: { params: Promise<{ i
   const paths = (await Promise.all(pathSummaries.map((p) => getPathDetail(parishId, p.id)))).filter(
     (p): p is NonNullable<typeof p> => p != null,
   );
+  // Map the cohort's schedule to calendar events server-side (the client never value-imports
+  // core) for the read-only Calendar tab.
+  const scheduleEvents = schedule.map(scheduleEntryToCalendarEvent);
 
   return (
     <CohortDetailClient
       cohortId={id}
       settings={settings}
       schedule={schedule}
+      scheduleEvents={scheduleEvents}
       addable={addable}
       allLessons={allLessons}
       students={students}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Rss, X } from "lucide-react";
 import { normalizeSacredText } from "@parvaordo/shared";
 import {
   type CalendarEvent,
@@ -165,14 +165,23 @@ export function CalendarClient({
           </Link>
         </div>
         {canEdit ? (
-          <button
-            type="button"
-            onClick={() => setEditing({ mode: "create", date: today })}
-            data-testid="calendar-add-event"
-            className="inline-flex items-center gap-1.5 rounded-md bg-gold px-3 py-2 text-sm font-medium text-white hover:bg-gold-dark"
-          >
-            <Plus className="h-4 w-4" /> Add Event
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/ocia/calendar/sources"
+              data-testid="calendar-manage-feeds"
+              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:border-gold hover:text-navy"
+            >
+              <Rss className="h-4 w-4" /> Manage feeds
+            </Link>
+            <button
+              type="button"
+              onClick={() => setEditing({ mode: "create", date: today })}
+              data-testid="calendar-add-event"
+              className="inline-flex items-center gap-1.5 rounded-md bg-gold px-3 py-2 text-sm font-medium text-white hover:bg-gold-dark"
+            >
+              <Plus className="h-4 w-4" /> Add Event
+            </button>
+          </div>
         ) : null}
       </div>
 

@@ -6,6 +6,7 @@ import type {
   AddableLesson,
   CohortSettings,
   CohortStudentProgress,
+  MergedEvent,
   ParishStudent,
   PathDetail,
   PublishedLessonRow,
@@ -14,6 +15,7 @@ import type {
 import {
   ArrowLeft,
   BarChart3,
+  CalendarDays,
   CalendarPlus,
   GraduationCap,
   ListChecks,
@@ -34,6 +36,7 @@ import {
   updateScheduleEntryAction,
   updateSettingsAction,
 } from "./actions";
+import { CohortCalendar } from "./cohort-calendar";
 import { LearningPathsTab } from "./learning-paths-client";
 
 // Weekdays declared locally so this client never value-imports from @parvaordo/core.
@@ -41,10 +44,11 @@ const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frida
 const input =
   "rounded-md border border-navy/15 bg-white px-2 py-1.5 text-sm text-navy focus:border-gold focus:outline-none";
 
-type Tab = "lessons" | "schedule" | "students" | "paths" | "settings";
+type Tab = "lessons" | "schedule" | "calendar" | "students" | "paths" | "settings";
 const TABS: { key: Tab; label: string; Icon: typeof Users }[] = [
   { key: "lessons", label: "Lessons", Icon: ListChecks },
   { key: "schedule", label: "Schedule", Icon: CalendarPlus },
+  { key: "calendar", label: "Calendar", Icon: CalendarDays },
   { key: "students", label: "Students", Icon: GraduationCap },
   { key: "paths", label: "Learning Paths", Icon: Sparkles },
   { key: "settings", label: "Settings", Icon: Settings2 },
@@ -54,6 +58,7 @@ export function CohortDetailClient(props: {
   cohortId: string;
   settings: CohortSettings;
   schedule: ScheduleEntry[];
+  scheduleEvents: MergedEvent[];
   addable: AddableLesson[];
   allLessons: PublishedLessonRow[];
   students: CohortStudentProgress[];
@@ -112,6 +117,7 @@ export function CohortDetailClient(props: {
         {tab === "schedule" ? (
           <ScheduleTab cohortId={cohortId} settings={settings} schedule={props.schedule} addable={props.addable} />
         ) : null}
+        {tab === "calendar" ? <CohortCalendar events={props.scheduleEvents} /> : null}
         {tab === "students" ? <StudentsTab students={props.students} /> : null}
         {tab === "paths" ? (
           <LearningPathsTab cohortId={cohortId} paths={props.paths} allLessons={props.allLessons} />
