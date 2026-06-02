@@ -39,7 +39,13 @@ describe("clips (stub processor)", () => {
       playbackUrl: "https://cdn.example/src/playlist.m3u8",
       status: "ready",
     });
-    const clipId = await requestClip({ parishId: HOLY_SPIRIT, createdBy: by, sourceAssetId: source, startMs: 1000, endMs: 5000 });
+    const clipId = await requestClip({
+      parishId: HOLY_SPIRIT,
+      createdBy: by,
+      sourceAssetId: source,
+      startMs: 1000,
+      endMs: 5000,
+    });
     const clip = await getAsset(HOLY_SPIRIT, clipId);
     expect(clip?.sourceAssetId).toBe(source);
     expect(clip?.clipStartMs).toBe(1000);
@@ -62,8 +68,20 @@ describe("clips (stub processor)", () => {
 
   it("deleting a source cascades to its clips", async () => {
     const by = await userId("admin@parvaordo.test");
-    const source = await createAsset({ parishId: HOLY_SPIRIT, createdBy: by, kind: "video", title: "Cascade", status: "ready" });
-    const clipId = await requestClip({ parishId: HOLY_SPIRIT, createdBy: by, sourceAssetId: source, startMs: 0, endMs: 2000 });
+    const source = await createAsset({
+      parishId: HOLY_SPIRIT,
+      createdBy: by,
+      kind: "video",
+      title: "Cascade",
+      status: "ready",
+    });
+    const clipId = await requestClip({
+      parishId: HOLY_SPIRIT,
+      createdBy: by,
+      sourceAssetId: source,
+      startMs: 0,
+      endMs: 2000,
+    });
     await deleteAsset(HOLY_SPIRIT, source);
     expect(await getAsset(HOLY_SPIRIT, clipId)).toBeNull(); // FK ON DELETE CASCADE
   });
@@ -116,7 +134,13 @@ describe("video completion is earned, not client-trusted", () => {
       status: "ready",
     });
     // Stub processor sets the clip's duration_ms to endMs - startMs synchronously.
-    const clipId = await requestClip({ parishId: HOLY_SPIRIT, createdBy: by, sourceAssetId: sourceId, startMs: 0, endMs: CLIP_MS });
+    const clipId = await requestClip({
+      parishId: HOLY_SPIRIT,
+      createdBy: by,
+      sourceAssetId: sourceId,
+      startMs: 0,
+      endMs: CLIP_MS,
+    });
     const lessonId = await createLesson({ parishId: HOLY_SPIRIT, createdBy: by, title: "Earned Lesson" });
     const versionId = (await getLessonForEdit(HOLY_SPIRIT, lessonId))!.selected.versionId;
     const itemId = await addLessonItem({
@@ -133,7 +157,13 @@ describe("video completion is earned, not client-trusted", () => {
     const { lessonId, versionId, itemId, sourceId } = await videoItemOnClip();
 
     // Client claims it watched 5,000,000ms of a 30,000ms clip and is "done".
-    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 5_000_000, completed: true });
+    await markVideoProgress({
+      parishId: HOLY_SPIRIT,
+      studentId: student,
+      itemId,
+      maxReachedMs: 5_000_000,
+      completed: true,
+    });
 
     expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(CLIP_MS); // clamped, not 5,000,000
@@ -146,7 +176,13 @@ describe("video completion is earned, not client-trusted", () => {
     const student = await userId("student@parvaordo.test");
     const { lessonId, versionId, itemId, sourceId } = await videoItemOnClip();
 
-    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: 1_000, completed: true });
+    await markVideoProgress({
+      parishId: HOLY_SPIRIT,
+      studentId: student,
+      itemId,
+      maxReachedMs: 1_000,
+      completed: true,
+    });
 
     expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(false);
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(1_000);
@@ -160,7 +196,13 @@ describe("video completion is earned, not client-trusted", () => {
     const { lessonId, versionId, itemId, sourceId } = await videoItemOnClip();
 
     // Within the player's 5s end-grace of a 30s clip — a real finish.
-    await markVideoProgress({ parishId: HOLY_SPIRIT, studentId: student, itemId, maxReachedMs: CLIP_MS - 1_000, completed: true });
+    await markVideoProgress({
+      parishId: HOLY_SPIRIT,
+      studentId: student,
+      itemId,
+      maxReachedMs: CLIP_MS - 1_000,
+      completed: true,
+    });
 
     expect((await getCompletedItemsForVersion(HOLY_SPIRIT, student, versionId)).has(itemId)).toBe(true);
     expect(await getItemMaxReached(HOLY_SPIRIT, student, itemId)).toBe(CLIP_MS - 1_000);

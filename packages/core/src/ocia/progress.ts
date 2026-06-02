@@ -2,11 +2,7 @@ import { getDb } from "../db/client";
 import { getAsset } from "../media/assets";
 
 /** Mark a lesson item complete for a student (idempotent). */
-export async function markItemComplete(params: {
-  parishId: string;
-  studentId: string;
-  itemId: string;
-}): Promise<void> {
+export async function markItemComplete(params: { parishId: string; studentId: string; itemId: string }): Promise<void> {
   await getDb(params.parishId).query(
     `INSERT INTO lesson_item_progress (parish_id, student_id, item_id, completed)
      VALUES ($1, $2, $3, true)
@@ -81,7 +77,9 @@ export async function markVideoProgress(params: {
   if (durationMs != null) {
     if (reportedMax != null) storedMax = Math.min(Math.max(reportedMax, 0), durationMs);
     const reachedEnd =
-      reportedMax != null && reportedMax >= durationMs - COMPLETION_GRACE_MS && reportedMax <= durationMs + OVERSHOOT_GRACE_MS;
+      reportedMax != null &&
+      reportedMax >= durationMs - COMPLETION_GRACE_MS &&
+      reportedMax <= durationMs + OVERSHOOT_GRACE_MS;
     completed = completed && reachedEnd;
   }
 

@@ -36,11 +36,7 @@ export async function submitFeedbackAction(lessonId: string, text: string): Prom
 }
 
 /** Persist video watch progress (furthest point + completion). Best-effort. */
-export async function saveVideoProgressAction(
-  itemId: string,
-  maxReachedMs: number,
-  completed: boolean,
-): Promise<void> {
+export async function saveVideoProgressAction(itemId: string, maxReachedMs: number, completed: boolean): Promise<void> {
   const ctx = await studentContext();
   if (!ctx) return;
   // Shape-validate the client-supplied values here; core enforces them against the
