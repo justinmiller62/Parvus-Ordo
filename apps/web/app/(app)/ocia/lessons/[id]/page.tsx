@@ -2,7 +2,7 @@ import { isStaff } from "@parvaordo/shared";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Lock } from "lucide-react";
 import {
   clipTranscript,
   getAnswersForVersion,
@@ -10,6 +10,7 @@ import {
   getCompletedItemsForVersion,
   getItemMaxReached,
   getLessonDetail,
+  isLessonLockedForStudent,
   listDictionary,
 } from "@parvaordo/core";
 import { getViewer } from "@/src/lib/viewer";
@@ -61,6 +62,33 @@ export default async function LessonPage({
   const isReview = !isPreview && sp.review === "1"; // student's read-only "My Answers"
   const lesson = await getLessonDetail(identity.parishId, id, isBuilder ? sp.v : undefined);
   if (!lesson) notFound();
+
+  // Sequential-lock enforcement (po-exda): a student cannot OPEN a lesson the cohort schedule
+  // has not unlocked (the prior sequenced lesson is incomplete), unless the cohort has
+  // skip_sequence. Builders/staff preview ungated. A clear blocked state — never a raw error —
+  // and the advance action re-checks the same gate so a direct POST can't bypass this.
+  if (!isBuilder && (await isLessonLockedForStudent(identity.parishId, identity.userId, id))) {
+    return (
+      <main className="mx-auto max-w-3xl px-5 py-8">
+        <Link href="/ocia/lessons" className="text-sm text-gray-400 hover:text-navy">
+          ← Lessons
+        </Link>
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-gray-200 bg-white/50 p-16 text-center motion-safe:animate-[po-fade-in_240ms_ease-out]">
+          <Lock className="h-8 w-8 text-gray-300" aria-hidden="true" />
+          <h1 className="font-heading text-2xl text-navy">Not yet — finish the previous lesson</h1>
+          <p className="max-w-sm text-sm text-gray-500">
+            Lessons in your cohort unlock in order. Complete the one before this in your schedule and it opens right up.
+          </p>
+          <Link
+            href="/ocia/lessons"
+            className="mt-2 rounded-md bg-navy px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-navy/90"
+          >
+            Back to my lessons
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   const items = lesson.items;
   const total = items.length;

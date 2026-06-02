@@ -177,6 +177,25 @@ export async function getStudentLessons(parishId: string, studentId: string): Pr
   return out;
 }
 
+/**
+ * Whether a SPECIFIC lesson is locked for a student — the server-side enforcement gate for
+ * the lesson view + advance (student-lesson-view.md "Sequential cohort lock"). It narrows
+ * {@link getStudentLessons} to one lesson rather than re-deriving gating, so it honors the
+ * SAME release / sequential / learning-path rules AND `skip_sequence` (a skip_sequence or
+ * non-sequential cohort never locks). A lesson NOT in the student's gated schedule returns
+ * `false`: this guards the sequential lock only — enrollment / visibility is a separate gate
+ * (a hidden, unreleased lesson is simply absent from the list). Reuse this at the view loader
+ * and the advance action; staff/builders preview lessons and are not subject to it.
+ */
+export async function isLessonLockedForStudent(
+  parishId: string,
+  studentId: string,
+  lessonId: string,
+): Promise<boolean> {
+  const lessons = await getStudentLessons(parishId, studentId);
+  return lessons.find((l) => l.lessonId === lessonId)?.locked ?? false;
+}
+
 export interface StudentLessonSections {
   /** Still to do — anything not yet completed (not_started or started), locked
    *  lessons included. Input order (schedule order) is preserved. */
