@@ -85,8 +85,12 @@ export function createMcpPostHandler<TSession>(config: McpRouteConfig<TSession>)
         const value = await config.callTool(session, name, args);
         return result(id, { content: [{ type: "text", text: JSON.stringify(value) }] });
       } catch (e) {
+        // Log the real error server-side; never echo it to the MCP client. Tools throw
+        // config/infra-revealing messages (missing secrets, backend status codes) that must
+        // not leak to whoever holds a session token (po-bt1). The client gets a generic text.
+        console.error(`MCP tools/call failed: tool=${name}`, e);
         return result(id, {
-          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : "tool failed"}` }],
+          content: [{ type: "text", text: "The tool failed to run." }],
           isError: true,
         });
       }
