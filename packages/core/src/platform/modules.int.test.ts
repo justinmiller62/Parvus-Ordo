@@ -5,7 +5,7 @@ import { closeDb, enabledModules, getDb } from "@parvaordo/core";
 const HOLY_SPIRIT = "11111111-1111-1111-1111-111111111111";
 const ST_PETER = "33333333-3333-3333-3333-333333333333"; // different diocese
 
-const ALL_MODULES = ["ocia", "studio", "people", "dictionary", "prayers", "onboarding"];
+const ALL_MODULES = ["ocia", "studio", "people", "dictionary", "prayers", "onboarding", "apologetics"];
 
 // parish_modules / diocese_modules are RLS-isolated per tenant, so each DELETE only clears
 // the active tenant's rows. Clear both layers in both test parishes before each test (and

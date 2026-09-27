@@ -1,25 +1,46 @@
 import { describe, expect, it } from "vitest";
 import { MODULES, moduleAvailable, resolveEnabled, type ModuleDef, type ModuleKey, type Role } from "./index";
 
-const ALL_MODULE_KEYS: ModuleKey[] = ["ocia", "people", "studio", "dictionary", "prayers", "onboarding", "gather"];
+const ALL_MODULE_KEYS: ModuleKey[] = [
+  "ocia",
+  "people",
+  "studio",
+  "dictionary",
+  "prayers",
+  "onboarding",
+  "gather",
+  "apologetics",
+];
 // The modules enabled when a parish has no row. `gather` ships DARK (defaultEnabled:false,
-// RFC-005 §2), so it is the one module absent here.
-const DEFAULT_ON_KEYS: ModuleKey[] = ["ocia", "people", "studio", "dictionary", "prayers", "onboarding"];
+// RFC-005 §2), so it is the one module absent here; `apologetics` is toggleable but default-ON.
+const DEFAULT_ON_KEYS: ModuleKey[] = ["ocia", "people", "studio", "dictionary", "prayers", "onboarding", "apologetics"];
 const EVERY_ROLE = ["admin", "catechist", "catechumen_candidate", "parish_member", "studio", "super_admin"];
 
 describe("MODULES registry", () => {
-  it("contains exactly the seven module keys, each self-keyed", () => {
+  it("contains exactly the eight module keys, each self-keyed", () => {
     expect([...Object.keys(MODULES)].sort()).toEqual([...ALL_MODULE_KEYS].sort());
     for (const key of ALL_MODULE_KEYS) expect(MODULES[key].key).toBe(key);
   });
 
-  it("marks ocia, studio, and gather toggleable (po-wisp-rrwul + RFC-005 §2); all others always-on", () => {
-    expect(ALL_MODULE_KEYS.filter((k) => MODULES[k].toggleable).sort()).toEqual(["gather", "ocia", "studio"]);
+  it("marks ocia, studio, gather, and apologetics toggleable (po-wisp-rrwul + RFC-005 §2); all others always-on", () => {
+    expect(ALL_MODULE_KEYS.filter((k) => MODULES[k].toggleable).sort()).toEqual([
+      "apologetics",
+      "gather",
+      "ocia",
+      "studio",
+    ]);
   });
 
-  it("defaults every pre-existing module enabled (zero-change deploy, RFC-001 §3.6); gather ships dark (RFC-005 §2)", () => {
+  it("defaults every pre-existing module enabled (zero-change deploy, RFC-001 §3.6); gather ships dark", () => {
     for (const key of DEFAULT_ON_KEYS) expect(MODULES[key].defaultEnabled).toBe(true);
     expect(MODULES.gather.defaultEnabled).toBe(false);
+  });
+
+  it("apologetics is toggleable but default-ON (single-operator deployment, no staged rollout)", () => {
+    expect(MODULES.apologetics.toggleable).toBe(true);
+    expect(MODULES.apologetics.defaultEnabled).toBe(true);
+    expect(resolveEnabled({}).has("apologetics")).toBe(true);
+    expect(resolveEnabled({ parish: [{ module_key: "apologetics", enabled: false }] }).has("apologetics")).toBe(false);
   });
 
   it("gather is a parishioner-facing module usable by every parish role (RFC-005 §2)", () => {
@@ -38,9 +59,10 @@ describe("MODULES registry", () => {
     expect([...MODULES.people.roles].sort()).toEqual(["admin", "super_admin"]);
   });
 
-  it("dictionary + prayers are usable by any parish role (their routes gate on parish, not role)", () => {
+  it("dictionary + prayers + apologetics are usable by any parish role (routes gate on parish, not role)", () => {
     expect([...MODULES.dictionary.roles].sort()).toEqual(EVERY_ROLE);
     expect([...MODULES.prayers.roles].sort()).toEqual(EVERY_ROLE);
+    expect([...MODULES.apologetics.roles].sort()).toEqual(EVERY_ROLE);
   });
 });
 

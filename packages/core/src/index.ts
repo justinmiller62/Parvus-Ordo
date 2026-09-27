@@ -41,6 +41,9 @@ export * from "./dictionary";
 // prayers (Prayer Book — same three-layer model as dictionary)
 export * from "./prayers";
 
+// apologetics (objection → reply → citations; same three-layer model as dictionary)
+export * from "./apologetics";
+
 // parvus studio (studio creators make short catechetical videos with AI help)
 export * from "./youth-teaches";
 

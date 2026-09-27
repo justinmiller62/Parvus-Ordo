@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,6 +22,7 @@ import {
   Eye,
   Settings,
   Shield,
+  ShieldQuestion,
   UserPlus,
   Users,
   type LucideIcon,
@@ -29,10 +30,12 @@ import {
 import {
   IMPERSONATABLE_ROLES,
   isAdmin,
+  moduleAvailable,
   ociaEligible,
   peopleEligible,
   ROLE_LABELS,
   studioEligible,
+  type ModuleKey,
   type Role,
 } from "@parvaordo/shared";
 import { exitImpersonationAction, impersonateAction, setActiveParishAction, signOutAction } from "@/app/(app)/actions";
@@ -48,6 +51,10 @@ interface NavItem {
   Icon: LucideIcon;
   href?: string; // present + live = navigable; otherwise "coming soon"
   live?: boolean;
+  /** When set, the item is hidden unless the module is enabled for the parish AND the role
+   *  is capable of it (RFC-001 §3.5 layer-1). Only TOGGLEABLE modules need to declare it —
+   *  an untagged item keeps its historical always-visible behavior. */
+  moduleKey?: ModuleKey;
 }
 
 // Top-level nav (parish home): Dashboard + module launchers. Teens are
@@ -74,6 +81,7 @@ const CATECHIST_MODULES: NavItem[] = [
   { href: "/ocia/cohorts", label: "Cohorts", Icon: Users, live: true },
   { href: "/dictionary", label: "Dictionary", Icon: BookOpenCheck, live: true },
   { href: "/prayers", label: "Prayers", Icon: Heart, live: true },
+  { href: "/apologetics", label: "Apologetics", Icon: ShieldQuestion, live: true, moduleKey: "apologetics" },
   { label: "Announcements", Icon: Megaphone },
   { label: "Discussion", Icon: MessageSquare },
   { label: "Settings", Icon: Settings },
@@ -83,6 +91,7 @@ const LEARNER_MODULES: NavItem[] = [
   { href: "/ocia/calendar", label: "Calendar", Icon: Calendar, live: true },
   { href: "/dictionary", label: "Dictionary", Icon: BookOpenCheck, live: true },
   { href: "/prayers", label: "Prayers", Icon: Heart, live: true },
+  { href: "/apologetics", label: "Apologetics", Icon: ShieldQuestion, live: true, moduleKey: "apologetics" },
   { label: "Announcements", Icon: Megaphone },
   { label: "Discussion", Icon: MessageSquare },
 ];
@@ -114,10 +123,11 @@ function studioNav(role: Role | null): NavItem[] {
   ];
 }
 
-// Dictionary & Prayers are OCIA tools deliberately kept at top-level routes (/dictionary,
-// /prayers) for now because they may be promoted to GLOBAL tools later. This list is the
-// single revert point — drop a path to promote that tool back to a standalone route. (po-s2lm)
-const OCIA_ADJACENT_PATHS = ["/dictionary", "/prayers"];
+// Dictionary, Prayers & Apologetics are OCIA tools deliberately kept at top-level routes
+// (/dictionary, /prayers, /apologetics) for now because they may be promoted to GLOBAL tools
+// later. This list is the single revert point — drop a path to promote that tool back to a
+// standalone route. (po-s2lm)
+const OCIA_ADJACENT_PATHS = ["/dictionary", "/prayers", "/apologetics"];
 const isOciaAdjacent = (pathname: string): boolean =>
   OCIA_ADJACENT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
@@ -129,6 +139,7 @@ export function AppShell({
   viewingAs = null,
   memberships = [],
   activeParishId = null,
+  enabledModules = [],
   children,
 }: {
   brandName: string;
@@ -138,6 +149,8 @@ export function AppShell({
   viewingAs?: Role | null;
   memberships?: ShellMembership[];
   activeParishId?: string | null;
+  /** The parish's enabled modules, for hiding nav items of disabled toggleable modules. */
+  enabledModules?: ModuleKey[];
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -149,7 +162,13 @@ export function AppShell({
   const inOcia =
     pathname === "/ocia" || pathname.startsWith("/ocia/") || (ociaEligible(role) && isOciaAdjacent(pathname));
   const inStudio = pathname === "/parvus-studio" || pathname.startsWith("/parvus-studio/");
-  const items = inStudio ? studioNav(role) : inOcia ? ociaNav(role) : topNav(role);
+  // Layer-1 nav hiding: an item that declares a moduleKey disappears when the parish has
+  // that module disabled (or the role can't use it). Nav hiding is NOT enforcement — the
+  // page still gates on requireModule (RFC-001 §3.5) — it just avoids dead links.
+  const enabledSet = useMemo(() => new Set<ModuleKey>(enabledModules), [enabledModules]);
+  const items = (inStudio ? studioNav(role) : inOcia ? ociaNav(role) : topNav(role)).filter(
+    (item) => !item.moduleKey || moduleAvailable(role, item.moduleKey, enabledSet),
+  );
 
   // Exact match for the two landing routes; prefix match for deeper routes.
   const isActive = (href: string) => (href === "/" || href === "/ocia" ? pathname === href : pathname.startsWith(href));

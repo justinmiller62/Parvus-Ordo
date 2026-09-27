@@ -48,6 +48,16 @@ jobs:
         env:
           MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
 
+      # Global reference corpora live in the DB but are platform data, not demo data —
+      # they have no parish_id and every tenant reads the same rows. Seeding them here
+      # keeps the deployed corpus in lockstep with the repo. Idempotent (upsert by slug,
+      # citations replaced per topic), so re-running on every deploy is a no-op when
+      # infra/db/apologetics-corpus.json hasn't changed.
+      - name: Seed global corpora (Neon dev)
+        run: node infra/db/seed-apologetics.mjs
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+
       # Builds the root Dockerfile (Docker is preinstalled on ubuntu runners),
       # pushes the image to the Cloudflare registry, and deploys the Worker +
       # container. Creates the Worker on the first run.

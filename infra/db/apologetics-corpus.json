@@ -1,0 +1,534 @@
+{
+  "topics": [
+    {
+      "slug": "breath",
+      "label": "In one breath",
+      "objection": "In one breath",
+      "reply": null,
+      "lead": "Christ founded a Church Matt 16:18, commanded baptism Matt 28:19, fed us his own flesh John 6:53, and gave power to forgive sins John 20:22–23.",
+      "ask": null,
+      "citations": [
+        {
+          "ref": "Matthew 16:18",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "And I say to thee: That thou art Peter; and upon this rock I will build my church, and the gates of hell shall not prevail against it.",
+          "why": null
+        },
+        {
+          "ref": "Matthew 28:19",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "Going therefore, teach ye all nations: baptizing them in the name of the Father and of the Son and of the Holy Ghost.",
+          "why": null
+        },
+        {
+          "ref": "John 6:53",
+          "source_kind": null,
+          "alt_ref": "DR 6:54",
+          "quote": "Amen, amen, I say unto you: except you eat the flesh of the Son of man and drink his blood, you shall not have life in you.",
+          "why": null
+        },
+        {
+          "ref": "John 20:22–23",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "He breathed on them; and he said to them: Receive ye the Holy Ghost. Whose sins you shall forgive, they are forgiven them: and whose sins you shall retain, they are retained.",
+          "why": null
+        }
+      ]
+    },
+    {
+      "slug": "church",
+      "label": "No church",
+      "objection": "“You don’t have to go to church.”",
+      "reply": "True that God forces no one. But if Jesus is Lord, what he asked of us isn’t optional, and he asked us to gather.",
+      "lead": null,
+      "ask": "Where does Jesus tell anyone to follow him alone?",
+      "citations": [
+        {
+          "ref": "Hebrews 10:25",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "Not forsaking our assembly, as some are accustomed: but comforting one another, and so much the more as you see the day approaching.",
+          "why": null
+        },
+        {
+          "ref": "Luke 22:19",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "This is my body, which is given for you. Do this for a commemoration of me.",
+          "why": "A command you can only keep together, at the altar."
+        },
+        {
+          "ref": "Acts 2:42",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "And they were persevering in the doctrine of the apostles and in the communication of the breaking of bread and in prayers.",
+          "why": "What the first Christians did, the week after Pentecost."
+        },
+        {
+          "ref": "Matthew 18:20",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "For where there are two or three gathered together in my name, there am I in the midst of them.",
+          "why": null
+        },
+        {
+          "ref": "1 Corinthians 12:27",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "Now you are the body of Christ and members of member.",
+          "why": "A hand cut off from the body doesn’t stay alive on its own."
+        },
+        {
+          "ref": "Matthew 18:17",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "And if he will not hear them: tell the church. And if he will not hear the church, let him be to thee as the heathen and publican.",
+          "why": "Jesus assumes a visible church you can go and tell."
+        },
+        {
+          "ref": "St. Cyprian, On the Unity of the Church 6",
+          "source_kind": "Father · c. 251",
+          "alt_ref": null,
+          "quote": "He cannot have God for his Father who does not have the Church for his mother.",
+          "why": null
+        }
+      ]
+    },
+    {
+      "slug": "lord",
+      "label": "Lord",
+      "objection": "“Jesus is my Lord, but I don’t have to do anything.”",
+      "reply": "Lord means master. Jesus himself asks why we would call him that and not do what he says.",
+      "lead": null,
+      "ask": "What does calling Jesus “Lord” ask of you?",
+      "citations": [
+        {
+          "ref": "Luke 6:46",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "And why call you me, Lord, Lord; and do not the things which I say?",
+          "why": null
+        },
+        {
+          "ref": "Matthew 7:21",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "Not every one that saith to me, Lord, Lord, shall enter into the kingdom of heaven: but he that doth the will of my Father who is in heaven, he shall enter into the kingdom of heaven.",
+          "why": null
+        },
+        {
+          "ref": "John 14:15",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "If you love me, keep my commandments.",
+          "why": null
+        },
+        {
+          "ref": "Council of Trent, Session VI, Canon 21",
+          "source_kind": "Council · 1547",
+          "alt_ref": null,
+          "quote": "If anyone saith that Christ Jesus was given of God to men, as a redeemer in whom to trust, and not also as a legislator whom to obey; let him be anathema.",
+          "why": null
+        }
+      ]
+    },
+    {
+      "slug": "faith",
+      "label": "Faith alone",
+      "objection": "“We’re saved by faith alone.”",
+      "reply": "Saved by grace, through faith, and that faith works through love. Catholics agree no one earns the first grace.",
+      "lead": null,
+      "ask": null,
+      "citations": [
+        {
+          "ref": "Ephesians 2:8–10",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "For by grace you are saved through faith: and that not of yourselves, for it is the gift of God. Not of works, that no man may glory. For we are his workmanship, created in Christ Jesus in good works, which God has prepared that we should walk in them.",
+          "why": "Read verse 10 with 8–9. Saved not by works, but for them."
+        },
+        {
+          "ref": "James 2:24",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "Do you see that by works a man is justified, and not by faith only?",
+          "why": "The only place the Bible says “faith only,” and it says “not.”"
+        },
+        {
+          "ref": "Galatians 5:6",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "For in Christ Jesus neither circumcision availeth any thing nor uncircumcision: but faith that worketh by charity.",
+          "why": null
+        },
+        {
+          "ref": "Catechism §2027",
+          "source_kind": "Catechism",
+          "alt_ref": null,
+          "quote": "No one can merit the initial grace which is at the origin of conversion.",
+          "why": null
+        }
+      ]
+    },
+    {
+      "slug": "promise",
+      "label": "Promise failed?",
+      "objection": "“The Church got it wrong for 1,500 years.”",
+      "reply": "Don’t ask whether God got it wrong. Ask whether Christ’s promises failed.",
+      "lead": null,
+      "ask": "If Scripture alone is enough, why did it produce so many conflicting readings of these same verses? Which one got it right?",
+      "citations": [
+        {
+          "ref": "Matthew 16:18",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "… upon this rock I will build my church, and the gates of hell shall not prevail against it.",
+          "why": null
+        },
+        {
+          "ref": "Matthew 28:20",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "Teaching them to observe all things whatsoever I have commanded you. And behold I am with you all days, even to the consummation of the world.",
+          "why": null
+        },
+        {
+          "ref": "John 14:16",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "And I will ask the Father: and he shall give you another Paraclete, that he may abide with you for ever.",
+          "why": null
+        },
+        {
+          "ref": "John 16:13",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "But when he, the Spirit of truth, is come, he will teach you all truth.",
+          "why": null
+        },
+        {
+          "ref": "1 Timothy 3:15",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "… the house of God, which is the church of the living God, the pillar and ground of the truth.",
+          "why": null
+        },
+        {
+          "ref": "St. Ignatius of Antioch, To the Smyrnaeans 7",
+          "source_kind": "Father · c. 107",
+          "alt_ref": null,
+          "quote": "They abstain from the Eucharist and from prayer, because they do not confess the Eucharist to be the flesh of our Savior Jesus Christ, which suffered for our sins, and which the Father in his goodness raised up.",
+          "why": "A disciple of St. John, within a lifetime of the apostles."
+        },
+        {
+          "ref": "St. Justin Martyr, First Apology 61",
+          "source_kind": "Father · c. 155",
+          "alt_ref": null,
+          "quote": "Then they are brought by us to where there is water, and are regenerated in the same manner of regeneration by which we ourselves were regenerated.",
+          "why": "Baptism as rebirth, more than 1,300 years before the Reformation."
+        }
+      ]
+    },
+    {
+      "slug": "john6",
+      "label": "John 6",
+      "objection": "“The Eucharist is only a symbol.”",
+      "reply": "Jesus let disciples walk away over it and never called them back to say he meant a symbol.",
+      "lead": null,
+      "ask": null,
+      "citations": [
+        {
+          "ref": "John 6:51",
+          "source_kind": null,
+          "alt_ref": "DR 6:52",
+          "quote": "If any man eat of this bread, he shall live for ever: and the bread that I will give is my flesh, for the life of the world.",
+          "why": null
+        },
+        {
+          "ref": "John 6:52",
+          "source_kind": null,
+          "alt_ref": "DR 6:53",
+          "quote": "The Jews therefore strove among themselves, saying: How can this man give us his flesh to eat?",
+          "why": "They took him literally. Watch what he does next."
+        },
+        {
+          "ref": "John 6:53–54",
+          "source_kind": null,
+          "alt_ref": "DR 6:54–55",
+          "quote": "Except you eat the flesh of the Son of man and drink his blood, you shall not have life in you.",
+          "why": "From verse 54 he switches to the Greek trōgō (ὁ τρώγων μου τὴν σάρκα), a blunter word, closer to “chew” or “gnaw.” He gets more graphic, not less."
+        },
+        {
+          "ref": "John 6:66",
+          "source_kind": null,
+          "alt_ref": "DR 6:67",
+          "quote": "After this, many of his disciples went back and walked no more with him.",
+          "why": null
+        },
+        {
+          "ref": "John 6:68",
+          "source_kind": null,
+          "alt_ref": "DR 6:69",
+          "quote": "And Simon Peter answered him: Lord, to whom shall we go? Thou hast the words of eternal life.",
+          "why": null
+        },
+        {
+          "ref": "1 Corinthians 10:16",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "The chalice of benediction which we bless, is it not the communion of the blood of Christ? And the bread which we break, is it not the partaking of the body of the Lord?",
+          "why": null
+        },
+        {
+          "ref": "1 Corinthians 11:27, 29",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "Whosoever shall eat this bread, or drink the chalice of the Lord unworthily, shall be guilty of the body and of the blood of the Lord. … For he that eateth and drinketh unworthily eateth and drinketh judgment to himself, not discerning the body of the Lord.",
+          "why": "You can’t be guilty of the body and blood of a symbol."
+        }
+      ]
+    },
+    {
+      "slug": "john663",
+      "label": "John 6:63",
+      "objection": "“But John 6:63 says the flesh profits nothing.”",
+      "reply": "He says the flesh, not my flesh. In John, “flesh” means merely human thinking.",
+      "lead": null,
+      "ask": null,
+      "citations": [
+        {
+          "ref": "John 6:63",
+          "source_kind": null,
+          "alt_ref": "DR 6:64",
+          "quote": "It is the spirit that quickeneth: the flesh profiteth nothing. The words that I have spoken to you are spirit and life.",
+          "why": "Twelve verses earlier his flesh is given “for the life of the world.” If his flesh profited nothing, the cross would profit nothing. And “spirit” never means “symbolic” anywhere in Scripture."
+        },
+        {
+          "ref": "John 8:15",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "You judge according to the flesh: I judge not any man.",
+          "why": "Same Gospel, same meaning: flesh as human judgment."
+        },
+        {
+          "ref": "Psalm 27:2",
+          "source_kind": null,
+          "alt_ref": "DR 26:2",
+          "quote": "Whilst the wicked draw near against me, to eat my flesh.",
+          "why": "As a figure of speech, “eating someone’s flesh” meant attacking them. The symbolic reading doesn’t work in his own idiom."
+        }
+      ]
+    },
+    {
+      "slug": "relics",
+      "label": "Relics",
+      "objection": "“Relics and images are idolatry.”",
+      "reply": "Idolatry is worshipping a creature. Honor paid to an image passes to the one it shows, and the Bible has relics.",
+      "lead": null,
+      "ask": "What do you mean by idolatry? Is honoring someone the same as worshipping them?",
+      "citations": [
+        {
+          "ref": "2 Kings 13:21",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "And when it had touched the bones of Eliseus, the man came to life and stood upon his feet.",
+          "why": "A dead man revived by touching Elisha’s bones."
+        },
+        {
+          "ref": "Acts 19:12",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "So that even there were brought from his body to the sick, handkerchiefs and aprons: and the diseases departed from them.",
+          "why": null
+        },
+        {
+          "ref": "Acts 5:15",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "… that, when Peter came, his shadow at the least might overshadow any of them and they might be delivered from their infirmities.",
+          "why": null
+        },
+        {
+          "ref": "Matthew 9:20–21",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "And behold a woman who was troubled with an issue of blood twelve years, came behind him, and touched the hem of his garment. For she said within herself: If I shall touch only his garment, I shall be healed.",
+          "why": null
+        },
+        {
+          "ref": "Exodus 25:18 · Numbers 21:8",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "Thou shalt make also two cherubims of beaten gold … Make a brazen serpent, and set it up for a sign: whosoever being struck shall look on it, shall live.",
+          "why": "God himself commanded religious images."
+        },
+        {
+          "ref": "Catechism §2132",
+          "source_kind": "Catechism",
+          "alt_ref": null,
+          "quote": "The Christian veneration of images is not contrary to the first commandment which proscribes idols. Indeed, “the honor rendered to an image passes to its prototype.”",
+          "why": null
+        },
+        {
+          "ref": "Martyrdom of Polycarp",
+          "source_kind": "Eyewitnesses · c. 155",
+          "alt_ref": null,
+          "quote": "We can never forsake Christ, nor adore any other, though we love the martyrs, as his disciples and imitators. … We afterward took up the bones, more precious than the richest jewels or gold.",
+          "why": "Christians answering the idolatry charge, and keeping relics, in the second century."
+        }
+      ]
+    },
+    {
+      "slug": "saints",
+      "label": "Saints",
+      "objection": "“No need for Mary or the saints.”",
+      "reply": "Asking a saint to pray for you is the same as asking a friend. The saints aren’t dead; they’re alive in Christ.",
+      "lead": null,
+      "ask": "Do you ask your friends to pray for you? Does that take anything away from Jesus?",
+      "citations": [
+        {
+          "ref": "James 5:16",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "Confess therefore your sins one to another: and pray one for another, that you may be saved. For the continual prayer of a just man availeth much.",
+          "why": null
+        },
+        {
+          "ref": "Luke 20:38 · Mark 12:27",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "For he is not the God of the dead, but of the living: for all live to him.",
+          "why": null
+        },
+        {
+          "ref": "Revelation 5:8",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "… the four and twenty ancients fell down before the Lamb, having every one of them harps and golden vials full of odours, which are the prayers of saints.",
+          "why": "Those in heaven offering our prayers to God."
+        },
+        {
+          "ref": "Hebrews 12:1",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "And therefore we also having so great a cloud of witnesses over our head, laying aside every weight and sin which surrounds us, let us run by patience to the fight proposed to us.",
+          "why": null
+        },
+        {
+          "ref": "Catechism §956",
+          "source_kind": "Catechism",
+          "alt_ref": null,
+          "quote": "They do not cease to intercede with the Father for us, as they proffer the merits which they acquired on earth through the one mediator between God and men, Christ Jesus.",
+          "why": null
+        }
+      ]
+    },
+    {
+      "slug": "heaven",
+      "label": "Who's in heaven",
+      "objection": "“The Church shouldn’t decide who’s in heaven.”",
+      "reply": "Canonization doesn’t make a saint. It recognizes what God has already done and holds the person up as an example.",
+      "lead": null,
+      "ask": null,
+      "citations": [
+        {
+          "ref": "Catechism §828",
+          "source_kind": "Catechism",
+          "alt_ref": null,
+          "quote": "By canonizing some of the faithful, i.e., by solemnly proclaiming that they practiced heroic virtue and lived in fidelity to God’s grace, the Church recognizes the power of the Spirit of holiness within her and sustains the hope of believers by proposing the saints to them as models and intercessors.",
+          "why": null
+        },
+        {
+          "ref": "Hebrews 11",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "",
+          "why": "Scripture’s own list of faith heroes, named and held up as examples, followed immediately by the “cloud of witnesses” of Hebrews 12:1."
+        }
+      ]
+    },
+    {
+      "slug": "altar",
+      "label": "Altars",
+      "objection": "“Altars are just tables.”",
+      "reply": "The New Testament says Christians have an altar, because the Eucharist is a sacrifice.",
+      "lead": null,
+      "ask": null,
+      "citations": [
+        {
+          "ref": "Hebrews 13:10",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "We have an altar whereof they have no power to eat who serve the tabernacle.",
+          "why": null
+        },
+        {
+          "ref": "Malachi 1:11",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "For from the rising of the sun even to the going down, my name is great among the Gentiles, and in every place there is sacrifice, and there is offered to my name a clean oblation.",
+          "why": "A pure offering in every place among the nations. The early Church read it as the Mass."
+        }
+      ]
+    },
+    {
+      "slug": "scandal",
+      "label": "Scandals",
+      "objection": "“Look at what the Vatican has done.”",
+      "reply": "I won’t leave Jesus because of Judas. For teaching, ask: show me where the Church teaches that.",
+      "lead": null,
+      "ask": "Is that the teaching of the Church, or one man’s comment? Show me where it is in the Catechism.",
+      "citations": [
+        {
+          "ref": "Acts 1:20, 26",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "And his bishopric let another take. … And the lot fell upon Matthias, and he was numbered with the eleven apostles.",
+          "why": "Jesus chose Judas. After the worst scandal in history, the office didn’t end. It was handed on."
+        },
+        {
+          "ref": "Mark 2:17",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "They that are well have no need of a physician, but they that are sick. For I came not to call the just, but sinners.",
+          "why": "The Church is a hospital for sinners, and the saints are the patients who got well."
+        },
+        {
+          "ref": "Catechism §827",
+          "source_kind": "Catechism",
+          "alt_ref": null,
+          "quote": "The Church, however, clasping sinners to her bosom, at once holy and always in need of purification, follows constantly the path of penance and renewal.",
+          "why": null
+        }
+      ]
+    },
+    {
+      "slug": "bible",
+      "label": "Bible alone",
+      "objection": "“Just the Bible.”",
+      "reply": "The Bible itself points to the Church and to handed-down teaching, and it never says “Scripture alone.”",
+      "lead": null,
+      "ask": "Where does the Bible teach that only the Bible is authoritative? And who decided which books belong in it?",
+      "citations": [
+        {
+          "ref": "2 Thessalonians 2:15",
+          "source_kind": null,
+          "alt_ref": "DR 2:14",
+          "quote": "Therefore, brethren, stand fast: and hold the traditions, which you have learned, whether by word or by our epistle.",
+          "why": null
+        },
+        {
+          "ref": "1 Timothy 3:15",
+          "source_kind": null,
+          "alt_ref": null,
+          "quote": "… the church of the living God, the pillar and ground of the truth.",
+          "why": "The Church is called the pillar of truth, not the Bible."
+        }
+      ]
+    }
+  ],
+  "footnote": "Every quotation was checked against the Douay-Rheims (Challoner), the Catechism, and the texts of the Fathers and Councils in the Parvus Ordo Catholic Corpus. Ignatius, Justin, and Cyprian are translated from the Latin in Migne."
+}

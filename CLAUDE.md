@@ -85,7 +85,7 @@ Node `proxy.ts` isn't buildable on OpenNext). Cloudflare's edge **caches** in fr
   `app/dev/*` (bypass). `src/lib/` = `viewer` (request identity + active parish), `auth`, `api-auth`.
 - `packages/core/src/` — the backend, by module: `platform/` (parishes, identity, hostname tenancy),
   `branding/`, `ocia/`, `media/`, `onboarding/`, `people/`, `youth-teaches/` (Parvus Studio),
-  `dictionary/`. `db/client` = `getDb(parishId)`.
+  `dictionary/`, `apologetics/`. `db/client` = `getDb(parishId)`.
 - `packages/shared/src/` — framework-agnostic types (`Role`, `ROLE_LABELS`, brand tokens). No React/Next.
 - `infra/db/` — `migrations/*.sql` (numbered, append-only), `migrate.mjs`, `seed*.mjs`.
   `infra/workers/clip-cutter/` — out-of-band ffmpeg clip service (pure transform; zero business logic).

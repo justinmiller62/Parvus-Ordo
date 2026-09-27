@@ -77,7 +77,15 @@ export function peopleEligible(role: Role | null): boolean {
 // never drift across them. `platform`/`branding`/`auth` are infra, not modules;
 // `media` is an OCIA-internal asset library gated transitively by `ocia`, not a key.
 
-export type ModuleKey = "ocia" | "people" | "studio" | "dictionary" | "prayers" | "onboarding" | "gather";
+export type ModuleKey =
+  | "ocia"
+  | "people"
+  | "studio"
+  | "dictionary"
+  | "prayers"
+  | "onboarding"
+  | "gather"
+  | "apologetics";
 
 export interface ModuleDef {
   key: ModuleKey;
@@ -101,7 +109,8 @@ export interface ModuleDef {
 // existing eligibility predicates where they exist (ocia↔ociaEligible,
 // studio↔studioEligible, people↔peopleEligible); dictionary/prayers are usable by any
 // parish role (their routes gate on parish, not role); onboarding (OCIA applications +
-// invites) is a staff capability; gather is parishioner-facing (every role).
+// invites) is a staff capability; gather is parishioner-facing (every role). `apologetics` is a 4th toggleable module,
+// also shipping dark (a net-new module is opt-in per parish, not retro-enabled).
 export const MODULES: Record<ModuleKey, ModuleDef> = {
   ocia: {
     key: "ocia",
@@ -152,6 +161,19 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
     roles: ["super_admin", "admin", "catechist", "catechumen_candidate", "parish_member", "studio"],
     toggleable: true,
     defaultEnabled: false, // ships dark; opt-in per parish via the RFC-004 systems-admin toggle (§2)
+  },
+  apologetics: {
+    key: "apologetics",
+    label: "Apologetics",
+    // Parishioner-facing reference tool (objection → reply → citations) — like dictionary and
+    // prayers, its route gates on parish rather than role, so every parish role may use it.
+    roles: ["super_admin", "admin", "catechist", "catechumen_candidate", "parish_member", "studio"],
+    // Toggleable (a parish can switch it off) but default-ON, unlike `gather`: the
+    // ship-dark/opt-in rollout exists to stage a major module across many parishes, and
+    // this is a single-operator deployment — the ceremony would be pure overhead. Flip
+    // defaultEnabled back to false if/when a real multi-parish rollout needs staging.
+    toggleable: true,
+    defaultEnabled: true,
   },
 };
 
@@ -934,3 +956,74 @@ export const REQUEST_ACTION_COPY: Record<RequestAction, string> = {
   hand_back: "Pass it on",
   cancel: "No longer needed",
 };
+
+// ---------------------------------------------------------------------------
+// Apologetics search (pure; used by the /apologetics client filter)
+// ---------------------------------------------------------------------------
+
+/** The searchable surface of one apologetics topic. Structural, so it accepts both the
+ *  core ApologeticsTopic and the client's local mirror of it. */
+export interface ApologeticsSearchable {
+  label: string;
+  objection: string;
+  reply: string | null;
+  lead: string | null;
+  ask: string | null;
+  citations: ReadonlyArray<{
+    ref: string;
+    sourceKind: string | null;
+    altRef: string | null;
+    quote: string | null;
+    why: string | null;
+  }>;
+}
+
+/** Fold smart quotes/dashes/NBSP to ASCII and lowercase, so typing "don't" or "6:53-54"
+ *  matches the corpus's typographic forms. */
+export function foldForSearch(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[‘’‛]/g, "'")
+    .replace(/[“”‟]/g, '"')
+    .replace(/[‐-―]/g, "-")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Whether a topic matches a free-text query: every whitespace-separated term must appear
+ * somewhere in the topic (AND across terms, so "john flesh" narrows rather than widens).
+ * An empty query matches everything. Searches the label, objection, reply/lead, ask, and
+ * every citation's ref, badge, alternate numbering, quote, and gloss.
+ */
+export function matchesApologeticsQuery(topic: ApologeticsSearchable, query: string): boolean {
+  const terms = foldForSearch(query).split(" ").filter(Boolean);
+  if (!terms.length) return true;
+  const haystack = foldForSearch(
+    [
+      topic.label,
+      topic.objection,
+      topic.reply,
+      topic.lead,
+      topic.ask,
+      ...topic.citations.flatMap((c) => [c.ref, c.sourceKind, c.altRef, c.quote, c.why]),
+    ]
+      .filter(Boolean)
+      .join("   "),
+  );
+  return terms.every((t) => haystack.includes(t));
+}
+
+/** The plain text a reader copies for one citation: "John 6:53 (DR 6:54) - <quote>". Falls
+ *  back to the gloss for whole-chapter pointers that carry no quotation. */
+export function apologeticsCitationText(c: {
+  ref: string;
+  altRef: string | null;
+  quote: string | null;
+  why: string | null;
+}): string {
+  const ref = c.altRef ? `${c.ref} (${c.altRef})` : c.ref;
+  const body = c.quote ?? c.why;
+  return body ? `${ref} — ${body}` : ref;
+}
