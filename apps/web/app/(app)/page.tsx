@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookOpen, Clapperboard, Users } from "lucide-react";
+import { BookOpen, Clapperboard, ShieldQuestion, Users } from "lucide-react";
 import { getMinistries, getParishById } from "@parvaordo/core";
-import { ociaEligible, peopleEligible, ROLE_LABELS, studioEligible } from "@parvaordo/shared";
+import { moduleAvailable, ociaEligible, peopleEligible, ROLE_LABELS, studioEligible } from "@parvaordo/shared";
 import { getViewer } from "@/src/lib/viewer";
 
 export default async function HomePage() {
@@ -23,6 +23,9 @@ export default async function HomePage() {
   const showOcia = ociaEligible(role);
   const showStudio = studioEligible(role);
   const showPeople = peopleEligible(role);
+  // Apologetics is a parishioner-facing reference tool, so it gates on module
+  // enablement rather than a role predicate (RFC-001 §3.5 layer-1).
+  const showApologetics = moduleAvailable(role, "apologetics", viewer.enabledModules);
 
   const [parish, ministries] = await Promise.all([
     parishId ? getParishById(parishId) : Promise.resolve(null),
@@ -68,7 +71,7 @@ export default async function HomePage() {
             </ul>
           </section>
 
-          {showOcia || showStudio || showPeople ? (
+          {showOcia || showStudio || showPeople || showApologetics ? (
             <section className="mt-6 space-y-3">
               <h2 className="text-sm font-semibold text-gray-400">Modules</h2>
               {showOcia ? (
@@ -99,6 +102,23 @@ export default async function HomePage() {
                     <span className="block font-medium text-navy">Parvus Studio</span>
                     <span className="block text-sm text-gray-500">
                       Studio creators script &amp; record short catechetical videos
+                    </span>
+                  </span>
+                </Link>
+              ) : null}
+              {showApologetics ? (
+                <Link
+                  href="/apologetics"
+                  data-testid="module-apologetics"
+                  className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-gold hover:bg-parchment"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-gold">
+                    <ShieldQuestion className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <span className="block font-medium text-navy">Apologetics</span>
+                    <span className="block text-sm text-gray-500">
+                      Scripture and the early Church, one objection at a time
                     </span>
                   </span>
                 </Link>

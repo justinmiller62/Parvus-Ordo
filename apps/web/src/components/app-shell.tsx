@@ -71,6 +71,16 @@ function topNav(role: Role | null): NavItem[] {
   if (studioEligible(role))
     items.push({ href: "/parvus-studio", label: "Parvus Studio", Icon: Clapperboard, live: true });
   if (peopleEligible(role)) items.push({ href: "/people", label: "People", Icon: Users, live: true });
+  // Parishioner-facing reference tool — a top-level launcher, not an OCIA sub-item, so it
+  // is reachable from the dashboard and the mobile hamburger. Tagged with its moduleKey so
+  // it disappears when the parish has the module off.
+  items.push({
+    href: "/apologetics",
+    label: "Apologetics",
+    Icon: ShieldQuestion,
+    live: true,
+    moduleKey: "apologetics",
+  });
   return items;
 }
 
@@ -123,11 +133,13 @@ function studioNav(role: Role | null): NavItem[] {
   ];
 }
 
-// Dictionary, Prayers & Apologetics are OCIA tools deliberately kept at top-level routes
-// (/dictionary, /prayers, /apologetics) for now because they may be promoted to GLOBAL tools
-// later. This list is the single revert point — drop a path to promote that tool back to a
-// standalone route. (po-s2lm)
-const OCIA_ADJACENT_PATHS = ["/dictionary", "/prayers", "/apologetics"];
+// Dictionary & Prayers are OCIA tools deliberately kept at top-level routes (/dictionary,
+// /prayers) for now because they may be promoted to GLOBAL tools later. This list is the
+// single revert point — drop a path to promote that tool back to a standalone route. (po-s2lm)
+// /apologetics is deliberately ABSENT: it is a parishioner-facing tool with its own
+// top-level launcher, so it keeps the global shell instead of popping the visitor into the
+// OCIA sidebar. (It still appears in the OCIA sub-nav for users already in that shell.)
+const OCIA_ADJACENT_PATHS = ["/dictionary", "/prayers"];
 const isOciaAdjacent = (pathname: string): boolean =>
   OCIA_ADJACENT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
